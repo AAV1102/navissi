@@ -1,0 +1,478 @@
+/**
+ * WORKMANAGER ERP - ESTILOS PARA BÚSQUEDA DE USUARIOS
+ * Archivo: assets/css/usuario-search.css
+ * Descripción: Estilos para el sistema de búsqueda inteligente de usuarios
+ * 
+ * Desarrollado por: Anderson Ayala Vera
+ * Email: sistemas2@integralips.com.co
+ * Versión: 2.0
+ * Fecha: 24 de Diciembre de 2025
+ */
+
+/* Contenedor principal */
+.usuario-search-container {
+    position: relative;
+    width: 100%;
+}
+
+/* Input de búsqueda */
+.usuario-search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: #ffffff;
+}
+
+.usuario-search-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.usuario-search-input:hover {
+    border-color: #cbd5e1;
+}
+
+/* Dropdown de resultados */
+.usuario-search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 400px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+/* Secciones del dropdown */
+.dropdown-section {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown-section:last-child {
+    border-bottom: none;
+}
+
+.dropdown-header {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    background: #f8fafc;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Items del dropdown */
+.dropdown-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+    background-color: #f8fafc;
+}
+
+.dropdown-item.active {
+    background-color: #eff6ff;
+    border-left: 3px solid #3b82f6;
+}
+
+/* Items de usuario */
+.user-item {
+    display: flex;
+    align-items: center;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.user-details {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.user-details span {
+    font-size: 12px;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.user-cedula {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.user-email {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.user-cargo {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.user-sede {
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Items de sugerencia */
+.suggestion-item {
+    color: #64748b;
+}
+
+.suggestion-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.suggestion-info i {
+    color: #3b82f6;
+    width: 16px;
+}
+
+/* Estados especiales */
+.dropdown-loading {
+    padding: 16px;
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+}
+
+.dropdown-loading::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+.dropdown-no-results {
+    padding: 16px;
+    text-align: center;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.dropdown-error {
+    padding: 16px;
+    text-align: center;
+    color: #dc2626;
+    background: #fef2f2;
+    border-left: 3px solid #dc2626;
+}
+
+/* Modal para crear usuario */
+.usuario-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.usuario-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-dialog {
+    position: relative;
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+.modal-content {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.usuario-modal.show .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.modal-close:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+/* Formulario de creación */
+.usuario-create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-row:first-child {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group input {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.15s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input:invalid {
+    border-color: #dc2626;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Botones */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+/* Notificaciones */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-weight: 500;
+    z-index: 3000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    max-width: 400px;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification-success {
+    background: #10b981;
+}
+
+.notification-error {
+    background: #dc2626;
+}
+
+.notification-info {
+    background: #3b82f6;
+}
+
+/* Animaciones */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 20px;
+        padding: 10px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .usuario-search-dropdown {
+        max-height: 300px;
+    }
+}
+
+/* Integración con estilos existentes */
+.wm-input.usuario-search-input {
+    border: 2px solid #e2e8f0;
+}
+
+.wm-input.usuario-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Estados de validación */
+.usuario-search-container.has-user .usuario-search-input {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+
+.usuario-search-container.has-error .usuario-search-input {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+/* Indicador de usuario seleccionado */
+.usuario-search-container.has-user::after {
+    content: '✓';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #10b981;
+    font-weight: bold;
+    pointer-events: none;
+}

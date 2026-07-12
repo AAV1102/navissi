@@ -1,0 +1,19 @@
+# Levanta NAVISSI Inventario completo en un NAS (Synology/QNAP con Container
+# Manager) o cualquier VPS Linux. La carpeta ./data (SQLite + ia_config.json)
+# queda en un volumen persistente para que las actualizaciones de la imagen
+# no borren la base de datos.
+#
+# USO:
+#   1. Copia toda esta carpeta (NAVISSI-INVENTARIO) al NAS/VPS
+#   2. docker compose up -d --build
+#   3. Entra a http://IP-DEL-NAS:8099
+
+services:
+  navissi:
+    build: .
+    container_name: navissi-inventario
+    ports:
+      - "8099:80"
+    volumes:
+      - ./data:/var/www/html/data
+    restart: unless-stopped

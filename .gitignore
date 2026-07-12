@@ -1,0 +1,43 @@
+# NAVISSI Inventario - Git Ignore
+
+# Secretos y configuración local - nunca deben llegar a GitHub
+.env
+.env.local
+.env.production
+data/ia_config.json
+data/ms365_config.json
+data/marca_config.json
+data/importador_config.json
+
+# Base de datos local (cada entorno - local, hosting - tiene la suya propia)
+data/navissi.sqlite
+data/navissi.sqlite-journal
+
+# Configuración de VS Code con credenciales FTP - solo local
+.vscode/sftp.json
+
+# Logs
+*.log
+data/n8n_err.log
+data/n8n_out.log
+
+# Archivos temporales de Excel/Office
+data/~$*
+
+# Documentos reales de empleados/RRHH subidos (datos personales, no código)
+data/documentos/
+data/documentos_rrhh/
+data/desprendibles/
+data/CSV/
+
+# Binarios pesados de RustDesk (no van a GitHub, se descargan aparte por plataforma)
+rustdesk-server/*.exe
+rustdesk-server/id_ed25519*
+
+# Capturas de referencia (pesadas, no son código)
+IMAGENES/
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,224 @@
+/* ESE ACCESIBILIDAD - WORKMANAGER ERP v2.0 */
+
+/* Alto contraste */
+body.high-contrast {
+    filter: contrast(150%) brightness(110%);
+}
+
+body.high-contrast .sidebar-master {
+    background: #000 !important;
+    color: #fff !important;
+}
+
+body.high-contrast .topbar-master {
+    background: #fff !important;
+    color: #000 !important;
+    border-bottom: 3px solid #000 !important;
+}
+
+body.high-contrast .nav-link-master {
+    color: #fff !important;
+    border: 1px solid #333;
+}
+
+body.high-contrast .nav-link-master:hover,
+body.high-contrast .nav-link-master.active {
+    background: #fff !important;
+    color: #000 !important;
+}
+
+body.high-contrast .btn {
+    border: 2px solid #000 !important;
+    font-weight: bold !important;
+}
+
+body.high-contrast .card,
+body.high-contrast .widget-card,
+body.high-contrast .stat-card-modern {
+    border: 2px solid #000 !important;
+    box-shadow: 4px 4px 0 #000 !important;
+}
+
+/* Texto grande */
+body.large-text {
+    font-size: 18px !important;
+}
+
+body.large-text .sidebar-brand {
+    font-size: 1.6rem !important;
+}
+
+body.large-text .nav-link-master {
+    font-size: 16px !important;
+    padding: 15px 20px !important;
+}
+
+body.large-text .topbar-btn {
+    font-size: 1.3rem !important;
+    padding: 12px !important;
+}
+
+body.large-text .user-name {
+    font-size: 16px !important;
+}
+
+body.large-text .module-title {
+    font-size: 2.5rem !important;
+}
+
+body.large-text .stat-number {
+    font-size: 3rem !important;
+}
+
+body.large-text .btn {
+    font-size: 16px !important;
+    padding: 12px 20px !important;
+}
+
+/* Foco mejorado para navegación por teclado */
+*:focus {
+    outline: 3px solid #3498db !important;
+    outline-offset: 2px !important;
+}
+
+/* Animaciones reducidas para usuarios sensibles al movimiento */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Mejoras para lectores de pantalla */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Skip links */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 10000;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+
+/* Indicadores de estado mejorados */
+.status-indicator {
+    position: relative;
+}
+
+.status-indicator::after {
+    content: attr(aria-label);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.status-indicator:hover::after,
+.status-indicator:focus::after {
+    opacity: 1;
+}
+
+/* Mejoras para formularios */
+.form-control:invalid {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 0.2rem rgba(231, 76, 60, 0.25);
+}
+
+.form-control:valid {
+    border-color: #27ae60;
+    box-shadow: 0 0 0 0.2rem rgba(39, 174, 96, 0.25);
+}
+
+/* Indicadores de carga accesibles */
+.loading-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 0, 0, .3);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Mejoras para tablas */
+.table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Botones de acción mejorados */
+.btn-group .btn:focus {
+    z-index: 3;
+}
+
+/* Navegación por teclado mejorada */
+.nav-link-master:focus,
+.topbar-btn:focus,
+.btn:focus {
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5) !important;
+}
+
+/* Mensajes de error y éxito más visibles */
+.alert {
+    border-width: 2px;
+    font-weight: 500;
+}
+
+.alert-success {
+    border-color: #27ae60;
+    background-color: rgba(39, 174, 96, 0.1);
+}
+
+.alert-danger {
+    border-color: #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.alert-warning {
+    border-color: #f39c12;
+    background-color: rgba(243, 156, 18, 0.1);
+}
+
+.alert-info {
+    border-color: #3498db;
+    background-color: rgba(52, 152, 219, 0.1);
+}

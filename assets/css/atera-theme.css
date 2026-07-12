@@ -1,0 +1,711 @@
+/**
+ * ATERA THEME - COMPLETE INTEGRATION
+ * WorkManager ERP - Atera Style System
+ * Tema completo basado en la interfaz de Atera
+ */
+
+/* ===== VARIABLES CSS ===== */
+:root {
+    --atera-primary: #1a472a;
+    --atera-primary-light: #2d5a3d;
+    --atera-primary-dark: #0f2e1a;
+    --atera-secondary: #6c757d;
+    --atera-success: #28a745;
+    --atera-danger: #dc3545;
+    --atera-warning: #ffc107;
+    --atera-info: #17a2b8;
+    --atera-light: #f8f9fa;
+    --atera-dark: #343a40;
+
+    --atera-sidebar-width: 220px;
+    --atera-header-height: 60px;
+    --atera-border-radius: 6px;
+    --atera-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --atera-transition: all 0.3s ease;
+
+    --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ===== RESET Y BASE ===== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* ===== LAYOUT PRINCIPAL ===== */
+#main-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ===== SIDEBAR ===== */
+.atera-sidebar {
+    width: var(--atera-sidebar-width);
+    background: linear-gradient(180deg, var(--atera-primary) 0%, var(--atera-primary-dark) 100%);
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1000;
+    transition: var(--atera-transition);
+}
+
+.atera-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.atera-sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.atera-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+/* Logo del sidebar */
+.sidebar-logo {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-logo .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--atera-primary);
+    positieight: bold;
+    font-size: 18px;
+}
+
+.sidebar-logo .logo-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+}
+
+/* Navegación del sidebar */
+.sidebar-nav {
+    padding: 10px 0;
+}
+
+.nav-item {
+    margin: 2px 10px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    border-radius: var(--atera-border-radius);
+    transition: var(--atera-transition);
+    position: relative;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    text-decoration: none;
+}
+
+.nav-link.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.nav-link i {
+    width: 20px;
+    margin-right: 12px;
+    text-align: center;
+}
+
+.nav-link .nav-text {
+    flex: 1;
+    font-size: 14px;
+}
+
+.nav-link .nav-badge {
+    background: var(--atera-warning);
+    color: #333;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.nav-link .nav-badge.new {
+    background: var(--atera-success);
+    color: white;
+}
+
+/* Separadores */
+.nav-separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 10px 20px;
+}
+
+/* Submenús */
+.nav-submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.nav-submenu.show {
+    max-height: 300px;
+}
+
+.nav-submenu .nav-link {
+    padding-left: 47px;
+    font-size: 13px;
+}
+
+.nav-link.has-submenu::after {
+    content: '\f107';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    margin-left: auto;
+    transition: transform 0.3s ease;
+}
+
+.nav-link.has-submenu.expanded::after {
+    transform: rotate(180deg);
+}
+
+/* ===== HEADER ===== */
+.atera-header {
+    height: var(--atera-header-height);
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    padding: 0 25px;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    box-shadow: var(--atera-box-shadow);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Botón de novedad */
+.btn-news {
+    background: var(--atera-primary);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    font-weight: 500;
+    transition: var(--atera-transition);
+}
+
+.btn-news:hover {
+    background: var(--atera-primary-light);
+    color: white;
+}
+
+/* Búsqueda global */
+.global-search {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+.global-search input {
+    width: 100%;
+    padding: 10px 40px 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 14px;
+    background: #f8f9fa;
+    transition: var(--atera-transition);
+}
+
+.global-search input:focus {
+    outline: none;
+    border-color: var(--atera-primary);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(26, 71, 42, 0.1);
+}
+
+.global-search .search-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+/* Botón instalar agente */
+.btn-install-agent {
+    background: var(--atera-success);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    font-weight: 500;
+    transition: var(--atera-transition);
+}
+
+.btn-install-agent:hover {
+    background: #218838;
+    color: white;
+}
+
+/* Iconos del header */
+.header-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    text-decoration: none;
+    transition: var(--atera-transition);
+    position: relative;
+}
+
+.header-icon:hover {
+    background: #e9ecef;
+    color: #333;
+    text-decoration: none;
+}
+
+.header-icon .badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: var(--atera-danger);
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Avatar de usuario */
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--atera-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ===== CONTENIDO PRINCIPAL ===== */
+#content-wrapper {
+    flex: 1;
+    margin-left: var(--atera-sidebar-width);
+    min-height: 100vh;
+    background: #f5f5f5;
+}
+
+.content-area {
+    padding: 0;
+}
+
+/* ===== WIDGETS DEL DASHBOARD ===== */
+.dashboard-widgets {
+    padding: 25px;
+}
+
+.widget {
+    background: white;
+    border-radius: var(--atera-border-radius);
+    box-shadow: var(--atera-box-shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: var(--atera-transition);
+}
+
+.widget:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.widget-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.widget-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.widget-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.widget-action {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: transparent;
+    border: none;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--atera-transition);
+}
+
+.widget-action:hover {
+    background: #f8f9fa;
+    color: #333;
+}
+
+.widget-body {
+    padding: 20px;
+}
+
+/* Widgets de estadísticas */
+.stats-widget {
+    text-align: center;
+}
+
+.stats-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--atera-primary);
+    margin-bottom: 5px;
+}
+
+.stats-label {
+    font-size: 14px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stats-change {
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.stats-change.positive {
+    color: var(--atera-success);
+}
+
+.stats-change.negative {
+    color: var(--atera-danger);
+}
+
+/* ===== TABLAS ===== */
+.atera-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.atera-table th {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.atera-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f3f4;
+    vertical-align: middle;
+}
+
+.atera-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* ===== BOTONES ===== */
+.btn-atera {
+    padding: 8px 16px;
+    border-radius: var(--atera-border-radius);
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: var(--atera-transition);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-atera-primary {
+    background: var(--atera-primary);
+    color: white;
+}
+
+.btn-atera-primary:hover {
+    background: var(--atera-primary-light);
+    color: white;
+}
+
+.btn-atera-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-atera-secondary:hover {
+    background: #5a6268;
+    color: white;
+}
+
+.btn-atera-outline {
+    background: transparent;
+    color: var(--atera-primary);
+    border: 1px solid var(--atera-primary);
+}
+
+.btn-atera-outline:hover {
+    background: var(--atera-primary);
+    color: white;
+}
+
+/* ===== BADGES Y ETIQUETAS ===== */
+.atera-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.atera-badge-primary {
+    background: var(--atera-primary);
+    color: white;
+}
+
+.atera-badge-success {
+    background: var(--atera-success);
+    color: white;
+}
+
+.atera-badge-warning {
+    background: var(--atera-warning);
+    color: #333;
+}
+
+.atera-badge-danger {
+    background: var(--atera-danger);
+    color: white;
+}
+
+.atera-badge-info {
+    background: var(--atera-info);
+    color: white;
+}
+
+/* ===== ALERTAS ===== */
+.atera-alert {
+    padding: 15px 20px;
+    border-radius: var(--atera-border-radius);
+    margin-bottom: 20px;
+    border-left: 4px solid;
+}
+
+.atera-alert-success {
+    background: #d4edda;
+    border-color: var(--atera-success);
+    color: #155724;
+}
+
+.atera-alert-warning {
+    background: #fff3cd;
+    border-color: var(--atera-warning);
+    color: #856404;
+}
+
+.atera-alert-danger {
+    background: #f8d7da;
+    border-color: var(--atera-danger);
+    color: #721c24;
+}
+
+.atera-alert-info {
+    background: #d1ecf1;
+    border-color: var(--atera-info);
+    color: #0c5460;
+}
+
+/* ===== FORMULARIOS ===== */
+.atera-form-group {
+    margin-bottom: 20px;
+}
+
+.atera-form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.atera-form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: var(--atera-border-radius);
+    font-size: 14px;
+    transition: var(--atera-transition);
+}
+
+.atera-form-control:focus {
+    outline: none;
+    border-color: var(--atera-primary);
+    box-shadow: 0 0 0 3px rgba(26, 71, 42, 0.1);
+}
+
+/* ===== MODALES ===== */
+.atera-modal .modal-header {
+    background: var(--atera-primary);
+    color: white;
+    border-bottom: none;
+}
+
+.atera-modal .modal-title {
+    font-weight: 600;
+}
+
+.atera-modal .btn-close {
+    filter: invert(1);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .atera-sidebar {
+        transform: translateX(-100%);
+    }
+
+    .atera-sidebar.show {
+        transform: translateX(0);
+    }
+
+    #content-wrapper {
+        margin-left: 0;
+    }
+
+    .header-center {
+        display: none;
+    }
+
+    .dashboard-widgets {
+        padding: 15px;
+    }
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+/* ===== UTILIDADES ===== */
+.text-atera-primary {
+    color: var(--atera-primary) !important;
+}
+
+.bg-atera-primary {
+    background-color: var(--atera-primary) !important;
+}
+
+.border-atera-primary {
+    border-color: var(--atera-primary) !important;
+}
+
+.shadow-atera {
+    box-shadow: var(--atera-box-shadow) !important;
+}
+
+.rounded-atera {
+    border-radius: var(--atera-border-radius) !important;
+}
+
+/* ===== SCROLLBARS PERSONALIZADOS ===== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}

@@ -1,0 +1,723 @@
+/**
+ * ATERA COMPONENTS CSS
+ * WorkManager ERP - Componentes estilo Atera
+ * Fecha: 3 de Enero de 2026
+ */
+
+/* ===== PAGE HEADER ===== */
+.page-header {
+    background: white;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 5px 0 0 0;
+}
+
+.page-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.page-breadcrumb a {
+    color: var(--atera-primary);
+    text-decoration: none;
+}
+
+.page-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.page-breadcrumb .separator {
+    color: #ccc;
+}
+
+.page-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ===== TABS ATERA ===== */
+.atera-tabs {
+    display: flex;
+    border-bottom: 2px solid #e9ecef;
+    background: white;
+    padding: 0 25px;
+}
+
+.atera-tab {
+    padding: 15px 20px;
+    color: #6c757d;
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: var(--atera-transition);
+}
+
+.atera-tab:hover {
+    color: var(--atera-primary);
+    text-decoration: none;
+}
+
+.atera-tab.active {
+    color: var(--atera-primary);
+    border-bottom-color: var(--atera-primary);
+}
+
+.atera-tab-content {
+    padding: 25px;
+}
+
+.atera-tab-pane {
+    display: none;
+}
+
+.atera-tab-pane.active {
+    display: block;
+}
+
+/* ===== CARDS ATERA ===== */
+.atera-card {
+    background: white;
+    border-radius: var(--atera-border-radius);
+    box-shadow: var(--atera-box-shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.atera-card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atera-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.atera-card-body {
+    padding: 20px;
+}
+
+.atera-card-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+/* ===== DATA TABLE ATERA ===== */
+.atera-datatable-wrapper {
+    background: white;
+    border-radius: var(--atera-border-radius);
+    box-shadow: var(--atera-box-shadow);
+    overflow: hidden;
+}
+
+.atera-datatable-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.atera-datatable-search {
+    position: relative;
+    width: 300px;
+}
+
+.atera-datatable-search input {
+    width: 100%;
+    padding: 8px 35px 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: var(--atera-border-radius);
+    font-size: 14px;
+}
+
+.atera-datatable-search i {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+.atera-datatable-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.atera-datatable-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atera-pagination {
+    display: flex;
+    gap: 5px;
+}
+
+.atera-pagination-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: var(--atera-border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--atera-transition);
+}
+
+.atera-pagination-btn:hover {
+    background: #f8f9fa;
+    border-color: var(--atera-primary);
+}
+
+.atera-pagination-btn.active {
+    background: var(--atera-primary);
+    color: white;
+    border-color: var(--atera-primary);
+}
+
+/* ===== TOGGLE SWITCH ===== */
+.atera-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.atera-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.atera-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.atera-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.atera-toggle input:checked + .atera-toggle-slider {
+    background-color: var(--atera-primary);
+}
+
+.atera-toggle input:checked + .atera-toggle-slider:before {
+    transform: translateX(20px);
+}
+
+/* ===== DROPDOWN ATERA ===== */
+.atera-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.atera-dropdown-toggle {
+    cursor: pointer;
+}
+
+.atera-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    min-width: 200px;
+    padding: 8px 0;
+    background: white;
+    border-radius: var(--atera-border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: none;
+}
+
+.atera-dropdown-menu.show {
+    display: block;
+}
+
+.atera-dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    color: #333;
+    text-decoration: none;
+    transition: var(--atera-transition);
+}
+
+.atera-dropdown-item:hover {
+    background: #f8f9fa;
+    color: var(--atera-primary);
+    text-decoration: none;
+}
+
+.atera-dropdown-item i {
+    width: 20px;
+    margin-right: 10px;
+    color: #6c757d;
+}
+
+.atera-dropdown-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 8px 0;
+}
+
+/* ===== PROGRESS BAR ===== */
+.atera-progress {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.atera-progress-bar {
+    height: 100%;
+    background: var(--atera-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.atera-progress-bar.success {
+    background: var(--atera-success);
+}
+
+.atera-progress-bar.warning {
+    background: var(--atera-warning);
+}
+
+.atera-progress-bar.danger {
+    background: var(--atera-danger);
+}
+
+/* ===== TOOLTIP ===== */
+.atera-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.atera-tooltip .tooltip-text {
+    visibility: hidden;
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: var(--atera-border-radius);
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.atera-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* ===== EMPTY STATE ===== */
+.atera-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.atera-empty-state-icon {
+    font-size: 64px;
+    color: #ddd;
+    margin-bottom: 20px;
+}
+
+.atera-empty-state-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.atera-empty-state-text {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 20px;
+}
+
+/* ===== LOADING SPINNER ===== */
+.atera-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--atera-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.atera-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* ===== STATUS INDICATORS ===== */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-dot.online {
+    background: var(--atera-success);
+}
+
+.status-dot.offline {
+    background: var(--atera-danger);
+}
+
+.status-dot.warning {
+    background: var(--atera-warning);
+}
+
+.status-dot.pending {
+    background: #6c757d;
+}
+
+/* ===== AVATAR GROUP ===== */
+.avatar-group {
+    display: flex;
+}
+
+.avatar-group .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid white;
+    margin-left: -10px;
+    background: var(--atera-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.avatar-group .avatar:first-child {
+    margin-left: 0;
+}
+
+/* ===== TIMELINE ===== */
+.atera-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.atera-timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+
+.atera-timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.atera-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--atera-primary);
+    border: 2px solid white;
+}
+
+.atera-timeline-time {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.atera-timeline-content {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: var(--atera-border-radius);
+}
+
+/* ===== FILTER PANEL ===== */
+.atera-filter-panel {
+    background: white;
+    padding: 20px;
+    border-radius: var(--atera-border-radius);
+    box-shadow: var(--atera-box-shadow);
+    margin-bottom: 20px;
+}
+
+.atera-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.atera-filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.atera-filter-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6c757d;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+/* ===== NOTIFICATION TOAST ===== */
+.atera-toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.atera-toast {
+    background: white;
+    border-radius: var(--atera-border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.atera-toast-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.atera-toast-icon.success {
+    background: var(--atera-success);
+}
+
+.atera-toast-icon.error {
+    background: var(--atera-danger);
+}
+
+.atera-toast-icon.warning {
+    background: var(--atera-warning);
+}
+
+.atera-toast-icon.info {
+    background: var(--atera-info);
+}
+
+.atera-toast-content {
+    flex: 1;
+}
+
+.atera-toast-title {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.atera-toast-message {
+    font-size: 13px;
+    color: #6c757d;
+}
+
+.atera-toast-close {
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* ===== COLLAPSIBLE SECTIONS ===== */
+.atera-collapsible {
+    border: 1px solid #e9ecef;
+    border-radius: var(--atera-border-radius);
+    margin-bottom: 10px;
+}
+
+.atera-collapsible-header {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atera-collapsible-header:hover {
+    background: #e9ecef;
+}
+
+.atera-collapsible-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.atera-collapsible-icon {
+    transition: transform 0.3s ease;
+}
+
+.atera-collapsible.open .atera-collapsible-icon {
+    transform: rotate(180deg);
+}
+
+.atera-collapsible-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.atera-collapsible.open .atera-collapsible-body {
+    max-height: 1000px;
+}
+
+.atera-collapsible-content {
+    padding: 20px;
+}
+
+/* ===== QUICK ACTIONS ===== */
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 20px;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: var(--atera-border-radius);
+    cursor: pointer;
+    transition: var(--atera-transition);
+    text-decoration: none;
+    color: #333;
+}
+
+.quick-action-btn:hover {
+    border-color: var(--atera-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: var(--atera-primary);
+}
+
+.quick-action-btn i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: var(--atera-primary);
+}
+
+.quick-action-btn span {
+    font-size: 13px;
+    font-weight: 500;
+}

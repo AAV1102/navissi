@@ -1,0 +1,824 @@
+/**
+ * ATERA EXACT THEME
+ * Colores y estilos EXACTOS copiados de app.atera.com
+ * WorkManager ERP - Integración Atera
+ */
+
+/* ===== VARIABLES - COLORES EXACTOS DE ATERA ===== */
+:root {
+    /* Sidebar - Fondo oscuro casi negro */
+    --atera-sidebar-bg: #1e1e2d;
+    --atera-sidebar-hover: #2a2a3d;
+    --atera-sidebar-active: #3a3a4d;
+    --atera-sidebar-text: #9899ac;
+    --atera-sidebar-text-active: #ffffff;
+    --atera-sidebar-width: 240px;
+    
+    /* Header */
+    --atera-header-bg: #ffffff;
+    --atera-header-height: 56px;
+    --atera-header-border: #e4e6ef;
+    
+    /* Contenido */
+    --atera-content-bg: #f5f8fa;
+    --atera-card-bg: #ffffff;
+    --atera-card-border: #e4e6ef;
+    --atera-card-shadow: 0 0 13px 0 rgba(82, 63, 105, 0.05);
+    
+    /* Colores de estado - Badges */
+    --atera-badge-open: #50cd89;
+    --atera-badge-open-bg: #e8fff3;
+    --atera-badge-pending: #ffc700;
+    --atera-badge-pending-bg: #fff8dd;
+    --atera-badge-due: #f1bc00;
+    --atera-badge-due-bg: #fff8dd;
+    --atera-badge-overdue: #f1416c;
+    --atera-badge-overdue-bg: #fff5f8;
+    --atera-badge-warning: #ffa800;
+    --atera-badge-warning-bg: #fff4de;
+    --atera-badge-critical: #f1416c;
+    --atera-badge-critical-bg: #fff5f8;
+    
+    /* Botones */
+    --atera-btn-primary: #009ef7;
+    --atera-btn-primary-hover: #0095e8;
+    --atera-btn-success: #50cd89;
+    --atera-btn-danger: #f1416c;
+    --atera-btn-warning: #ffc700;
+    --atera-btn-light: #f5f8fa;
+    
+    /* Texto */
+    --atera-text-dark: #181c32;
+    --atera-text-gray: #7e8299;
+    --atera-text-muted: #a1a5b7;
+    
+    /* Banner trial */
+    --atera-trial-bg: #1bc5bd;
+    
+    /* Botón Get Started rosa */
+    --atera-pink: #f64e60;
+    --atera-pink-hover: #ee2d41;
+    
+    /* Tipografía */
+    --atera-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --atera-font-size: 13px;
+    --atera-border-radius: 6px;
+}
+
+/* ===== RESET ===== */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--atera-font);
+    font-size: var(--atera-font-size);
+    line-height: 1.5;
+    color: var(--atera-text-dark);
+    background-color: var(--atera-content-bg);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* ===== LAYOUT PRINCIPAL ===== */
+.atera-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ===== SIDEBAR EXACTO DE ATERA ===== */
+.atera-sidebar {
+    width: var(--atera-sidebar-width);
+    background-color: var(--atera-sidebar-bg);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+}
+
+.atera-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.atera-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.atera-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+/* Logo Atera */
+.atera-sidebar-logo {
+    padding: 18px 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.atera-sidebar-logo img {
+    height: 24px;
+}
+
+.atera-sidebar-logo .logo-icon {
+    width: 28px;
+    height: 28px;
+    background: #ffffff;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.atera-sidebar-logo .logo-icon i {
+    color: var(--atera-sidebar-bg);
+    font-size: 14px;
+}
+
+.atera-sidebar-logo .logo-text {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+/* Navegación del sidebar */
+.atera-sidebar-nav {
+    flex: 1;
+    padding: 10px 0;
+}
+
+.atera-nav-item {
+    margin: 2px 12px;
+}
+
+.atera-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    color: var(--atera-sidebar-text);
+    text-decoration: none;
+    border-radius: var(--atera-border-radius);
+    transition: all 0.15s ease;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.atera-nav-link:hover {
+    background-color: var(--atera-sidebar-hover);
+    color: var(--atera-sidebar-text-active);
+}
+
+.atera-nav-link.active {
+    background-color: var(--atera-sidebar-active);
+    color: var(--atera-sidebar-text-active);
+}
+
+.atera-nav-link i {
+    width: 24px;
+    font-size: 16px;
+    margin-right: 10px;
+    text-align: center;
+}
+
+.atera-nav-link .nav-text {
+    flex: 1;
+}
+
+.atera-nav-link .nav-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.atera-nav-link .nav-badge.badge-count {
+    background: var(--atera-pink);
+    color: white;
+}
+
+.atera-nav-link .nav-badge.badge-new {
+    background: var(--atera-btn-primary);
+    color: white;
+}
+
+.atera-nav-link .nav-arrow {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.atera-nav-link.expanded .nav-arrow {
+    transform: rotate(90deg);
+}
+
+/* Submenú */
+.atera-nav-submenu {
+    display: none;
+    padding-left: 20px;
+}
+
+.atera-nav-submenu.show {
+    display: block;
+}
+
+.atera-nav-submenu .atera-nav-link {
+    padding: 8px 15px;
+    font-size: 12px;
+}
+
+/* Separador */
+.atera-nav-separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 15px 20px;
+}
+
+/* Sección del sidebar */
+.atera-nav-section {
+    padding: 10px 25px 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--atera-sidebar-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Botón Get Started */
+.atera-get-started {
+    margin: 15px 12px;
+}
+
+.atera-get-started-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--atera-pink);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.atera-get-started-btn:hover {
+    background: var(--atera-pink-hover);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.atera-get-started-btn .badge-count {
+    background: white;
+    color: var(--atera-pink);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+/* ===== CONTENT WRAPPER ===== */
+.atera-content-wrapper {
+    flex: 1;
+    margin-left: var(--atera-sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== HEADER EXACTO DE ATERA ===== */
+.atera-header {
+    height: var(--atera-header-height);
+    background: var(--atera-header-bg);
+    border-bottom: 1px solid var(--atera-header-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 25px;
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+}
+
+.atera-header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.atera-header-dropdown {
+    position: relative;
+}
+
+.atera-header-dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    background: var(--atera-btn-light);
+    border: 1px solid var(--atera-card-border);
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    color: var(--atera-text-dark);
+    cursor: pointer;
+}
+
+.atera-header-dropdown-btn:hover {
+    background: #eef3f7;
+}
+
+/* Buscador */
+.atera-search {
+    position: relative;
+    width: 400px;
+}
+
+.atera-search-input {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    border: 1px solid var(--atera-card-border);
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    background: var(--atera-btn-light);
+    transition: all 0.2s;
+}
+
+.atera-search-input:focus {
+    outline: none;
+    border-color: var(--atera-btn-primary);
+    background: white;
+}
+
+.atera-search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--atera-text-muted);
+}
+
+.atera-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Botón Instalar Agente */
+.atera-btn-install {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--atera-btn-primary);
+    color: white;
+    border: none;
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.atera-btn-install:hover {
+    background: var(--atera-btn-primary-hover);
+}
+
+/* Iconos del header */
+.atera-header-icon {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--atera-border-radius);
+    color: var(--atera-text-gray);
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.atera-header-icon:hover {
+    background: var(--atera-btn-light);
+    color: var(--atera-text-dark);
+}
+
+.atera-header-icon .notification-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: var(--atera-pink);
+    border-radius: 50%;
+}
+
+/* Avatar del usuario */
+.atera-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--atera-btn-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ===== BANNER TRIAL ===== */
+.atera-trial-banner {
+    background: var(--atera-trial-bg);
+    color: white;
+    padding: 10px 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    font-size: 13px;
+}
+
+.atera-trial-banner a {
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 6px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.atera-trial-banner a:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== ÁREA DE CONTENIDO ===== */
+.atera-content {
+    flex: 1;
+    padding: 25px;
+}
+
+/* ===== PAGE HEADER ===== */
+.atera-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+}
+
+.atera-page-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--atera-text-dark);
+    margin: 0;
+}
+
+.atera-page-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ===== CARDS ===== */
+.atera-card {
+    background: var(--atera-card-bg);
+    border: 1px solid var(--atera-card-border);
+    border-radius: var(--atera-border-radius);
+    box-shadow: var(--atera-card-shadow);
+    margin-bottom: 20px;
+}
+
+.atera-card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--atera-card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.atera-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--atera-text-dark);
+    margin: 0;
+}
+
+.atera-card-body {
+    padding: 20px;
+}
+
+/* ===== STATS CARDS (Estado del ticket, alertas) ===== */
+.atera-stats-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.atera-stat-card {
+    background: var(--atera-card-bg);
+    border: 1px solid var(--atera-card-border);
+    border-radius: var(--atera-border-radius);
+    padding: 20px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.atera-stat-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--atera-text-dark);
+    margin-bottom: 15px;
+}
+
+.atera-stat-items {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.atera-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.atera-stat-number {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--atera-text-dark);
+}
+
+.atera-stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+/* Colores de badges de estado */
+.atera-stat-label.open {
+    background: var(--atera-badge-open-bg);
+    color: var(--atera-badge-open);
+}
+
+.atera-stat-label.pending {
+    background: var(--atera-badge-pending-bg);
+    color: var(--atera-badge-pending);
+}
+
+.atera-stat-label.due-today {
+    background: var(--atera-badge-due-bg);
+    color: var(--atera-badge-due);
+}
+
+.atera-stat-label.overdue {
+    background: var(--atera-badge-overdue-bg);
+    color: var(--atera-badge-overdue);
+}
+
+.atera-stat-label.warning {
+    background: var(--atera-badge-warning-bg);
+    color: var(--atera-badge-warning);
+}
+
+.atera-stat-label.critical {
+    background: var(--atera-badge-critical-bg);
+    color: var(--atera-badge-critical);
+}
+
+/* ===== TABLAS ===== */
+.atera-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.atera-table th {
+    background: var(--atera-btn-light);
+    padding: 12px 15px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--atera-text-gray);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--atera-card-border);
+}
+
+.atera-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--atera-card-border);
+    font-size: 13px;
+    color: var(--atera-text-dark);
+}
+
+.atera-table tr:hover {
+    background: var(--atera-btn-light);
+}
+
+/* ===== BOTONES ===== */
+.atera-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.atera-btn-primary {
+    background: var(--atera-btn-primary);
+    color: white;
+}
+
+.atera-btn-primary:hover {
+    background: var(--atera-btn-primary-hover);
+    color: white;
+}
+
+.atera-btn-success {
+    background: var(--atera-btn-success);
+    color: white;
+}
+
+.atera-btn-danger {
+    background: var(--atera-btn-danger);
+    color: white;
+}
+
+.atera-btn-light {
+    background: var(--atera-btn-light);
+    color: var(--atera-text-dark);
+    border: 1px solid var(--atera-card-border);
+}
+
+.atera-btn-light:hover {
+    background: #eef3f7;
+}
+
+.atera-btn-outline {
+    background: transparent;
+    color: var(--atera-btn-primary);
+    border: 1px solid var(--atera-btn-primary);
+}
+
+.atera-btn-outline:hover {
+    background: var(--atera-btn-primary);
+    color: white;
+}
+
+/* ===== BADGES ===== */
+.atera-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.atera-badge-success {
+    background: var(--atera-badge-open-bg);
+    color: var(--atera-badge-open);
+}
+
+.atera-badge-warning {
+    background: var(--atera-badge-warning-bg);
+    color: var(--atera-badge-warning);
+}
+
+.atera-badge-danger {
+    background: var(--atera-badge-critical-bg);
+    color: var(--atera-badge-critical);
+}
+
+.atera-badge-info {
+    background: #e8f4ff;
+    color: var(--atera-btn-primary);
+}
+
+/* ===== MODALES ===== */
+.atera-modal .modal-content {
+    border: none;
+    border-radius: var(--atera-border-radius);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.atera-modal .modal-header {
+    background: var(--atera-btn-primary);
+    color: white;
+    border-radius: var(--atera-border-radius) var(--atera-border-radius) 0 0;
+    padding: 15px 20px;
+}
+
+.atera-modal .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.atera-modal .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.atera-modal .modal-body {
+    padding: 25px;
+}
+
+.atera-modal .modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--atera-card-border);
+}
+
+/* ===== FORMULARIOS ===== */
+.atera-form-group {
+    margin-bottom: 20px;
+}
+
+.atera-form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--atera-text-dark);
+    margin-bottom: 8px;
+}
+
+.atera-form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--atera-card-border);
+    border-radius: var(--atera-border-radius);
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.atera-form-control:focus {
+    outline: none;
+    border-color: var(--atera-btn-primary);
+    box-shadow: 0 0 0 3px rgba(0, 158, 247, 0.1);
+}
+
+.atera-form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237e8299' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    padding-right: 40px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 991px) {
+    .atera-sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .atera-sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .atera-content-wrapper {
+        margin-left: 0;
+    }
+    
+    .atera-search {
+        width: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .atera-header {
+        padding: 0 15px;
+    }
+    
+    .atera-search {
+        display: none;
+    }
+    
+    .atera-content {
+        padding: 15px;
+    }
+    
+    .atera-stats-row {
+        flex-direction: column;
+    }
+    
+    .atera-stat-items {
+        gap: 15px;
+    }
+}

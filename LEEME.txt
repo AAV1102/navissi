@@ -1,0 +1,78 @@
+NAVISSI INVENTARIO — Software independiente y liviano
+=========================================================
+Ubicación: C:\Mesa de Ayuda\NAVISSI-INVENTARIO
+Separado de WorkManager Retail (tu ERP grande) a propósito: es una
+herramienta chica, rápida y sin dependencias, enfocada solo en lo esencial.
+
+CÓMO ABRIRLO
+-------------
+Doble clic en INICIAR.bat. Se abre solo en el navegador
+(http://127.0.0.1:8099). Deja la ventana negra abierta mientras lo usas;
+ciérrala cuando termines.
+
+QUÉ INCLUYE (todo probado de verdad, con datos reales, no es una maqueta)
+----------------------------------------------------------------------------
+- Dashboard: totales en vivo de equipos, sedes, credenciales, licencias, RRHH.
+- Credenciales: TODAS las claves (Wifi, Correos, DVR, Spotify, Servidor,
+  Siesa) en una sola vista con buscador y filtro por sistema.
+- Microsoft 365 / Azure AD: sincroniza usuarios, estado de cuenta (activa/
+  bloqueada) y licencias reales desde Microsoft Graph, y permite RESTABLECER
+  la contraseña de un usuario (genera una nueva, nunca puede leer la actual -
+  eso no existe en ninguna API de nadie). Requiere una app registrada en
+  portal.azure.com (los pasos exactos están dentro del módulo). El botón
+  "Sincronizar ahora" trae el estado real al instante; un sincronizado 100%
+  automático sin clic requeriría publicar este software en un servidor con
+  IP pública para recibir webhooks de Microsoft.
+- Inventario: alta/baja/edición de equipos, búsqueda por serial/placa/usuario/sede.
+- Sedes: catálogo de tiendas con internet, IP de red, contador de equipos.
+- Licencias: Office 365 y otros proveedores, con costo mensual/anual.
+- Siesa: usuarios y contraseñas de Siesa POS y ERP por tienda.
+- RRHH: empleados (documento, cargo, área, sede, correo), con buscador.
+- Importar:
+    1) Un botón que trae TODO de una vez desde los Excel maestros de
+       TI 2026\MASTER (INVENTARIO_MAESTRO_NAVISSI.xlsx y MAESTRO_TI_GRUPO10Z.xlsx).
+    2) Un formulario para subir CUALQUIER otro Excel, elegir la hoja, y decidir
+       si va a Inventario, Credenciales o RRHH (detecta encabezados con
+       variaciones: CC/DOCUMENTO, NOMBRE/NOMBRES, DEPENDENCIA/AREA, etc.).
+    Ninguna fila con datos clave faltantes se importa — queda registrada en
+    "Filas pendientes por completar" con el motivo exacto.
+- Exportar: descarga un .xlsx con todo lo que hay hoy en el software
+  (Inventario, Credenciales, Sedes, Licencias, RRHH) — sirve de respaldo o
+  para llevarlo a otra parte.
+
+BASE DE DATOS
+--------------
+SQLite (archivo data\navissi.sqlite). Cero configuración: no necesitas
+instalar ni encender MySQL para usar esta herramienta. El archivo .sqlite
+es tu base de datos completa — cópialo para respaldar todo de una vez.
+
+YA SE IMPORTARON LOS DATOS REALES (prueba hecha el 2026-07-08)
+-------------------------------------------------------------------
+- 42 equipos de inventario (100%, ninguno incompleto)
+- 158 credenciales (Siesa POS/ERP, Wifi, Correos)
+- 46 licencias activas
+- 205 empleados (desde "personal Integral.xlsx")
+- 42 sedes/tiendas
+
+Nota de calidad de datos: la hoja de licencias de Office 365 en el archivo
+origen (GESTION SISTEMAS.xlsx) tiene celdas sueltas de una hoja de cálculo
+vieja (tasa TRM, notas tipo "por usuario") mezcladas con la tabla real. El
+importador las filtra automáticamente y las deja registradas en pendientes
+en vez de meterlas como si fueran licencias válidas — revísalas si quieres
+completarlas a mano en el módulo Licencias.
+
+RE-IMPORTAR CUANDO ACTUALICES LOS EXCEL MAESTROS
+----------------------------------------------------
+Corre de nuevo el botón de "Importar maestros de TI 2026" las veces que
+quieras: actualiza lo que ya existe (por serial / usuario+sistema) en vez
+de duplicar.
+
+REQUISITOS TÉCNICOS
+---------------------
+PHP con extensiones pdo_sqlite y zip habilitadas. En esta máquina el PHP de
+C:\xampp\php\php.exe estaba dañado (le faltaba una DLL de Visual C++) y su
+copia en C:\xampp\php\windowsXamppPhp\php.exe no tenía ningún php.ini con
+las extensiones activas — se creó uno en esa misma carpeta
+(C:\xampp\php\windowsXamppPhp\php.ini) habilitando pdo_sqlite, sqlite3, zip,
+pdo_mysql, mysqli, fileinfo, curl, mbstring y openssl. INICIAR.bat ya apunta
+a ese PHP y ese php.ini — no necesitas tocar nada, solo doble clic.

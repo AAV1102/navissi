@@ -1,0 +1,295 @@
+/**
+ * Estilos de Accesibilidad para Login
+ * Autor: Anderson Ayala Vera
+ * Versión: 2.0
+ */
+
+/* Controles de accesibilidad e idioma en el login */
+.login-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 12px;
+    z-index: 2000;
+}
+
+.control-btn {
+    width: 48px;
+    height: 48px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #667eea;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.control-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Paneles en el login */
+.accessibility-panel,
+.language-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 320px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
+    z-index: 1999;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.panel-header {
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.panel-close:hover {
+    color: #1a202c;
+}
+
+.panel-body {
+    padding: 20px;
+}
+
+/* Opciones de accesibilidad */
+.accessibility-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.accessibility-option:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.option-info {
+    flex: 1;
+}
+
+.option-label {
+    display: block;
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.option-desc {
+    display: block;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.option-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-control {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+}
+
+.btn-control:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f8f9ff;
+}
+
+#fontSize {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a202c;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Toggle switch */
+.toggle-switch {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    display: inline-block;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e0;
+    transition: 0.3s;
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #667eea;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* Opciones de idioma */
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.language-option:hover {
+    background: #f8f9ff;
+}
+
+.language-option.active {
+    background: #f0f2ff;
+    border: 2px solid #667eea;
+}
+
+.language-option .flag {
+    font-size: 28px;
+}
+
+.lang-info {
+    flex: 1;
+}
+
+.lang-name {
+    display: block;
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 14px;
+}
+
+.lang-native {
+    display: block;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.language-option i.fa-check {
+    color: #667eea;
+    font-size: 18px;
+}
+
+/* Responsive para móviles */
+@media (max-width: 640px) {
+    .login-controls {
+        top: 10px;
+        right: 10px;
+        gap: 8px;
+    }
+    
+    .control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .accessibility-panel,
+    .language-panel {
+        top: 60px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
+}
+
+/* Botón de restablecer */
+.btn-secondary {
+    background: #e2e8f0;
+    color: #475569;
+    margin-top: 16px;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+    transform: translateY(-1px);
+}

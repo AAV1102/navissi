@@ -1,0 +1,81 @@
+# WorkManager ERP - Docker Ignore
+# Archivos y directorios que no se incluyen en el contenedor Docker
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE y editores
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs y temporales
+logs/*.log
+storage/cache/*
+storage/sessions/*
+storage/temp/*
+uploads/*
+
+# Node modules y dependencias
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Composer
+vendor/
+composer.lock
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de desarrollo
+*.md
+README*
+CHANGELOG*
+LICENSE*
+
+# Tests
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Scripts de desarrollo
+*.bat
+*.sh
+
+# Archivos de configuración local
+.env
+.env.local
+.env.*.local
+
+# Backups
+*.sql
+*.backup
+*.bak
+
+# Archivos temporales de PHP
+*.tmp
+*.temp
+
+# Archivos de caché
+.cache/
+tmp/
+
+# Documentación
+docs/
+documentation/
+
+# Archivos de ejemplo
+examples/
+samples/

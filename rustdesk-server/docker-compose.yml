@@ -1,0 +1,42 @@
+# Servidor RustDesk (self-hosted) para NAS (Synology/QNAP con Docker o
+# Container Manager) o cualquier VPS Linux. Alternativa a los .exe portables
+# de Windows que ya corren en el PC de TI — usa esto cuando muevas el servidor
+# a un NAS o a un servidor en la nube para que quede disponible 24/7 sin
+# depender de que el PC de TI esté encendido.
+#
+# USO en el NAS / VPS:
+#   1. Copia esta carpeta al NAS (o solo este archivo + carpeta ./data vacía)
+#   2. Cambia "TU_IP_O_DOMINIO_PUBLICO" abajo por la IP pública o dominio del NAS/VPS
+#   3. docker compose up -d
+#   4. La clave pública queda en ./data/id_ed25519.pub (cópiala a acceso_remoto.php
+#      o pégala en el campo "Clave pública" de cada cliente RustDesk)
+
+services:
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: navissi-rustdesk-hbbs
+    command: hbbs -r TU_IP_O_DOMINIO_PUBLICO:21117
+    ports:
+      - "21115:21115"
+      - "21116:21116"
+      - "21116:21116/udp"
+      - "21118:21118"
+    volumes:
+      - ./data:/root
+    restart: unless-stopped
+    networks: [navissi-rustdesk]
+
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: navissi-rustdesk-hbbr
+    command: hbbr
+    ports:
+      - "21117:21117"
+      - "21119:21119"
+    volumes:
+      - ./data:/root
+    restart: unless-stopped
+    networks: [navissi-rustdesk]
+
+networks:
+  navissi-rustdesk:

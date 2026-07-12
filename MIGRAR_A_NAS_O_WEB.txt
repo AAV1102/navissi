@@ -1,0 +1,71 @@
+NAVISSI Inventario + Servidor de Acceso Remoto — Migración a NAS o servidor en la web
+=======================================================================================
+
+Ahora mismo (julio 2026) todo corre en el PC de TI (192.168.99.64):
+  - NAVISSI Inventario (PHP + SQLite)         -> puerto 8099
+  - Servidor RustDesk propio (hbbs + hbbr)    -> puertos 21115-21119
+
+Eso funciona, pero depende de que ese PC este siempre encendido. La idea a
+futuro es mudar ambas cosas a un NAS (Synology/QNAP) o a un servidor en la
+nube (VPS) para que quede disponible 24/7 de verdad. Ya deje todo empaquetado
+para que esa mudanza sea copiar y pegar, sin reescribir nada.
+
+-----------------------------------------------------------------------------
+OPCION A: NAS (Synology / QNAP) con Docker / Container Manager
+-----------------------------------------------------------------------------
+La mayoria de NAS modernos (Synology DS+, QNAP con QTS) traen "Container
+Manager" o "Container Station" — Docker con interfaz grafica. Con eso:
+
+1. Copia toda la carpeta NAVISSI-INVENTARIO al NAS (por red o USB).
+2. Para NAVISSI Inventario: usa el Dockerfile + docker-compose.yml que estan
+   en la raiz del proyecto. En el NAS: Container Manager -> Proyecto -> abrir
+   la carpeta -> Compilar y ejecutar. Queda disponible en
+   http://IP-DEL-NAS:8099
+3. Para el servidor de acceso remoto: usa rustdesk-server/docker-compose.yml
+   (no los .exe, esos son solo para Windows). Cambia
+   "TU_IP_O_DOMINIO_PUBLICO" por la IP publica o el dominio del NAS.
+4. En el router de la sede principal, redirige hacia el NAS:
+     - Puerto 8099 (NAVISSI Inventario)
+     - Puertos 21115-21119 TCP/UDP (RustDesk)
+   La mayoria de NAS Synology tienen ademas "QuickConnect" / DDNS gratis
+   (tu-empresa.synology.me) para no depender de una IP publica fija.
+5. Copia la carpeta ./data (la base de datos SQLite actual) al NAS antes de
+   levantar el contenedor, para no perder lo ya cargado.
+
+-----------------------------------------------------------------------------
+OPCION B: Servidor en la nube (VPS) — DigitalOcean, Hetzner, AWS Lightsail, etc.
+-----------------------------------------------------------------------------
+Mismo procedimiento que la Opcion A (mismo Dockerfile / docker-compose.yml),
+la diferencia es que el VPS ya tiene IP publica fija de fabrica, asi que no
+hay que tocar ningun router. Pasos:
+
+1. Contrata un VPS pequeño (2 GB RAM alcanza de sobra para esto). Instala
+   Docker (en Ubuntu: `curl -fsSL https://get.docker.com | sh`).
+2. Sube la carpeta NAVISSI-INVENTARIO completa (scp, sftp, o git).
+3. `docker compose up -d --build` para NAVISSI, y lo mismo para
+   rustdesk-server/docker-compose.yml (edita antes la IP/dominio publico).
+4. Apunta un dominio (ej. inventario.grupo10z.com) a la IP del VPS, y usa
+   Caddy o Nginx + Let's Encrypt para HTTPS (recomendado antes de exponerlo
+   a internet, ya que hoy corre sin cifrado).
+
+-----------------------------------------------------------------------------
+Que NO cambia al mudar
+-----------------------------------------------------------------------------
+- Los equipos con el agente instalado (agente_navissi.ps1 / Tarea Programada)
+  solo necesitan que cambies el parametro -Servidor a la nueva URL/IP.
+- Los clientes RustDesk ya instalados solo necesitan el nuevo
+  rendezvous_server (se puede reconfigurar con el mismo metodo que usa el
+  agente, editando RustDesk2.toml, o repitiendo desplegar_en_pc_empleado.ps1).
+- La base de datos (SQLite) es un solo archivo — se copia y ya.
+
+-----------------------------------------------------------------------------
+Seguridad minima antes de exponer esto a internet
+-----------------------------------------------------------------------------
+- Pon NAVISSI detras de HTTPS (Caddy/Nginx + Let's Encrypt) — hoy viaja en
+  texto plano si lo expones tal cual.
+- Cambia la contraseña del usuario admin inicial si aun no lo hiciste.
+- El 2FA (Verificacion en dos pasos, icono de escudo junto a "Salir") ya esta
+  disponible — activalo para las cuentas ADMIN antes de exponer el sistema.
+- Los puertos de RustDesk (21115-21119) son necesarios abrirlos, pero el
+  trafico de control remoto va cifrado extremo a extremo por diseño de
+  RustDesk (la clave publica que generamos es justamente para eso).

@@ -1,0 +1,575 @@
+/**
+ * Estilos Responsivos para Códigos de Barras y QR - WorkManager ERP
+ * Optimizado para móviles, tablets y escritorio
+ * Desarrollado por: Anderson Ayala Vera
+ */
+
+/* ===== CONTENEDORES PRINCIPALES ===== */
+.barcode-container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.barcode-container:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* ===== LAYOUT RESPONSIVO ===== */
+.barcode-container.mobile-layout {
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.barcode-container.mobile-layout .barcode-info {
+    flex-direction: column;
+}
+
+.barcode-container.mobile-layout .barcode-actions {
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.barcode-container.desktop-layout .barcode-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ===== CÓDIGO DE BARRAS VISUAL ===== */
+.barcode-display {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background: linear-gradient(90deg, #000 2px, transparent 2px);
+    background-size: 4px 100%;
+    padding: 0.5rem 1rem;
+    border: 2px solid #333;
+    border-radius: 4px;
+    text-align: center;
+    margin: 0.5rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.barcode-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(90deg,
+            #000 0px,
+            #000 1px,
+            transparent 1px,
+            transparent 3px,
+            #000 3px,
+            #000 4px,
+            transparent 4px,
+            transparent 6px);
+    opacity: 0.8;
+    z-index: 1;
+}
+
+.barcode-display span {
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0 0.5rem;
+}
+
+/* ===== BOTONES DE ACCIÓN ===== */
+.barcode-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.barcode-actions .btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.barcode-actions .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.barcode-actions .btn:hover::before {
+    left: 100%;
+}
+
+.btn-scan-barcode {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.btn-generate-qr {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    color: white;
+}
+
+.btn-print-label {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    border: none;
+    color: white;
+}
+
+.btn-search-barcode {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    border: none;
+    color: white;
+}
+
+/* ===== ESCÁNER DE CÓDIGOS ===== */
+.scanner-container {
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.scanner-viewport {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+#scanner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 60%;
+    border: 2px solid #00ff00;
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.scanner-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff00, transparent);
+    animation: scannerLine 2s linear infinite;
+}
+
+@keyframes scannerLine {
+    0% {
+        top: 0;
+    }
+
+    100% {
+        top: calc(100% - 2px);
+    }
+}
+
+.scanner-instructions {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.scanner-result {
+    margin-top: 1rem;
+}
+
+/* ===== CÓDIGO QR ===== */
+.qr-container {
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+}
+
+#qr-code-display {
+    display: inline-block;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== INFORMACIÓN DEL EQUIPO ===== */
+.equipo-info {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item strong {
+    color: #495057;
+    min-width: 100px;
+}
+
+.info-group {
+    margin-bottom: 1rem;
+}
+
+.info-group label {
+    font-weight: 600;
+    color: #495057;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+/* ===== BÚSQUEDA DE CÓDIGOS ===== */
+.barcode-search-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+    border-radius: 16px;
+    color: white;
+    margin-bottom: 2rem;
+}
+
+.barcode-search-input {
+    position: relative;
+}
+
+#barcode-search-input {
+    border-radius: 12px;
+    border: 2px solid transparent;
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+    font-family: 'Courier New', monospace;
+    transition: all 0.3s ease;
+}
+
+#barcode-search-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+#barcode-search-input.is-invalid {
+    border-color: #dc3545;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* ===== ETIQUETAS PARA IMPRESIÓN ===== */
+.print-label {
+    width: 4in;
+    height: 2in;
+    padding: 0.25in;
+    background: white;
+    border: 1px solid #000;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.label-header {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    border-bottom: 1px solid #000;
+    padding-bottom: 0.1in;
+}
+
+.label-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+}
+
+.label-barcode {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.label-qr {
+    width: 1in;
+    height: 1in;
+}
+
+.label-info {
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Móviles pequeños (hasta 576px) */
+@media (max-width: 575.98px) {
+    .barcode-container {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .barcode-actions {
+        flex-direction: column;
+    }
+
+    .barcode-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .scanner-viewport {
+        height: 250px;
+    }
+
+    .barcode-search-container {
+        padding: 1rem;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    .equipo-info .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Móviles (576px - 767.98px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .barcode-actions .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .scanner-viewport {
+        height: 280px;
+    }
+}
+
+/* Tablets (768px - 991.98px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .barcode-container {
+        padding: 1.25rem;
+    }
+
+    .scanner-viewport {
+        height: 350px;
+    }
+
+    .barcode-actions .btn {
+        min-width: 140px;
+    }
+}
+
+/* Escritorio (992px en adelante) */
+@media (min-width: 992px) {
+    .barcode-container {
+        padding: 1.5rem;
+    }
+
+    .scanner-viewport {
+        height: 400px;
+    }
+
+    .barcode-actions .btn {
+        min-width: 160px;
+    }
+
+    .equipo-info {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+}
+
+/* ===== MODO OSCURO ===== */
+@media (prefers-color-scheme: dark) {
+    .barcode-container {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+
+    .barcode-display {
+        background: #1a202c;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+
+    .equipo-info {
+        background: #2d3748;
+        border-left-color: #667eea;
+    }
+
+    .info-item {
+        border-bottom-color: #4a5568;
+    }
+
+    .qr-container {
+        background: #2d3748;
+        border-color: #4a5568;
+    }
+}
+
+/* ===== ANIMACIONES Y TRANSICIONES ===== */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in-right {
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ===== UTILIDADES ===== */
+.text-barcode {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* ===== ACCESIBILIDAD ===== */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Focus visible para navegación por teclado */
+.btn:focus-visible,
+input:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* ===== IMPRESIÓN ===== */
+@media print {
+    .barcode-container {
+        box-shadow: none;
+        border: 1px solid #000;
+        break-inside: avoid;
+    }
+
+    .barcode-actions {
+        display: none;
+    }
+
+    .modal-header,
+    .modal-footer {
+        display: none;
+    }
+
+    .print-label {
+        page-break-inside: avoid;
+        margin: 0;
+    }
+}
