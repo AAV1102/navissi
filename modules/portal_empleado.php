@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/ia_triage.php';
-require_once __DIR__ . '/../lib/icons.php';
+require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 requiere_login('../');
 $u = usuario_actual();
@@ -144,29 +144,17 @@ if ($u['documento']) {
     $stmt->execute([$u['documento']]);
     $desprendibles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+$iniciales = mb_strtoupper(mb_substr($u['nombre'] ?? '?', 0, 1));
+layout_inicio('Mi Portal de Empleado', 'Dashboard', '../');
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mi Portal - NAVISSI</title>
-<link rel="stylesheet" href="../assets/style.css">
-</head>
-<body>
-<div class="topbar">
-    <div class="topbar-row">
-        <div class="brand"><span>📦 NAVISSI <span>Mi Portal</span></span></div>
-        <div class="topbar-user">
-            <span class="small" style="color:#dbe9f7;">Hola, <?= e($u['nombre']) ?></span>
-            <a href="../logout.php" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;">Salir</a>
-        </div>
+<div class="panel" style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,var(--navy-900),var(--navy-700));border:none;color:#fff;">
+    <span class="avatar" style="width:52px;height:52px;font-size:20px;flex-shrink:0;"><?= e($iniciales) ?></span>
+    <div>
+        <h1 style="color:#fff;margin:0;"><?= e($empleado['nombres'] ?? $u['nombre']) ?></h1>
+        <p class="small" style="color:var(--gold-500);margin:4px 0 0;"><?= e($empleado['cargo'] ?? '') ?><?= $empleado && $empleado['area'] ? ' · ' . e($empleado['area']) : '' ?></p>
     </div>
 </div>
-<main>
-<h1>Mi Portal de Empleado</h1>
-<p class="subtitle">Solicita ayuda a TI, descarga tus certificados y consulta tus desprendibles - todo en un solo lugar.</p>
-<p><a class="btn btn-secondary" href="mis_accesos.php"><?= icon('key') ?> Ver mis accesos (Siesa, Office 365, OneDrive)</a></p>
+<p class="subtitle" style="margin-top:14px;">Solicita ayuda a TI, descarga tus certificados y consulta tus desprendibles - todo en un solo lugar.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <?php if ($u['documento']): ?>
@@ -319,6 +307,4 @@ if ($u['documento']) {
         <?php if (!$desprendibles): ?><tr><td colspan="2" class="small">Aún no hay desprendibles cargados.</td></tr><?php endif; ?>
     </table>
 </div>
-</main>
-</body>
-</html>
+<?php layout_fin(); ?>
