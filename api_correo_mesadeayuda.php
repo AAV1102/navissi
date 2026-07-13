@@ -7,6 +7,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/correo_a_tickets.php';
 header('Content-Type: application/json; charset=utf-8');
+@set_time_limit(120); // este endpoint corre sin usuario esperando (cron/GitHub Actions), puede tomarse su tiempo con varios buzones
 
 $tokenEsperado = hash('sha256', 'navissi-correo-' . ($_SERVER['HTTP_HOST'] ?? ''));
 if (($_GET['token'] ?? '') !== $tokenEsperado) {
