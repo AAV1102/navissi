@@ -170,6 +170,37 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Gestión Documental ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS gd_carpetas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        carpeta_padre_id INTEGER REFERENCES gd_carpetas(id) ON DELETE CASCADE,
+        area TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS gd_archivos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        carpeta_id INTEGER NOT NULL REFERENCES gd_carpetas(id) ON DELETE CASCADE,
+        nombre_archivo TEXT NOT NULL,
+        ruta TEXT NOT NULL,
+        version INTEGER DEFAULT 1,
+        tipo_mime TEXT,
+        tamano INTEGER,
+        descripcion TEXT,
+        subido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS gd_versiones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        archivo_id INTEGER NOT NULL REFERENCES gd_archivos(id) ON DELETE CASCADE,
+        version INTEGER,
+        ruta TEXT NOT NULL,
+        tamano INTEGER,
+        subido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // ---- Pipeline de Oportunidades (CRM) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS oportunidades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

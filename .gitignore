@@ -18,6 +18,7 @@ data/navissi.sqlite.bak-*
 # Adjuntos y CVs subidos por usuarios (datos reales, no código)
 data/tickets_adjuntos/
 data/candidatos_cv/
+data/gestion_documental/
 
 # Configuración de VS Code con credenciales FTP - solo local
 .vscode/sftp.json
