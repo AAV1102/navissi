@@ -13,6 +13,11 @@ data/smtp_config.json
 # Base de datos local (cada entorno - local, hosting - tiene la suya propia)
 data/navissi.sqlite
 data/navissi.sqlite-journal
+data/navissi.sqlite.bak-*
+
+# Adjuntos y CVs subidos por usuarios (datos reales, no código)
+data/tickets_adjuntos/
+data/candidatos_cv/
 
 # Configuración de VS Code con credenciales FTP - solo local
 .vscode/sftp.json
