@@ -171,24 +171,32 @@ layout_inicio('Dashboard', 'Dashboard');
 </div>
 <?php endif; ?>
 
+<?php $maxSede = max(array_column($porSede, 'c') ?: [1]) ?: 1; ?>
 <div class="panel">
     <h3>Equipos por sede</h3>
-    <table>
-        <tr><th>Sede</th><th>Equipos</th></tr>
+    <div class="bar-chart">
         <?php foreach ($porSede as $r): if ($r['c'] == 0) continue; ?>
-        <tr><td><?= e($r['nombre']) ?></td><td><?= (int)$r['c'] ?></td></tr>
+        <div class="bar-chart-row">
+            <span class="bar-chart-label"><?= e($r['nombre']) ?></span>
+            <div class="bar-chart-track"><div class="bar-chart-fill" style="width:<?= max(4, round($r['c'] / $maxSede * 100)) ?>%"></div></div>
+            <span class="bar-chart-num"><?= (int)$r['c'] ?></span>
+        </div>
         <?php endforeach; ?>
-    </table>
+    </div>
 </div>
 
+<?php $maxSistema = max(array_column($porSistema, 'c') ?: [1]) ?: 1; ?>
 <div class="panel">
     <h3>Credenciales por sistema</h3>
-    <table>
-        <tr><th>Sistema</th><th>Cantidad</th></tr>
+    <div class="bar-chart">
         <?php foreach ($porSistema as $r): ?>
-        <tr><td><?= e($r['sistema']) ?></td><td><?= (int)$r['c'] ?></td></tr>
+        <div class="bar-chart-row">
+            <span class="bar-chart-label"><?= e($r['sistema']) ?></span>
+            <div class="bar-chart-track"><div class="bar-chart-fill" style="width:<?= max(4, round($r['c'] / $maxSistema * 100)) ?>%"></div></div>
+            <span class="bar-chart-num"><?= (int)$r['c'] ?></span>
+        </div>
         <?php endforeach; ?>
-    </table>
+    </div>
 </div>
 
 <p class="small">Si el dashboard está vacío, ve a <a href="modules/importar.php">Importar</a> y carga los maestros de TI 2026.</p>
@@ -212,14 +220,18 @@ layout_inicio('Dashboard', 'Dashboard');
     <div class="card" style="border-left-color:#c98a1f"><div class="num"><?= $evaluacionesBorrador ?></div><div class="label"><a href="modules/evaluaciones.php">Evaluaciones en borrador</a></div></div>
 </div>
 
+<?php $maxArea = max(array_column($porArea, 'c') ?: [1]) ?: 1; ?>
 <div class="panel">
     <h3>Empleados activos por área</h3>
-    <table>
-        <tr><th>Área</th><th>Empleados</th></tr>
+    <div class="bar-chart">
         <?php foreach ($porArea as $r): if (!$r['area']) continue; ?>
-        <tr><td><?= e($r['area']) ?></td><td><?= (int)$r['c'] ?></td></tr>
+        <div class="bar-chart-row">
+            <span class="bar-chart-label"><?= e($r['area']) ?></span>
+            <div class="bar-chart-track"><div class="bar-chart-fill" style="width:<?= max(4, round($r['c'] / $maxArea * 100)) ?>%"></div></div>
+            <span class="bar-chart-num"><?= (int)$r['c'] ?></span>
+        </div>
         <?php endforeach; ?>
-    </table>
+    </div>
 </div>
 
 <div class="panel">
@@ -251,14 +263,18 @@ layout_inicio('Dashboard', 'Dashboard');
     <div class="card" style="border-left-color:#c98a1f"><div class="num"><?= count($contratosPorVencer) ?></div><div class="label"><a href="modules/contratos.php">Contratos por vencer (30 días)</a></div></div>
 </div>
 
+<?php $maxSedeEj = max(array_column($porSede, 'c') ?: [1]) ?: 1; ?>
 <div class="panel">
     <h3>Equipos por sede</h3>
-    <table>
-        <tr><th>Sede</th><th>Equipos</th></tr>
+    <div class="bar-chart">
         <?php foreach ($porSede as $r): if ($r['c'] == 0) continue; ?>
-        <tr><td><?= e($r['nombre']) ?></td><td><?= (int)$r['c'] ?></td></tr>
+        <div class="bar-chart-row">
+            <span class="bar-chart-label"><?= e($r['nombre']) ?></span>
+            <div class="bar-chart-track"><div class="bar-chart-fill" style="width:<?= max(4, round($r['c'] / $maxSedeEj * 100)) ?>%"></div></div>
+            <span class="bar-chart-num"><?= (int)$r['c'] ?></span>
+        </div>
         <?php endforeach; ?>
-    </table>
+    </div>
 </div>
 <?php endif; ?>
 
