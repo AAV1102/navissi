@@ -74,7 +74,9 @@ layout_inicio('Informes', 'Informes', '../');
 </div>
 
 <div class="panel" id="sla">
-    <h3><?= icon('shield') ?> Acuerdos de Nivel de Servicio (SLA)</h3>
+    <h3><?= icon('shield') ?> Acuerdos de Nivel de Servicio (SLA)
+        <a href="informes_exportar.php?bloque=sla&desde=<?= e($desde) ?>&hasta=<?= e($hasta) ?>" class="btn btn-secondary" style="margin-left:auto;padding:5px 12px;font-size:12px;"><?= icon('upload') ?> Exportar a Excel</a>
+    </h3>
     <table>
         <tr><th>Prioridad</th><th>Tickets</th><th>Vencidos</th><th>Cumplimiento</th></tr>
         <?php foreach ($slaPorPrioridad as $s):
@@ -92,7 +94,9 @@ layout_inicio('Informes', 'Informes', '../');
 </div>
 
 <div class="panel" id="tecnicos">
-    <h3><?= icon('users') ?> Carga por técnico</h3>
+    <h3><?= icon('users') ?> Carga por técnico
+        <a href="informes_exportar.php?bloque=tecnicos&desde=<?= e($desde) ?>&hasta=<?= e($hasta) ?>" class="btn btn-secondary" style="margin-left:auto;padding:5px 12px;font-size:12px;"><?= icon('upload') ?> Exportar a Excel</a>
+    </h3>
     <table>
         <tr><th>Técnico</th><th>Tickets asignados</th><th>Resueltos</th><th>% Resolución</th></tr>
         <?php foreach ($cargaTecnico as $t):
@@ -110,7 +114,9 @@ layout_inicio('Informes', 'Informes', '../');
 </div>
 
 <div class="panel" id="categorias">
-    <h3>Tickets por categoría</h3>
+    <h3>Tickets por categoría
+        <a href="informes_exportar.php?bloque=categorias&desde=<?= e($desde) ?>&hasta=<?= e($hasta) ?>" class="btn btn-secondary" style="margin-left:auto;padding:5px 12px;font-size:12px;"><?= icon('upload') ?> Exportar a Excel</a>
+    </h3>
     <table>
         <tr><th>Categoría</th><th>Cantidad</th></tr>
         <?php foreach ($porCategoria as $c): ?>
@@ -120,7 +126,9 @@ layout_inicio('Informes', 'Informes', '../');
 </div>
 
 <div class="panel" id="inventario-mov">
-    <h3>Movimientos de inventario por tipo</h3>
+    <h3>Movimientos de inventario por tipo
+        <a href="informes_exportar.php?bloque=inventario&desde=<?= e($desde) ?>&hasta=<?= e($hasta) ?>" class="btn btn-secondary" style="margin-left:auto;padding:5px 12px;font-size:12px;"><?= icon('upload') ?> Exportar a Excel</a>
+    </h3>
     <table>
         <tr><th>Tipo</th><th>Cantidad</th></tr>
         <?php foreach ($movimientosPorTipo as $m): ?>

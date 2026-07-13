@@ -30,7 +30,11 @@ $fechaTexto = $hoy->format('d') . ' de ' . $meses[(int)$hoy->format('n') - 1] . 
 $salarioTexto = $emp['salario'] ? '$' . number_format($emp['salario'], 0, ',', '.') . ' pesos m/cte mensuales' : '[salario no registrado en el sistema]';
 $ingresoTexto = $emp['fecha_ingreso'] ? date('d \d\e \\M', strtotime($emp['fecha_ingreso'])) : '[fecha no registrada]';
 ?>
-<p class="small no-print"><a href="rrhh_certificados.php">← Volver</a> · <button onclick="window.print()" class="btn btn-secondary" style="padding:4px 10px;">🖨 Imprimir / Guardar PDF</button></p>
+<p class="small no-print">
+    <a href="rrhh_certificados.php">← Volver</a> ·
+    <button onclick="window.print()" class="btn btn-secondary" style="padding:4px 10px;">🖨 Imprimir</button> ·
+    <a class="btn" href="certificado_pdf.php?tipo=laboral&documento=<?= urlencode($emp['documento']) ?>" target="_blank" style="padding:4px 10px;">📄 Descargar PDF real</a>
+</p>
 
 <div class="panel" style="max-width:720px;margin:0 auto;line-height:1.8;">
     <h2 style="text-align:center;">CERTIFICADO LABORAL</h2>
