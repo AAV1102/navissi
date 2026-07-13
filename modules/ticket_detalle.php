@@ -1,23 +1,59 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
+require_once __DIR__ . '/../lib/mailer.php';
 $pdo = db();
 $id = (int) ($_GET['id'] ?? 0);
 $msg = null;
+$dirAdjuntos = __DIR__ . '/../data/tickets_adjuntos';
+if (!is_dir($dirAdjuntos)) mkdir($dirAdjuntos, 0777, true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     if ($accion === 'comentar') {
         $comentario = limpio($_POST['comentario'] ?? null);
-        if ($comentario) {
-            $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario) VALUES (?,?,?)")
-                ->execute([$id, limpio($_POST['autor'] ?? null) ?: 'TI', $comentario]);
+        $visibleCliente = isset($_POST['visible_cliente']) ? 1 : 0;
+        if ($comentario || !empty($_FILES['adjuntos']['tmp_name'][0])) {
+            $autor = limpio($_POST['autor'] ?? null) ?: 'TI';
+            $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, visible_cliente) VALUES (?,?,?,?)")
+                ->execute([$id, $autor, $comentario ?: '(archivo adjunto)', $visibleCliente]);
+            $comentarioId = (int) $pdo->lastInsertId();
             $pdo->prepare("UPDATE tickets SET actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$id]);
             if (!empty($_POST['respuesta_rapida_id'])) {
                 $pdo->prepare("UPDATE respuestas_rapidas SET usos = usos + 1 WHERE id = ?")->execute([(int) $_POST['respuesta_rapida_id']]);
             }
-            $msg = ['ok', 'Comentario agregado.'];
+
+            if (!empty($_FILES['adjuntos']['tmp_name'][0])) {
+                foreach ($_FILES['adjuntos']['tmp_name'] as $i => $tmp) {
+                    if (!$tmp) continue;
+                    $original = basename($_FILES['adjuntos']['name'][$i]);
+                    $seguro = preg_replace('/[^A-Za-z0-9_.\-]/', '_', $original);
+                    $rutaGuardada = uniqid() . '_' . $seguro;
+                    if (move_uploaded_file($tmp, $dirAdjuntos . '/' . $rutaGuardada)) {
+                        $pdo->prepare("INSERT INTO tickets_adjuntos (ticket_id, comentario_id, nombre_archivo, ruta, tipo_mime, tamano, subido_por) VALUES (?,?,?,?,?,?,?)")
+                            ->execute([$id, $comentarioId, $original, $rutaGuardada, $_FILES['adjuntos']['type'][$i] ?? null, $_FILES['adjuntos']['size'][$i] ?? null, $autor]);
+                    }
+                }
+            }
+
+            $enviado = false;
+            if ($visibleCliente) {
+                $stmtT = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
+                $stmtT->execute([$id]);
+                $t = $stmtT->fetch(PDO::FETCH_ASSOC);
+                if ($t && $t['solicitante_contacto'] && filter_var($t['solicitante_contacto'], FILTER_VALIDATE_EMAIL)) {
+                    $html = plantilla_correo_html("Actualización de tu ticket #{$id}",
+                        "<p>Hola " . e($t['solicitante']) . ",</p><p>" . nl2br(e($comentario)) . "</p><p class=\"small\">— {$autor}, Mesa de Ayuda NAVISSI</p>");
+                    $enviado = enviar_correo($t['solicitante_contacto'], "Re: Ticket #{$id} — {$t['titulo']}", $html, $t['solicitante']);
+                }
+                $pdo->prepare("UPDATE tickets_comentarios SET enviado_correo = ? WHERE id = ?")->execute([$enviado ? 1 : 0, $comentarioId]);
+            }
+
+            hoja_vida_registrar($pdo, 'TICKET', (string) $id, $visibleCliente ? 'RESPUESTA_CLIENTE' : 'NOTA_INTERNA', $comentario, $autor, $id);
+            $msg = $visibleCliente
+                ? ['ok', $enviado ? 'Respuesta enviada al cliente por correo.' : 'Respuesta guardada, pero no se pudo enviar el correo (revisa la configuración SMTP/O365).']
+                : ['ok', 'Nota interna agregada.'];
         }
     }
 
@@ -90,6 +126,13 @@ $stmt->execute([$id]);
 $comentarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $respuestasRapidas = $pdo->query("SELECT * FROM respuestas_rapidas ORDER BY usos DESC, titulo")->fetchAll(PDO::FETCH_ASSOC);
 
+$stmtAdj = $pdo->prepare("SELECT * FROM tickets_adjuntos WHERE ticket_id = ? ORDER BY id ASC");
+$stmtAdj->execute([$id]);
+$adjuntosPorComentario = [];
+foreach ($stmtAdj->fetchAll(PDO::FETCH_ASSOC) as $a) {
+    $adjuntosPorComentario[$a['comentario_id']][] = $a;
+}
+
 layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
 ?>
 <p class="small"><a href="mesa_ayuda.php"><?= icon('arrow-right', 'icon') ?> Volver a Mesa de Ayuda</a></p>
@@ -159,17 +202,33 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
         <div style="max-height:460px;overflow-y:auto;padding:6px 2px;">
             <?php foreach ($comentarios as $c):
                 $tipo = $c['tipo'] ?? 'COMENTARIO';
+                $esRespuestaCliente = !empty($c['visible_cliente']);
                 $claseBubble = $tipo === 'SISTEMA' ? 'system' : ($tipo === 'IA' ? 'ia' : ($c['autor'] === $ticket['solicitante'] ? 'theirs' : 'mine'));
             ?>
             <div class="conv-bubble <?= $claseBubble ?>">
-                <?php if ($tipo !== 'SISTEMA'): ?><div class="conv-meta"><?= $tipo === 'IA' ? icon('robot') . ' Agente IA' : e($c['autor']) ?></div><?php endif; ?>
+                <?php if ($tipo !== 'SISTEMA'): ?>
+                <div class="conv-meta">
+                    <?= $tipo === 'IA' ? icon('robot') . ' Agente IA' : e($c['autor']) ?>
+                    <?php if ($esRespuestaCliente): ?><span class="badge badge-activo" style="margin-left:6px;font-size:10px;"><?= icon('send') ?> <?= $c['enviado_correo'] ? 'Enviado al cliente' : 'No se pudo enviar' ?></span>
+                    <?php elseif ($tipo !== 'IA'): ?><span class="badge badge-otro" style="margin-left:6px;font-size:10px;">Nota interna</span><?php endif; ?>
+                </div>
+                <?php endif; ?>
                 <?= nl2br(e($c['comentario'])) ?>
+                <?php if (!empty($adjuntosPorComentario[$c['id']])): ?>
+                <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+                    <?php foreach ($adjuntosPorComentario[$c['id']] as $a): ?>
+                    <a href="descargar_adjunto_ticket.php?id=<?= (int)$a['id'] ?>" target="_blank" class="badge badge-otro" style="text-decoration:none;">
+                        <?= icon('file') ?> <?= e($a['nombre_archivo']) ?>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
                 <div class="small" style="margin-top:5px;opacity:.7;"><?= e($c['creado_en']) ?></div>
             </div>
             <?php endforeach; ?>
         </div>
 
-        <form method="post" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;" id="form-respuesta">
+        <form method="post" enctype="multipart/form-data" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;" id="form-respuesta">
             <input type="hidden" name="accion" value="comentar">
             <input type="hidden" name="respuesta_rapida_id" id="respuesta_rapida_id" value="">
             <div class="grid-form">
@@ -186,7 +245,13 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
                 <?php endif; ?>
             </div>
             <textarea name="comentario" id="textarea-comentario" rows="3" style="width:100%;margin-bottom:10px;" placeholder="Escribe una actualización o respuesta..."></textarea>
-            <button type="submit"><?= icon('send') ?> Responder</button>
+            <label class="small">Adjuntar archivos (fotos, PDF, evidencia)</label>
+            <input type="file" name="adjuntos[]" multiple style="width:100%;margin-bottom:10px;">
+            <label class="small" style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+                <input type="checkbox" name="visible_cliente" value="1" style="width:auto;" <?= $ticket['solicitante_contacto'] ? '' : 'disabled' ?>>
+                Enviar como respuesta al cliente por correo<?= $ticket['solicitante_contacto'] ? '' : ' (sin correo de contacto registrado)' ?>
+            </label>
+            <button type="submit"><?= icon('send') ?> Enviar</button>
         </form>
     </div>
 </div>

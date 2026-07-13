@@ -145,6 +145,26 @@ function migrar_esquema(PDO $pdo) {
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // ---- Mesa de Ayuda: adjuntos y respuestas al cliente ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tickets_adjuntos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL,
+        comentario_id INTEGER,
+        nombre_archivo TEXT NOT NULL,
+        ruta TEXT NOT NULL,
+        tipo_mime TEXT,
+        tamano INTEGER,
+        subido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $columnasTicketsCom = array_column($pdo->query("PRAGMA table_info(tickets_comentarios)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasTicketsCom = ['visible_cliente' => 'INTEGER DEFAULT 0', 'enviado_correo' => 'INTEGER DEFAULT 0'];
+    foreach ($nuevasTicketsCom as $col => $tipo) {
+        if (!in_array($col, $columnasTicketsCom, true)) {
+            $pdo->exec("ALTER TABLE tickets_comentarios ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
     // ---- Pipeline de Oportunidades (CRM) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS oportunidades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
