@@ -48,6 +48,12 @@ $filtroEstado = $_GET['estado'] ?? 'PENDIENTE';
 $sql = "SELECT * FROM solicitudes_aprobacion WHERE 1=1";
 $params = [];
 if ($filtroEstado !== 'TODAS') { $sql .= " AND estado = ?"; $params[] = $filtroEstado; }
+// Alcance personal: un EMPLEADO sin rol elevado solo ve sus propias solicitudes, no las de aprobar de otros.
+$personalApr = alcance_personal();
+if ($personalApr !== null) {
+    $sql .= " AND solicitante_documento = ?";
+    $params[] = $personalApr['documento'];
+}
 $sql .= " ORDER BY creado_en DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

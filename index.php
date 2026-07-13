@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/config.php';
+requiere_login();
+if (es_solo_empleado()) {
+    // Un usuario sin ningún rol elevado (ni principal ni secundario) siempre va a su
+    // panel personal, sin importar si llegó aquí por login o escribiendo la URL a mano.
+    header('Location: modules/portal_empleado.php');
+    exit;
+}
 require_once __DIR__ . '/lib/layout.php';
 $pdo = db();
 

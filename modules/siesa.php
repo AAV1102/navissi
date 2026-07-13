@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'categoria' => limpio($_POST['categoria'] ?? null),
             'estado' => limpio($_POST['estado'] ?? null) ?: 'ACTIVO',
             'origen' => 'Manual - panel Siesa',
+            'usuario_id' => (int) ($_POST['usuario_id'] ?? 0) ?: null,
         ];
         if (!$datos['usuario']) {
             $msg = ['error', 'El usuario es obligatorio.'];
@@ -61,6 +62,7 @@ $stmt = $pdo->prepare("
 $stmt->execute();
 $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$usuariosSistema = $pdo->query("SELECT id, nombre, email FROM usuarios_sistema WHERE activo = 1 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
 layout_inicio('Siesa', 'Siesa', '../');
 ?>
@@ -93,6 +95,14 @@ layout_inicio('Siesa', 'Siesa', '../');
             <div><label>Usuario *</label><input type="text" name="usuario" required value="<?= e($editar['usuario'] ?? '') ?>"></div>
             <div><label>Contraseña</label><input type="text" name="contrasena" value="<?= e($editar['contrasena'] ?? '') ?>"></div>
             <div><label>Área / Cargo</label><input type="text" name="categoria" value="<?= e($editar['categoria'] ?? '') ?>"></div>
+            <div><label>Vincular a usuario (para "Mis Accesos")</label>
+                <select name="usuario_id">
+                    <option value="">-- sin vincular --</option>
+                    <?php foreach ($usuariosSistema as $us): ?>
+                    <option value="<?= (int)$us['id'] ?>" <?= (($editar['usuario_id'] ?? null) == $us['id']) ? 'selected' : '' ?>><?= e($us['nombre']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
         <button type="submit"><?= $editar ? 'Guardar cambios' : 'Agregar' ?></button>
         <?php if ($editar): ?><a class="btn btn-secondary" href="siesa.php">Cancelar</a><?php endif; ?>

@@ -35,6 +35,12 @@ $estadoFiltro = trim($_GET['estado'] ?? '');
 $sql = "SELECT * FROM vacaciones_permisos WHERE 1=1";
 $params = [];
 if ($estadoFiltro !== '') { $sql .= " AND estado = ?"; $params[] = $estadoFiltro; }
+// Alcance personal: un EMPLEADO sin rol elevado solo ve sus propias solicitudes de vacaciones/permisos.
+$personalVac = alcance_personal();
+if ($personalVac !== null) {
+    $sql .= " AND empleado_documento = ?";
+    $params[] = $personalVac['documento'];
+}
 $sql .= " ORDER BY creado_en DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

@@ -82,6 +82,13 @@ if (alcance_area() !== null) {
     $sql .= " AND i.area = :area";
     $params['area'] = alcance_area();
 }
+// Alcance personal: un EMPLEADO sin rol elevado que tenga este módulo habilitado
+// individualmente solo ve el/los equipo(s) asignados a él, no el inventario completo.
+$personal = alcance_personal();
+if ($personal !== null) {
+    $sql .= " AND i.asignado_documento = :doc_personal";
+    $params['doc_personal'] = $personal['documento'];
+}
 $sql .= " ORDER BY i.id DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

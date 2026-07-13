@@ -61,6 +61,12 @@ if (alcance_area() !== null) {
     $sql .= " AND e.area = :area";
     $params['area'] = alcance_area();
 }
+// Alcance personal: un EMPLEADO sin rol elevado solo se ve a sí mismo en el listado.
+$personalRr = alcance_personal();
+if ($personalRr !== null) {
+    $sql .= " AND e.documento = :doc_personal";
+    $params['doc_personal'] = $personalRr['documento'];
+}
 $sql .= " ORDER BY e.nombres";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

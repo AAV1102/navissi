@@ -8,6 +8,7 @@ data/ia_config.json
 data/ms365_config.json
 data/marca_config.json
 data/importador_config.json
+data/smtp_config.json
 
 # Base de datos local (cada entorno - local, hosting - tiene la suya propia)
 data/navissi.sqlite

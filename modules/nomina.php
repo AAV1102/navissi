@@ -69,9 +69,16 @@ $periodos = $pdo->query("SELECT p.*, (SELECT COUNT(*) FROM nominas n WHERE n.per
 
 $periodoActivo = (int) ($_GET['periodo'] ?? ($periodos[0]['id'] ?? 0));
 $nominas = [];
+$personalNom = alcance_personal();
 if ($periodoActivo) {
-    $stmt = $pdo->prepare("SELECT * FROM nominas WHERE periodo_id = ? ORDER BY empleado_nombre");
-    $stmt->execute([$periodoActivo]);
+    if ($personalNom !== null) {
+        // Alcance personal: un EMPLEADO sin rol elevado solo ve su propio pago del periodo, nunca el de otros.
+        $stmt = $pdo->prepare("SELECT * FROM nominas WHERE periodo_id = ? AND empleado_documento = ? ORDER BY empleado_nombre");
+        $stmt->execute([$periodoActivo, $personalNom['documento']]);
+    } else {
+        $stmt = $pdo->prepare("SELECT * FROM nominas WHERE periodo_id = ? ORDER BY empleado_nombre");
+        $stmt->execute([$periodoActivo]);
+    }
     $nominas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
+requiere_login('../');
 $pdo = db();
 $msg = null;
 $dirDesp = __DIR__ . '/../data/desprendibles';
@@ -25,9 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'subir
 }
 
 if (isset($_GET['descargar'])) {
-    $stmt = $pdo->prepare("SELECT nombre_archivo, ruta FROM desprendibles WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT nombre_archivo, ruta, empleado_documento FROM desprendibles WHERE id = ?");
     $stmt->execute([(int) $_GET['descargar']]);
     $d = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Alcance personal: no se puede descargar el desprendible de otra persona cambiando el id en la URL.
+    $personalDesc = alcance_personal();
+    if ($d && $personalDesc !== null && $d['empleado_documento'] !== $personalDesc['documento']) {
+        $d = null;
+    }
     $ruta = $d ? $dirDesp . '/' . $d['ruta'] : null;
     if ($d && file_exists($ruta)) {
         header('Content-Type: application/octet-stream');
@@ -40,7 +46,12 @@ if (isset($_GET['descargar'])) {
 // Consulta por cédula (autoservicio del empleado o de RRHH)
 $empleado = null;
 $desprendibles = [];
-$documentoConsultado = trim($_GET['documento'] ?? $_POST['documento_consulta'] ?? '');
+// Alcance personal: un EMPLEADO sin rol elevado con este módulo habilitado individualmente
+// NO puede escribir el documento de otra persona - se le fuerza siempre el suyo propio.
+$personalCert = alcance_personal();
+$documentoConsultado = $personalCert !== null
+    ? (string) ($personalCert['documento'] ?? '')
+    : trim($_GET['documento'] ?? $_POST['documento_consulta'] ?? '');
 if ($documentoConsultado !== '') {
     $stmt = $pdo->prepare("SELECT e.*, s.nombre AS sede_nombre FROM empleados e LEFT JOIN sedes s ON e.sede_id = s.id WHERE e.documento = ?");
     $stmt->execute([$documentoConsultado]);
@@ -58,6 +69,7 @@ layout_inicio('Certificados RRHH', 'Certificados RRHH', '../');
 <p class="subtitle">El empleado escribe su número de documento y descarga su certificado laboral y desprendibles de pago. RRHH tiene todo centralizado aquí mismo.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
+<?php if ($personalCert === null): ?>
 <div class="panel">
     <h3>Consultar por documento</h3>
     <form method="get">
@@ -65,6 +77,7 @@ layout_inicio('Certificados RRHH', 'Certificados RRHH', '../');
         <button type="submit">Consultar</button>
     </form>
 </div>
+<?php endif; ?>
 
 <?php if ($documentoConsultado !== '' && !$empleado): ?>
 <div class="msg-error">No se encontró ningún empleado con el documento <?= e($documentoConsultado) ?>.</div>
@@ -96,6 +109,7 @@ layout_inicio('Certificados RRHH', 'Certificados RRHH', '../');
 </div>
 <?php endif; ?>
 
+<?php if ($personalCert === null): ?>
 <div class="panel">
     <h3>RRHH: cargar un desprendible de pago</h3>
     <form method="post" enctype="multipart/form-data">
@@ -109,4 +123,5 @@ layout_inicio('Certificados RRHH', 'Certificados RRHH', '../');
         <button type="submit">Cargar desprendible</button>
     </form>
 </div>
+<?php endif; ?>
 <?php layout_fin(); ?>

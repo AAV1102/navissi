@@ -61,6 +61,13 @@ $sql = "SELECT m.*, i.serial, i.marca, i.modelo, s.nombre AS sede_nombre
         LEFT JOIN sedes s ON m.sede_id = s.id WHERE 1=1";
 $params = [];
 if ($tipoFiltro !== '') { $sql .= " AND m.tipo = ?"; $params[] = $tipoFiltro; }
+// Alcance personal: un EMPLEADO sin rol elevado solo ve movimientos de sus propios equipos.
+$personalMov = alcance_personal();
+if ($personalMov !== null) {
+    $sql .= " AND (m.destinatario_documento = ? OR i.asignado_documento = ?)";
+    $params[] = $personalMov['documento'];
+    $params[] = $personalMov['documento'];
+}
 $sql .= " ORDER BY m.id DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

@@ -108,7 +108,11 @@ layout_inicio('Mi Cuenta', 'Mi Cuenta', '../');
     </form>
 <?php elseif ($secretoPendiente): ?>
     <h3>Paso 1: agrega la cuenta en tu app Authenticator</h3>
-    <p class="small">Abre Microsoft Authenticator (o Google Authenticator) → Agregar cuenta → Otra cuenta → e ingresa manualmente esta clave:</p>
+    <p class="small">Abre Microsoft Authenticator (o Google Authenticator) → Agregar cuenta → Otra cuenta → y escanea este código QR:</p>
+    <div style="text-align:center;margin:16px 0;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=<?= urlencode($otpauthUri) ?>" alt="Código QR para Authenticator" width="220" height="220" style="border-radius:8px;border:1px solid var(--line);background:#fff;padding:8px;">
+    </div>
+    <p class="small">¿No puedes escanear? Ingresa esta clave manualmente en la app:</p>
     <p style="font-size:20px;letter-spacing:2px;font-family:monospace;background:#f3f6fa;padding:12px;border-radius:8px;text-align:center;"><?= e($secretoPendiente) ?></p>
     <p class="small">Cuenta: <?= e($cuenta['email']) ?> · Emisor: NAVISSI Inventario</p>
     <h3 style="margin-top:20px;">Paso 2: confirma con el código de 6 dígitos</h3>

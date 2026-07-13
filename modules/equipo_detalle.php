@@ -15,6 +15,16 @@ if (!$eq) {
     exit;
 }
 
+// Alcance personal: si al usuario le habilitaron Inventario individualmente pero
+// no tiene rol elevado, solo puede ver la ficha de SU propio equipo por URL directa.
+$personalEq = alcance_personal();
+if ($personalEq !== null && $eq['asignado_documento'] !== $personalEq['documento']) {
+    layout_inicio('Sin acceso', 'Inventario', '../');
+    echo '<div class="msg-error">Solo puedes ver la ficha de los equipos asignados a ti.</div><a class="btn" href="inventario.php">Volver</a>';
+    layout_fin();
+    exit;
+}
+
 // Campos personalizados definidos para "inventario" — se guardan igual para
 // cualquier equipo, sin tocar código cada vez que se agrega uno nuevo.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar_campos') {

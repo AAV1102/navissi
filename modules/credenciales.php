@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'categoria' => limpio($_POST['categoria'] ?? null),
             'estado' => limpio($_POST['estado'] ?? null) ?: 'ACTIVO',
             'origen' => 'Manual - panel Credenciales',
+            'usuario_id' => (int) ($_POST['usuario_id'] ?? 0) ?: null,
         ];
         if (!$datos['usuario']) {
             $msg = ['error', 'El usuario es obligatorio.'];
@@ -67,6 +68,7 @@ $sistemasSugeridos = ['WIFI', 'CORREO', 'SIESA ERP', 'SIESA POS', 'SERVIDOR', 'D
 $sistemas = array_unique(array_merge($sistemasExistentes, $sistemasSugeridos));
 sort($sistemas);
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$usuariosSistema = $pdo->query("SELECT id, nombre, email FROM usuarios_sistema WHERE activo = 1 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
 layout_inicio('Credenciales', 'Credenciales', '../');
 ?>
@@ -95,6 +97,15 @@ layout_inicio('Credenciales', 'Credenciales', '../');
             <div><label>Usuario / Red *</label><input type="text" name="usuario" required value="<?= e($editar['usuario'] ?? '') ?>"></div>
             <div><label>Contraseña</label><input type="text" name="contrasena" value="<?= e($editar['contrasena'] ?? '') ?>"></div>
             <div><label>Categoría</label><input type="text" name="categoria" value="<?= e($editar['categoria'] ?? '') ?>"></div>
+            <div><label>Vincular a usuario (para "Mis Accesos")</label>
+                <select name="usuario_id">
+                    <option value="">-- sin vincular / compartida --</option>
+                    <?php foreach ($usuariosSistema as $us): ?>
+                    <option value="<?= (int)$us['id'] ?>" <?= (($editar['usuario_id'] ?? null) == $us['id']) ? 'selected' : '' ?>><?= e($us['nombre']) ?> (<?= e($us['email']) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="small">Si la vinculas a una persona, ella la verá en su propia página "Mis Accesos" sin necesitar rol de TI.</p>
+            </div>
         </div>
         <button type="submit"><?= $editar ? 'Guardar cambios' : 'Agregar' ?></button>
         <?php if ($editar): ?><a class="btn btn-secondary" href="credenciales.php">Cancelar</a><?php endif; ?>
@@ -112,8 +123,10 @@ layout_inicio('Credenciales', 'Credenciales', '../');
 </form>
 
 <table>
-    <tr><th>Sistema</th><th>Sede</th><th>Nombre</th><th>Usuario</th><th>Contraseña</th><th>Categoría</th><th></th></tr>
-    <?php foreach ($filas as $f): ?>
+    <tr><th>Sistema</th><th>Sede</th><th>Nombre</th><th>Usuario</th><th>Contraseña</th><th>Categoría</th><th>Vinculada a</th><th></th></tr>
+    <?php
+    $mapaUsuarios = array_column($usuariosSistema, 'nombre', 'id');
+    foreach ($filas as $f): ?>
     <tr>
         <td><?= e($f['sistema']) ?></td>
         <td><?= e($f['sede_nombre']) ?></td>
@@ -121,6 +134,7 @@ layout_inicio('Credenciales', 'Credenciales', '../');
         <td><?= e($f['usuario']) ?></td>
         <td><?= e($f['contrasena']) ?></td>
         <td><?= e($f['categoria']) ?></td>
+        <td><?= !empty($f['usuario_id']) ? e($mapaUsuarios[$f['usuario_id']] ?? '—') : '<span class="small">Sin vincular</span>' ?></td>
         <td>
             <a href="?editar=<?= (int)$f['id'] ?>">Editar</a>
             <form class="inline" method="post" onsubmit="return confirm('¿Eliminar?');">

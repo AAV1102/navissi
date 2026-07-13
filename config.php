@@ -62,8 +62,13 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    $columnasCred = array_column($pdo->query("PRAGMA table_info(credenciales)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('usuario_id', $columnasCred, true)) {
+        $pdo->exec("ALTER TABLE credenciales ADD COLUMN usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL");
+    }
+
     $columnasUsuarios = array_column($pdo->query("PRAGMA table_info(usuarios_sistema)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    $nuevasUsuarios = ['totp_secreto' => 'TEXT', 'totp_habilitado' => 'INTEGER DEFAULT 0', 'area_responsable' => 'TEXT', 'sso_microsoft_id' => 'TEXT'];
+    $nuevasUsuarios = ['totp_secreto' => 'TEXT', 'totp_habilitado' => 'INTEGER DEFAULT 0', 'area_responsable' => 'TEXT', 'sso_microsoft_id' => 'TEXT', 'rol_secundario' => 'TEXT', 'password_temporal' => 'INTEGER DEFAULT 0'];
     foreach ($nuevasUsuarios as $col => $tipo) {
         if (!in_array($col, $columnasUsuarios, true)) {
             $pdo->exec("ALTER TABLE usuarios_sistema ADD COLUMN {$col} {$tipo}");
@@ -102,6 +107,22 @@ function migrar_esquema(PDO $pdo) {
         usuario_id INTEGER NOT NULL REFERENCES usuarios_sistema(id) ON DELETE CASCADE,
         modulo_href TEXT NOT NULL,
         UNIQUE(usuario_id, modulo_href)
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS perfiles_modulos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rol TEXT NOT NULL,
+        modulo_href TEXT NOT NULL,
+        UNIQUE(rol, modulo_href)
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios_sistema(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        expira_en TEXT NOT NULL,
+        usado INTEGER DEFAULT 0,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS metricas_historicas (
@@ -577,6 +598,20 @@ function migrar_esquema(PDO $pdo) {
             modulo_href TEXT NOT NULL,
             UNIQUE(usuario_id, modulo_href)
         );
+        CREATE TABLE IF NOT EXISTS perfiles_modulos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rol TEXT NOT NULL,
+            modulo_href TEXT NOT NULL,
+            UNIQUE(rol, modulo_href)
+        );
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL REFERENCES usuarios_sistema(id) ON DELETE CASCADE,
+            token TEXT NOT NULL UNIQUE,
+            expira_en TEXT NOT NULL,
+            usado INTEGER DEFAULT 0,
+            creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS metricas_historicas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             clave TEXT NOT NULL,
@@ -857,6 +892,7 @@ function crear_esquema(PDO $pdo) {
             categoria TEXT,
             estado TEXT DEFAULT 'ACTIVO',
             origen TEXT,
+            usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
             UNIQUE(sistema, usuario, sede_id)
         );
 
@@ -1079,7 +1115,27 @@ function crear_esquema(PDO $pdo) {
 /** Arma el array de sesión de un usuario autenticado (usado por login normal y SSO). */
 function sesion_desde_usuario(array $u): array {
     return ['id' => $u['id'], 'nombre' => $u['nombre'], 'email' => $u['email'], 'rol' => $u['rol'],
+        'rol_secundario' => $u['rol_secundario'] ?? null,
         'documento' => $u['documento'], 'sede_id' => $u['sede_id'], 'area_responsable' => $u['area_responsable'] ?? null];
+}
+
+/**
+ * true si el usuario NO tiene ningún rol (principal ni secundario) con privilegios más
+ * allá de EMPLEADO. Se usa para forzar el panel personal en vez del dashboard global,
+ * sin importar por qué URL intente entrar.
+ */
+function es_solo_empleado(): bool {
+    $rol = rol_efectivo();
+    if ($rol !== 'EMPLEADO') return false;
+    $secundario = rol_secundario_efectivo();
+    return $secundario === null || $secundario === 'EMPLEADO';
+}
+
+/** Rol adicional del usuario en sesión (ej. un ADMIN que también tiene el perfil EMPLEADO), o null si no tiene. */
+function rol_secundario_efectivo(): ?string {
+    if (!empty($_SESSION['ver_como_rol'])) return null; // al "ver como", no se mezclan perfiles reales
+    $u = usuario_actual();
+    return $u['rol_secundario'] ?? null;
 }
 
 function usuario_actual(): ?array {
@@ -1117,7 +1173,10 @@ function tiene_rol(array $rolesPermitidos): bool {
     $u = usuario_actual();
     if (!$u) return false;
     $rol = rol_efectivo();
-    return $rol === 'SUPER_ADMIN' || in_array($rol, $rolesPermitidos, true);
+    if ($rol === 'SUPER_ADMIN' || in_array($rol, $rolesPermitidos, true)) return true;
+    // Un usuario puede tener un segundo perfil (ej. ADMIN + EMPLEADO) - da acceso a lo que cualquiera de los dos permita.
+    $secundario = rol_secundario_efectivo();
+    return $secundario !== null && in_array($secundario, $rolesPermitidos, true);
 }
 
 /**
@@ -1148,6 +1207,19 @@ function alcance_area(): ?string {
     if (!$u || usuario_ve_todo()) return null;
     if (viendo_como()) return $_SESSION['ver_como_area'] ?: null;
     return $u['area_responsable'] ?: null;
+}
+
+/**
+ * Igual que alcance_area(), pero para recortar un módulo a SOLO lo del usuario logueado
+ * (no lo de su área, lo suyo puntual) - para cuando un EMPLEADO sin ningún rol elevado
+ * recibe acceso individual a un módulo que normalmente es de gestión (Inventario,
+ * Mesa de Ayuda, Documentos...). Devuelve null si el usuario tiene algún rol elevado
+ * (principal o secundario) - en ese caso el módulo se comporta como siempre, sin recorte.
+ */
+function alcance_personal(): ?array {
+    $u = usuario_actual();
+    if (!$u || !es_solo_empleado()) return null;
+    return ['documento' => $u['documento'] ?? null, 'nombre' => $u['nombre'] ?? null, 'email' => $u['email'] ?? null, 'id' => $u['id'] ?? null];
 }
 
 /**

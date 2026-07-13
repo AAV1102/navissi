@@ -3,7 +3,11 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 
-$documento = trim($_GET['documento'] ?? '');
+requiere_login('../');
+// Alcance personal: un EMPLEADO sin rol elevado solo puede generar SU PROPIO certificado,
+// nunca el de otra cédula por más que la escriba en la URL.
+$personalCertLab = alcance_personal();
+$documento = $personalCertLab !== null ? (string) ($personalCertLab['documento'] ?? '') : trim($_GET['documento'] ?? '');
 $stmt = $pdo->prepare("SELECT e.*, s.nombre AS sede_nombre, s.direccion AS sede_direccion, s.ciudad AS sede_ciudad
     FROM empleados e LEFT JOIN sedes s ON e.sede_id = s.id WHERE e.documento = ?");
 $stmt->execute([$documento]);

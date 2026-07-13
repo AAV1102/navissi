@@ -61,6 +61,15 @@ if (!$ticket) {
     exit;
 }
 
+// Alcance personal: un EMPLEADO sin rol elevado solo puede abrir sus propios tickets por URL directa.
+$personalTk = alcance_personal();
+if ($personalTk !== null && $ticket['solicitante'] !== $personalTk['nombre'] && $ticket['solicitante_contacto'] !== $personalTk['email']) {
+    layout_inicio('Sin acceso', 'Mesa de Ayuda', '../');
+    echo '<div class="msg-error">' . icon('x') . ' Solo puedes ver los tickets que tú creaste.</div><a class="btn" href="mesa_ayuda.php">Volver</a>';
+    layout_fin();
+    exit;
+}
+
 $camposDef = $pdo->query("SELECT * FROM campos_personalizados_def WHERE entidad = 'tickets' ORDER BY nombre_campo")->fetchAll(PDO::FETCH_ASSOC);
 $camposValores = [];
 if ($camposDef) {

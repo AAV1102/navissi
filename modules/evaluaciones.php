@@ -50,6 +50,12 @@ $documentoFiltro = trim($_GET['documento'] ?? '');
 $sql = "SELECT * FROM evaluaciones_desempeno WHERE 1=1";
 $params = [];
 if ($documentoFiltro !== '') { $sql .= " AND empleado_documento = ?"; $params[] = $documentoFiltro; }
+// Alcance personal: un EMPLEADO sin rol elevado solo ve sus propias evaluaciones.
+$personalEv = alcance_personal();
+if ($personalEv !== null) {
+    $sql .= " AND empleado_documento = ?";
+    $params[] = $personalEv['documento'];
+}
 $sql .= " ORDER BY creado_en DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

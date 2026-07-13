@@ -96,6 +96,7 @@ if ($u['documento']) {
 <main>
 <h1>Mi Portal de Empleado</h1>
 <p class="subtitle">Solicita ayuda a TI, descarga tus certificados y consulta tus desprendibles - todo en un solo lugar.</p>
+<p><a class="btn btn-secondary" href="mis_accesos.php"><?= icon('key') ?> Ver mis accesos (Siesa, Office 365, OneDrive)</a></p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <?php if ($empleado): ?>

@@ -55,14 +55,31 @@ $params = [];
 if ($estadoFiltro !== '') { $sql .= " AND t.estado = :estado"; $params['estado'] = $estadoFiltro; }
 if ($prioridadFiltro !== '') { $sql .= " AND t.prioridad = :prioridad"; $params['prioridad'] = $prioridadFiltro; }
 if ($busqueda !== '') { $sql .= " AND (t.titulo LIKE :b OR t.solicitante LIKE :b OR s.nombre LIKE :b)"; $params['b'] = "%{$busqueda}%"; }
+// Alcance personal: un EMPLEADO sin rol elevado con este módulo habilitado
+// individualmente solo ve los tickets que él mismo creó, no los de toda la empresa.
+$personalTk = alcance_personal();
+if ($personalTk !== null) {
+    $sql .= " AND (t.solicitante = :nombre_personal OR t.solicitante_contacto = :correo_personal)";
+    $params['nombre_personal'] = $personalTk['nombre'];
+    $params['correo_personal'] = $personalTk['email'];
+}
 $sql .= " ORDER BY CASE t.estado WHEN 'ABIERTO' THEN 0 WHEN 'EN PROCESO' THEN 1 WHEN 'RESUELTO POR IA' THEN 2 WHEN 'CERRADO' THEN 3 ELSE 4 END,
         CASE t.prioridad WHEN 'URGENTE' THEN 0 WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END, t.creado_en DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$totales = $pdo->query("SELECT estado, COUNT(*) c FROM tickets GROUP BY estado")->fetchAll(PDO::FETCH_KEY_PAIR);
-$resueltosIa = $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado = 'RESUELTO POR IA'")->fetchColumn();
+if ($personalTk !== null) {
+    $stmtTot = $pdo->prepare("SELECT estado, COUNT(*) c FROM tickets WHERE solicitante = ? OR solicitante_contacto = ? GROUP BY estado");
+    $stmtTot->execute([$personalTk['nombre'], $personalTk['email']]);
+    $totales = $stmtTot->fetchAll(PDO::FETCH_KEY_PAIR);
+    $stmtIa = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE estado = 'RESUELTO POR IA' AND (solicitante = ? OR solicitante_contacto = ?)");
+    $stmtIa->execute([$personalTk['nombre'], $personalTk['email']]);
+    $resueltosIa = $stmtIa->fetchColumn();
+} else {
+    $totales = $pdo->query("SELECT estado, COUNT(*) c FROM tickets GROUP BY estado")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $resueltosIa = $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado = 'RESUELTO POR IA'")->fetchColumn();
+}
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
 function icono_canal($origen) {

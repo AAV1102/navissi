@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/totp.php';
 require_once __DIR__ . '/lib/icons.php';
+require_once __DIR__ . '/lib/mailer.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 $pdo = db();
 $error = null;
@@ -13,9 +14,15 @@ if (!empty($_SESSION['usuario'])) {
 }
 
 function login_completar(array $u): void {
-    $_SESSION['usuario'] = sesion_desde_usuario($u);
     unset($_SESSION['pendiente_2fa']);
-    $destino = $u['rol'] === 'EMPLEADO' ? 'modules/portal_empleado.php' : 'index.php';
+    if (!empty($u['password_temporal'])) {
+        // Contraseña temporal asignada por un admin: hay que cambiarla antes de poder usar el sistema.
+        $_SESSION['pendiente_cambio_clave'] = ['id' => $u['id']];
+        header('Location: cambiar_password_temporal.php');
+        exit;
+    }
+    $_SESSION['usuario'] = sesion_desde_usuario($u);
+    $destino = es_solo_empleado() ? 'modules/portal_empleado.php' : 'index.php';
     header("Location: {$destino}");
     exit;
 }
@@ -30,15 +37,34 @@ if (isset($_GET['error']) && !$error) {
     };
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['codigo_2fa'])) {
+$codigoCorreoEnviado = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'enviar_codigo_correo') {
     $uid = $_SESSION['pendiente_2fa']['id'] ?? null;
     $stmt = $pdo->prepare("SELECT * FROM usuarios_sistema WHERE id = ? AND activo = 1");
     $stmt->execute([$uid]);
     $u = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($u && $u['totp_habilitado'] && totp_verificar($u['totp_secreto'], $_POST['codigo_2fa'] ?? '')) {
+    if ($u) {
+        $codigo = (string) random_int(100000, 999999);
+        $_SESSION['pendiente_2fa']['codigo_correo'] = $codigo;
+        $_SESSION['pendiente_2fa']['codigo_expira'] = time() + 600; // 10 minutos
+        $html = plantilla_correo_html('Tu código de verificación', "<p>Hola " . e($u['nombre']) . ",</p><p>Este es tu código de acceso porque tu Authenticator no está disponible:</p><p style=\"font-size:28px;letter-spacing:6px;font-weight:700;text-align:center;\">{$codigo}</p><p>Vence en 10 minutos. Si no fuiste tú, ignora este correo.</p>");
+        enviar_correo($u['email'], 'NAVISSI - Código de verificación', $html, $u['nombre']);
+        $codigoCorreoEnviado = true;
+    }
+    $pedirCodigo = true;
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['codigo_2fa'])) {
+    $uid = $_SESSION['pendiente_2fa']['id'] ?? null;
+    $stmt = $pdo->prepare("SELECT * FROM usuarios_sistema WHERE id = ? AND activo = 1");
+    $stmt->execute([$uid]);
+    $u = $stmt->fetch(PDO::FETCH_ASSOC);
+    $codigoIngresado = $_POST['codigo_2fa'] ?? '';
+    $codigoCorreoValido = !empty($_SESSION['pendiente_2fa']['codigo_correo'])
+        && hash_equals($_SESSION['pendiente_2fa']['codigo_correo'], $codigoIngresado)
+        && time() < ($_SESSION['pendiente_2fa']['codigo_expira'] ?? 0);
+    if ($u && (($u['totp_habilitado'] && totp_verificar($u['totp_secreto'], $codigoIngresado)) || $codigoCorreoValido)) {
         login_completar($u);
     }
-    $error = 'Código de verificación incorrecto.';
+    $error = 'Código de verificación incorrecto o vencido.';
     $pedirCodigo = true;
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
@@ -89,11 +115,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['codigo_2fa'])) {
                 <h2>Verificación en dos pasos</h2>
                 <p class="auth-sub">Abre Microsoft Authenticator (o tu app de códigos) e ingresa el código de 6 dígitos.</p>
                 <?php if ($error): ?><div class="msg-error"><?= icon('x') ?> <?= e($error) ?></div><?php endif; ?>
+                <?php if ($codigoCorreoEnviado): ?><div class="msg-ok"><?= icon('check') ?> Te enviamos un código por correo, vence en 10 minutos.</div><?php endif; ?>
                 <form method="post" class="auth-form">
                     <label>Código de verificación</label>
                     <input type="text" name="codigo_2fa" required autofocus inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" class="auth-code-input">
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Verificar y entrar</button>
                 </form>
+                <p class="auth-foot">
+                    ¿No tienes acceso a tu Authenticator?
+                    <form method="post" style="display:inline;">
+                        <input type="hidden" name="accion" value="enviar_codigo_correo">
+                        <button type="submit" class="btn-link-inline"><?= icon('send') ?> Enviar código a mi correo</button>
+                    </form>
+                </p>
             <?php else: ?>
                 <h2>Iniciar sesión</h2>
                 <p class="auth-sub">Ingresa con tu cuenta de NAVISSI o con tu cuenta corporativa de Microsoft.</p>
@@ -113,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['codigo_2fa'])) {
                     <input type="password" name="password" required placeholder="••••••••">
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Ingresar</button>
                 </form>
-                <p class="auth-foot">¿Olvidaste tu contraseña? Pídele a tu administrador que te la restablezca desde <em>Seguridad → Usuarios y roles</em>.</p>
+                <p class="auth-foot"><a href="recuperar_password.php"><?= icon('key') ?> ¿Olvidaste tu contraseña?</a></p>
                 <p class="auth-foot small">Usuario inicial: admin@navissi.com / navissi2026</p>
             <?php endif; ?>
         </div>

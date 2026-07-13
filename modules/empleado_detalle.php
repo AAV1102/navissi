@@ -15,6 +15,58 @@ if (!$emp) {
     exit;
 }
 
+// Alcance personal: un EMPLEADO sin rol elevado solo puede ver su propia ficha de RRHH.
+$personalEmp = alcance_personal();
+if ($personalEmp !== null && $emp['documento'] !== $personalEmp['documento']) {
+    layout_inicio('Sin acceso', 'RRHH', '../');
+    echo '<div class="msg-error">Solo puedes ver tu propia ficha.</div><a class="btn" href="rrhh.php">Volver</a>';
+    layout_fin();
+    exit;
+}
+
+$msgAcceso = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear_acceso') {
+    require_once __DIR__ . '/../lib/mailer.php';
+    $correoAcceso = trim($_POST['correo_acceso'] ?? $emp['email'] ?? '');
+    if (!$correoAcceso) {
+        $msgAcceso = ['error', 'Necesitas un correo para crear el acceso.'];
+    } else {
+        try {
+            $palabras = ['Navissi', 'Grupo10z', 'Acceso', 'Bienvenido'];
+            $claveTemporal = $palabras[array_rand($palabras)] . random_int(100, 999) . '!';
+            // Todo empleado nuevo entra por defecto como EMPLEADO, sin perfil adicional -
+            // el admin le agrega un rol elevado después solo si de verdad lo necesita.
+            $pdo->prepare("INSERT INTO usuarios_sistema (nombre, email, documento, password_hash, rol, password_temporal) VALUES (?,?,?,?,?,1)")
+                ->execute([$emp['nombres'], $correoAcceso, $emp['documento'], password_hash($claveTemporal, PASSWORD_DEFAULT), 'EMPLEADO']);
+            if (!$emp['email']) {
+                $pdo->prepare("UPDATE empleados SET email = ? WHERE id = ?")->execute([$correoAcceso, $emp['id']]);
+                $emp['email'] = $correoAcceso;
+            }
+            $base = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+            $html = plantilla_correo_html(
+                'Tu cuenta de NAVISSI está lista',
+                "<p>Hola " . e($emp['nombres']) . ",</p>
+                <p>Ya puedes entrar a <strong>NAVISSI Inventario</strong> con estas credenciales temporales:</p>
+                <table style=\"width:100%;background:#f4f6f9;border-radius:8px;padding:4px;margin:14px 0;\">
+                    <tr><td style=\"padding:8px 12px;\"><strong>Correo:</strong></td><td style=\"padding:8px 12px;\">" . e($correoAcceso) . "</td></tr>
+                    <tr><td style=\"padding:8px 12px;\"><strong>Contraseña temporal:</strong></td><td style=\"padding:8px 12px;font-family:monospace;font-size:15px;\">" . e($claveTemporal) . "</td></tr>
+                </table>
+                <p>Al ingresar por primera vez, el sistema te va a pedir crear tu propia contraseña.</p>",
+                'Ingresar a NAVISSI',
+                "{$base}/login.php"
+            );
+            enviar_correo($correoAcceso, 'Tu cuenta de NAVISSI está lista', $html, $emp['nombres']);
+            $msgAcceso = ['ok', "Acceso creado y credenciales enviadas a {$correoAcceso}."];
+        } catch (PDOException $e) {
+            $msgAcceso = ['error', 'Ya existe una cuenta con ese correo.'];
+        }
+    }
+}
+
+$stmtAcc = $pdo->prepare("SELECT id, email, rol FROM usuarios_sistema WHERE documento = ?");
+$stmtAcc->execute([$emp['documento']]);
+$cuentaVinculada = $stmtAcc->fetch(PDO::FETCH_ASSOC);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar_campos') {
     foreach ($_POST['campo'] ?? [] as $campoId => $valor) {
         $pdo->prepare("INSERT INTO campos_personalizados_valor (campo_id, entidad_id, valor) VALUES (?,?,?)
@@ -83,6 +135,24 @@ layout_inicio($emp['nombres'], 'RRHH', '../');
     <div class="card"><div class="num"><?= count($tickets) ?></div><div class="label">Tickets reportados</div></div>
     <div class="card"><div class="num"><?= count($progreso) ?></div><div class="label">Lecciones completadas</div></div>
 </div>
+
+<?php if ($personalEmp === null): ?>
+<div class="panel" style="border-left:4px solid var(--teal-500);">
+    <h3><?= icon('shield') ?> Acceso a NAVISSI</h3>
+    <?php if ($msgAcceso): ?><div class="msg-<?= $msgAcceso[0] ?>"><?= e($msgAcceso[1]) ?></div><?php endif; ?>
+    <?php if ($cuentaVinculada): ?>
+        <p><span class="badge badge-activo"><?= icon('check') ?> Tiene acceso</span> · <?= e($cuentaVinculada['email']) ?> · Rol <?= e($cuentaVinculada['rol']) ?></p>
+        <p class="small"><a href="usuario_modulos.php?id=<?= (int)$cuentaVinculada['id'] ?>">Ver/editar sus módulos individuales</a> · <a href="usuarios.php">Ir a Usuarios y roles</a></p>
+    <?php else: ?>
+        <p class="small">Este empleado todavía no tiene cuenta para entrar a NAVISSI. Crea su acceso con un clic: queda con rol <strong>EMPLEADO</strong> por defecto (el más limitado y seguro), con una contraseña temporal que le llega por correo y que debe cambiar al ingresar por primera vez.</p>
+        <form method="post" class="toolbar" style="margin-bottom:0;">
+            <input type="hidden" name="accion" value="crear_acceso">
+            <input type="email" name="correo_acceso" required placeholder="Correo para el acceso" value="<?= e($emp['email'] ?? '') ?>" style="min-width:260px;">
+            <button type="submit"><?= icon('plus') ?> Crear acceso y enviar credenciales</button>
+        </form>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="panel">
     <h3>Datos personales

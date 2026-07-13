@@ -499,6 +499,8 @@ table.tabla-tickets .t-title { font-weight:600; color:var(--ink-900); font-size:
 .so-opcion { display:flex; align-items:center; gap:8px; padding:10px 16px; border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; font-size:13px; }
 .so-opcion.activa { border-color:var(--accent-600); color:var(--accent-600); background:rgba(227,28,108,.06); }
 .so-opcion.deshabilitada { opacity:.45; cursor:not-allowed; }
+
+.btn-link-inline { background:none; border:none; padding:0; color:var(--accent-600); font-weight:600; text-decoration:underline; cursor:pointer; font-size:inherit; display:inline-flex; align-items:center; gap:4px; }
 .conv-bubble.ia { background:#eefaf4; border:1px solid var(--ok-line); border-bottom-left-radius:4px; }
 .conv-meta { font-size:11px; color:var(--ink-500); margin-bottom:3px; font-weight:600; }
 

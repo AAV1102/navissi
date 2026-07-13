@@ -84,6 +84,7 @@ function nav_grupos() {
             'icon' => 'shield', 'roles' => ['ADMIN'],
             'items' => [
                 'modules/usuarios.php' => ['Usuarios y roles', 'users'],
+                'modules/perfiles_modulos.php' => ['Perfiles por rol', 'shield'],
                 'modules/personalizar_marca.php' => ['Personalizar Marca', 'inventory'],
                 'modules/2fa_configurar.php' => ['Mi Cuenta', 'shield'],
                 'modules/auditoria.php' => ['Auditoría', 'log'],
@@ -157,6 +158,7 @@ function layout_inicio($titulo, $activo, $prefix = '') {
         </div>
         <nav class="sidebar-nav">
             <a class="sidebar-link <?= $activo === 'Dashboard' ? 'active' : '' ?>" href="<?= $prefix ?>index.php" <?= $activo === 'Dashboard' ? 'aria-current="page"' : '' ?>><?= icon('dashboard') ?> Dashboard</a>
+            <a class="sidebar-link <?= $activo === 'Mis Accesos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_accesos.php" <?= $activo === 'Mis Accesos' ? 'aria-current="page"' : '' ?>><?= icon('key') ?> Mis Accesos</a>
             <?php $modulosExtra = modulos_extra_usuario(); ?>
             <?php foreach (nav_grupos() as $grupo => $def):
                 $tieneAccesoPorRol = tiene_rol($def['roles']);
