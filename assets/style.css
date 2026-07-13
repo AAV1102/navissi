@@ -512,6 +512,17 @@ table.tabla-tickets .t-title { font-weight:600; color:var(--ink-900); font-size:
 .kanban-tarjeta-titulo { font-weight:600; font-size:13.5px; margin-bottom:4px; }
 .kanban-tarjeta-meta { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0; }
 .kanban-tarjeta-acciones select { width:100%; font-size:12px; padding:4px; margin-bottom:4px; }
+
+.org-chart { padding:10px 0; }
+.org-nodo { border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:#fff; text-align:center; margin-bottom:8px; }
+:root[data-theme="dark"] .org-nodo { background:var(--navy-800); }
+.org-nodo span.small { display:block; margin-top:2px; }
+.org-raiz { max-width:280px; margin:0 auto 24px; background:var(--accent-600); color:#fff; border:none; }
+.org-raiz span.small { color:rgba(255,255,255,.85); }
+.org-ramas { display:flex; gap:16px; overflow-x:auto; padding-bottom:10px; }
+.org-columna { min-width:220px; max-width:220px; flex-shrink:0; }
+.org-departamento { background:var(--bg); font-weight:600; border-left:3px solid var(--accent-600); }
+.org-empleado { font-size:13px; padding:8px 12px; }
 .conv-bubble.ia { background:#eefaf4; border:1px solid var(--ok-line); border-bottom-left-radius:4px; }
 .conv-meta { font-size:11px; color:var(--ink-500); margin-bottom:3px; font-weight:600; }
 

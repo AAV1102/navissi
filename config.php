@@ -145,6 +145,21 @@ function migrar_esquema(PDO $pdo) {
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // ---- Pipeline de Oportunidades (CRM) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS oportunidades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL,
+        titulo TEXT NOT NULL,
+        valor REAL,
+        etapa TEXT DEFAULT 'PROSPECTO',
+        responsable_documento TEXT,
+        responsable_nombre TEXT,
+        fecha_cierre_esperada TEXT,
+        notas TEXT,
+        orden INTEGER DEFAULT 0,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS enlaces_colaboracion (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo TEXT NOT NULL,

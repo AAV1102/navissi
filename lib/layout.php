@@ -67,6 +67,7 @@ function nav_grupos() {
             'icon' => 'users', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'COORDINADOR'],
             'items' => [
                 'modules/crm.php' => ['Clientes y proveedores', 'users'],
+                'modules/oportunidades.php' => ['Pipeline de Ventas', 'dollar'],
             ],
         ],
         'Canales y Microsoft 365' => [
@@ -91,6 +92,7 @@ function nav_grupos() {
                 'modules/auditoria.php' => ['Auditoría', 'log'],
                 'modules/hoja_vida.php' => ['Hoja de Vida', 'file'],
                 'modules/departamentos.php' => ['Departamentos y Cargos', 'briefcase'],
+                'modules/organigrama.php' => ['Organigrama', 'dashboard'],
                 'modules/diagnostico.php' => ['Diagnóstico del Sistema', 'shield'],
                 'modules/campos_personalizados.php' => ['Campos Personalizados', 'inventory'],
             ],
