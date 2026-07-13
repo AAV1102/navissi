@@ -184,6 +184,12 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Etiquetas de menú personalizadas (edición de textos sin tocar código) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS etiquetas_menu (
+        href TEXT PRIMARY KEY,
+        etiqueta TEXT NOT NULL
+    )");
+
     // ---- Impresoras ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS impresoras (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

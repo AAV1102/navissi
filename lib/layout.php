@@ -8,7 +8,7 @@ require_once __DIR__ . '/icons.php';
  * pueden ver.
  */
 function nav_grupos() {
-    return [
+    $base = [
         'Mesa de servicios' => [
             'icon' => 'ticket', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR', 'RRHH', 'DIRECTOR'],
             'items' => [
@@ -96,6 +96,7 @@ function nav_grupos() {
                 'modules/usuarios.php' => ['Usuarios y roles', 'users'],
                 'modules/perfiles_modulos.php' => ['Perfiles por rol', 'shield'],
                 'modules/personalizar_marca.php' => ['Personalizar Marca', 'inventory'],
+                'modules/personalizar_textos.php' => ['Personalizar Textos del Menú', 'sliders'],
                 'modules/2fa_configurar.php' => ['Mi Cuenta', 'shield'],
                 'modules/auditoria.php' => ['Auditoría', 'log'],
                 'modules/hoja_vida.php' => ['Hoja de Vida', 'file'],
@@ -129,6 +130,23 @@ function nav_grupos() {
             ],
         ],
     ];
+
+    // Aplica etiquetas personalizadas (Personalizar Textos del Menú), sin tocar código.
+    try {
+        $pdo = db();
+        $overrides = $pdo->query("SELECT href, etiqueta FROM etiquetas_menu")->fetchAll(PDO::FETCH_KEY_PAIR);
+        if ($overrides) {
+            foreach ($base as &$grupo) {
+                foreach ($grupo['items'] as $href => &$item) {
+                    if (isset($overrides[$href])) $item[0] = $overrides[$href];
+                }
+                unset($item);
+            }
+            unset($grupo);
+        }
+    } catch (\Throwable $e) { /* si la tabla aun no existe (migracion no corrida), sigue con las etiquetas por defecto */ }
+
+    return $base;
 }
 
 function layout_inicio($titulo, $activo, $prefix = '') {

@@ -43,6 +43,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM empleados WHERE id = ?")->execute([(int) $_POST['id']]);
         $msg = ['ok', 'Empleado eliminado.'];
+    } elseif ($accion === 'guardar_campos') {
+        $idCampos = (int) ($_POST['id'] ?? 0);
+        foreach ($_POST['campo'] ?? [] as $campoId => $valor) {
+            $pdo->prepare("INSERT INTO campos_personalizados_valor (campo_id, entidad_id, valor) VALUES (?,?,?)
+                ON CONFLICT(campo_id, entidad_id) DO UPDATE SET valor = excluded.valor")
+                ->execute([(int) $campoId, $idCampos, limpio($valor)]);
+        }
+        $msg = ['ok', 'Campos personalizados guardados.'];
     } elseif ($accion === 'asignar_rol') {
         // Asignación masiva de rol desde el listado: elige el rol del sistema para
         // el usuario ya vinculado a este empleado por documento.
@@ -106,6 +114,15 @@ foreach ($pdo->query("SELECT documento, rol FROM usuarios_sistema WHERE document
     $cuentasPorDocumento[$fila['documento']] = $fila['rol'];
 }
 
+// Campos personalizados (definidos sin tocar código desde Seguridad -> Campos Personalizados).
+$camposDefEmp = $pdo->query("SELECT * FROM campos_personalizados_def WHERE entidad = 'empleados' ORDER BY nombre_campo")->fetchAll(PDO::FETCH_ASSOC);
+$camposValoresEmp = [];
+if ($editar && $camposDefEmp) {
+    $stmt = $pdo->prepare("SELECT campo_id, valor FROM campos_personalizados_valor WHERE entidad_id = ?");
+    $stmt->execute([$editar['id']]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $v) $camposValoresEmp[$v['campo_id']] = $v['valor'];
+}
+
 layout_inicio('RRHH', 'RRHH', '../');
 ?>
 <h1><?= icon('users','icon-lg') ?> Recursos Humanos</h1>
@@ -157,6 +174,30 @@ layout_inicio('RRHH', 'RRHH', '../');
         <?php if ($editar): ?><a class="btn btn-secondary" href="rrhh.php">Cancelar</a><?php endif; ?>
     </form>
 </div>
+
+<?php if ($editar && $camposDefEmp): ?>
+<div class="panel">
+    <h3><?= icon('inventory') ?> Campos personalizados <a href="campos_personalizados.php" class="small" style="float:right;font-weight:400;">Agregar/quitar campos →</a></h3>
+    <form method="post">
+        <input type="hidden" name="accion" value="guardar_campos">
+        <input type="hidden" name="id" value="<?= (int) $editar['id'] ?>">
+        <?php foreach ($camposDefEmp as $cd): $valorActual = $camposValoresEmp[$cd['id']] ?? ''; ?>
+        <label class="small"><?= e($cd['nombre_campo']) ?></label>
+        <?php if ($cd['tipo'] === 'LISTA' && $cd['opciones']): ?>
+        <select name="campo[<?= (int)$cd['id'] ?>]" style="width:100%;margin-bottom:10px;">
+            <option value="">-- sin definir --</option>
+            <?php foreach (array_map('trim', explode(',', $cd['opciones'])) as $op): ?>
+            <option <?= $valorActual===$op?'selected':'' ?>><?= e($op) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php else: ?>
+        <input type="<?= $cd['tipo']==='FECHA'?'date':($cd['tipo']==='NUMERO'?'number':'text') ?>" name="campo[<?= (int)$cd['id'] ?>]" value="<?= e($valorActual) ?>" style="width:100%;margin-bottom:10px;">
+        <?php endif; ?>
+        <?php endforeach; ?>
+        <button type="submit"><?= icon('check') ?> Guardar campos</button>
+    </form>
+</div>
+<?php endif; ?>
 
 <form class="toolbar" method="get">
     <input type="search" name="q" placeholder="Buscar por nombre, documento, cargo, área..." value="<?= e($busqueda) ?>" style="min-width:320px">

@@ -59,6 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM inventario WHERE id = ?")->execute([(int) $_POST['id']]);
         $msg = ['ok', 'Equipo eliminado.'];
+    } elseif ($accion === 'guardar_campos') {
+        $idCampos = (int) ($_POST['id'] ?? 0);
+        foreach ($_POST['campo'] ?? [] as $campoId => $valor) {
+            $pdo->prepare("INSERT INTO campos_personalizados_valor (campo_id, entidad_id, valor) VALUES (?,?,?)
+                ON CONFLICT(campo_id, entidad_id) DO UPDATE SET valor = excluded.valor")
+                ->execute([(int) $campoId, $idCampos, limpio($valor)]);
+        }
+        $msg = ['ok', 'Campos personalizados guardados.'];
     }
 }
 
@@ -112,6 +120,15 @@ $camposPorTipo = [
     'OTRO' => ['marca','sistema_operativo','procesador','memoria','almacenamiento'],
 ];
 $tiposDisponibles = array_keys($camposPorTipo);
+
+// Campos personalizados (definidos sin tocar código desde Seguridad -> Campos Personalizados).
+$camposDefInv = $pdo->query("SELECT * FROM campos_personalizados_def WHERE entidad = 'inventario' ORDER BY nombre_campo")->fetchAll(PDO::FETCH_ASSOC);
+$camposValoresInv = [];
+if ($editar && $camposDefInv) {
+    $stmt = $pdo->prepare("SELECT campo_id, valor FROM campos_personalizados_valor WHERE entidad_id = ?");
+    $stmt->execute([$editar['id']]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $v) $camposValoresInv[$v['campo_id']] = $v['valor'];
+}
 
 layout_inicio('Inventario', 'Inventario', '../');
 ?>
@@ -184,6 +201,30 @@ layout_inicio('Inventario', 'Inventario', '../');
         <a class="btn btn-secondary" href="inventario.php" id="btn-cancelar-form">Cancelar</a>
     </form>
 </div>
+
+<?php if ($editar && $camposDefInv): ?>
+<div class="panel">
+    <h3><?= icon('inventory') ?> Campos personalizados <a href="campos_personalizados.php" class="small" style="float:right;font-weight:400;">Agregar/quitar campos →</a></h3>
+    <form method="post">
+        <input type="hidden" name="accion" value="guardar_campos">
+        <input type="hidden" name="id" value="<?= (int) $editar['id'] ?>">
+        <?php foreach ($camposDefInv as $cd): $valorActual = $camposValoresInv[$cd['id']] ?? ''; ?>
+        <label class="small"><?= e($cd['nombre_campo']) ?></label>
+        <?php if ($cd['tipo'] === 'LISTA' && $cd['opciones']): ?>
+        <select name="campo[<?= (int)$cd['id'] ?>]" style="width:100%;margin-bottom:10px;">
+            <option value="">-- sin definir --</option>
+            <?php foreach (array_map('trim', explode(',', $cd['opciones'])) as $op): ?>
+            <option <?= $valorActual===$op?'selected':'' ?>><?= e($op) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php else: ?>
+        <input type="<?= $cd['tipo']==='FECHA'?'date':($cd['tipo']==='NUMERO'?'number':'text') ?>" name="campo[<?= (int)$cd['id'] ?>]" value="<?= e($valorActual) ?>" style="width:100%;margin-bottom:10px;">
+        <?php endif; ?>
+        <?php endforeach; ?>
+        <button type="submit"><?= icon('check') ?> Guardar campos</button>
+    </form>
+</div>
+<?php endif; ?>
 
 <script>
 (function () {
