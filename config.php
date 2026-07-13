@@ -62,6 +62,20 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Logística: ubicación física dentro de la bodega ----
+    $columnasInv = array_column($pdo->query("PRAGMA table_info(inventario)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('ubicacion_bodega', $columnasInv, true)) {
+        $pdo->exec("ALTER TABLE inventario ADD COLUMN ubicacion_bodega TEXT");
+    }
+    $pdo->exec("CREATE TABLE IF NOT EXISTS movimientos_bodega (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipo_serial TEXT NOT NULL,
+        ubicacion_anterior TEXT,
+        ubicacion_nueva TEXT,
+        movido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // ---- Tableros de Proyectos (Kanban) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS tableros (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
