@@ -44,6 +44,10 @@ function nav_grupos() {
                 'modules/gestion_parches.php' => ['Gestión de Parches', 'shield'],
                 'modules/actas_equipos.php' => ['Actas de Entrega/Devolución', 'file'],
                 'modules/network_discovery.php' => ['Network Discovery', 'cloud'],
+                'modules/impresoras.php' => ['Impresoras', 'file'],
+                'modules/vpn.php' => ['VPN', 'shield'],
+                'modules/mikrotik.php' => ['Routers / Mikrotik', 'cloud'],
+                'modules/ciberseguridad.php' => ['Ciberseguridad y Seguridad', 'shield'],
             ],
         ],
         'Tiendas e infraestructura' => [
@@ -114,6 +118,14 @@ function nav_grupos() {
                 'modules/evaluaciones.php' => ['Evaluaciones de Desempeño', 'graduation'],
                 'modules/denuncias_admin.php' => ['Gestión de Denuncias', 'shield'],
                 'modules/vacantes.php' => ['Vacantes', 'briefcase'],
+                'modules/huelleros.php' => ['Huelleros / Biométricos', 'briefcase'],
+            ],
+        ],
+        'Legal y Finanzas' => [
+            'icon' => 'dollar', 'roles' => ['ADMIN', 'GERENCIA', 'CEO'],
+            'items' => [
+                'modules/juridico.php' => ['Jurídico', 'file'],
+                'modules/tesoreria.php' => ['Tesorería', 'dollar'],
             ],
         ],
     ];

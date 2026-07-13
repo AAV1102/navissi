@@ -184,6 +184,106 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Impresoras ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS impresoras (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        ubicacion TEXT,
+        area TEXT,
+        marca TEXT,
+        modelo TEXT,
+        tipo TEXT,
+        ip_red TEXT,
+        estado TEXT DEFAULT 'ACTIVA',
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- VPN ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS vpn_conexiones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        tipo TEXT,
+        servidor TEXT,
+        usuario TEXT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        estado TEXT DEFAULT 'ACTIVA',
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Mikrotik / Routers ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS routers_red (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        marca TEXT DEFAULT 'MIKROTIK',
+        modelo TEXT,
+        ip_gestion TEXT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        usuario_admin TEXT,
+        estado TEXT DEFAULT 'ACTIVO',
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Huelleros / Biométricos ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS biometricos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        marca TEXT,
+        modelo TEXT,
+        ip_red TEXT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        capacidad_huellas INTEGER,
+        estado TEXT DEFAULT 'ACTIVO',
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Jurídico ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS casos_juridicos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        tipo TEXT,
+        contraparte TEXT,
+        responsable TEXT,
+        estado TEXT DEFAULT 'ABIERTO',
+        fecha_apertura TEXT,
+        fecha_cierre TEXT,
+        descripcion TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Tesorería ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS movimientos_tesoreria (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        concepto TEXT NOT NULL,
+        monto REAL NOT NULL,
+        cuenta TEXT,
+        fecha TEXT,
+        responsable TEXT,
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Ciberseguridad / Seguridad física ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS incidentes_seguridad (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        titulo TEXT NOT NULL,
+        severidad TEXT DEFAULT 'MEDIA',
+        estado TEXT DEFAULT 'ABIERTO',
+        descripcion TEXT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        reportado_por TEXT,
+        resolucion TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        resuelto_en TEXT
+    )");
+
     // ---- Servicio al Cliente / PQRS ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS pqrs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
