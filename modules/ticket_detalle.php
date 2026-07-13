@@ -69,6 +69,13 @@ if ($personalTk !== null && $ticket['solicitante'] !== $personalTk['nombre'] && 
     layout_fin();
     exit;
 }
+// Un Director solo puede abrir tickets de gente de su propia área, por URL directa incluida.
+if ($personalTk === null && alcance_area() !== null && $ticket['solicitante_area'] !== alcance_area()) {
+    layout_inicio('Sin acceso', 'Mesa de Ayuda', '../');
+    echo '<div class="msg-error">' . icon('x') . ' Ese ticket no pertenece a tu área.</div><a class="btn" href="mesa_ayuda.php">Volver</a>';
+    layout_fin();
+    exit;
+}
 
 $camposDef = $pdo->query("SELECT * FROM campos_personalizados_def WHERE entidad = 'tickets' ORDER BY nombre_campo")->fetchAll(PDO::FETCH_ASSOC);
 $camposValores = [];

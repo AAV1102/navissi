@@ -19,13 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
         // zona horaria de PHP (America/Bogota) - si se mezclan quedan comparaciones de
         // SLA desfasadas 5 horas.
         $slaLimite = gmdate('Y-m-d H:i:s', strtotime("+{$horasSla} hours"));
-        $stmt = $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, sla_limite, asignado_a)
-            VALUES (?,?,?,?,?,?,?,?,?)");
+        $solicitanteNombre = limpio($_POST['solicitante'] ?? null);
+        $solicitanteContacto = limpio($_POST['solicitante_contacto'] ?? null);
+        $areaSolicitante = area_por_solicitante($pdo, $solicitanteNombre, $solicitanteContacto);
+        $stmt = $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, sla_limite, asignado_a, solicitante_area)
+            VALUES (?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
             $titulo, limpio($_POST['descripcion'] ?? null), limpio($_POST['categoria'] ?? null) ?: 'SOPORTE',
             $prioridad, $sedeId,
-            limpio($_POST['solicitante'] ?? null), limpio($_POST['solicitante_contacto'] ?? null), $slaLimite,
-            limpio($_POST['asignado_a'] ?? null),
+            $solicitanteNombre, $solicitanteContacto, $slaLimite,
+            limpio($_POST['asignado_a'] ?? null), $areaSolicitante,
         ]);
         $nuevoId = $pdo->lastInsertId();
         $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
@@ -62,6 +65,10 @@ if ($personalTk !== null) {
     $sql .= " AND (t.solicitante = :nombre_personal OR t.solicitante_contacto = :correo_personal)";
     $params['nombre_personal'] = $personalTk['nombre'];
     $params['correo_personal'] = $personalTk['email'];
+} elseif (alcance_area() !== null) {
+    // Un Director (u otro rol con área asignada) solo ve los tickets de gente de su propia área.
+    $sql .= " AND t.solicitante_area = :area_director";
+    $params['area_director'] = alcance_area();
 }
 $sql .= " ORDER BY CASE t.estado WHEN 'ABIERTO' THEN 0 WHEN 'EN PROCESO' THEN 1 WHEN 'RESUELTO POR IA' THEN 2 WHEN 'CERRADO' THEN 3 ELSE 4 END,
         CASE t.prioridad WHEN 'URGENTE' THEN 0 WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END, t.creado_en DESC";
@@ -75,6 +82,13 @@ if ($personalTk !== null) {
     $totales = $stmtTot->fetchAll(PDO::FETCH_KEY_PAIR);
     $stmtIa = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE estado = 'RESUELTO POR IA' AND (solicitante = ? OR solicitante_contacto = ?)");
     $stmtIa->execute([$personalTk['nombre'], $personalTk['email']]);
+    $resueltosIa = $stmtIa->fetchColumn();
+} elseif (alcance_area() !== null) {
+    $stmtTot = $pdo->prepare("SELECT estado, COUNT(*) c FROM tickets WHERE solicitante_area = ? GROUP BY estado");
+    $stmtTot->execute([alcance_area()]);
+    $totales = $stmtTot->fetchAll(PDO::FETCH_KEY_PAIR);
+    $stmtIa = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE estado = 'RESUELTO POR IA' AND solicitante_area = ?");
+    $stmtIa->execute([alcance_area()]);
     $resueltosIa = $stmtIa->fetchColumn();
 } else {
     $totales = $pdo->query("SELECT estado, COUNT(*) c FROM tickets GROUP BY estado")->fetchAll(PDO::FETCH_KEY_PAIR);

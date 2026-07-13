@@ -51,10 +51,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
             }
         }
 
-        $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, sla_limite, origen, creado_por_documento, equipo_serial)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        $stmtAreaU = $pdo->prepare("SELECT area FROM empleados WHERE documento = ?");
+        $stmtAreaU->execute([$u['documento']]);
+        $areaSolicitanteU = $stmtAreaU->fetchColumn() ?: null;
+        $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, sla_limite, origen, creado_por_documento, equipo_serial, solicitante_area)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
             ->execute([$titulo, $descripcion, limpio($_POST['categoria'] ?? null) ?: 'SOPORTE',
-                $prioridad, $sedeId, $u['nombre'], $u['email'], $slaLimite, 'PORTAL_EMPLEADO', $u['documento'], $equipoSerial]);
+                $prioridad, $sedeId, $u['nombre'], $u['email'], $slaLimite, 'PORTAL_EMPLEADO', $u['documento'], $equipoSerial, $areaSolicitanteU]);
         $nuevoId = $pdo->lastInsertId();
         hoja_vida_registrar($pdo, 'EMPLEADO', (string) $u['documento'], 'TICKET_CREADO', $titulo, $u['nombre'], $nuevoId);
         if ($equipoSerial) hoja_vida_registrar($pdo, 'EQUIPO', $equipoSerial, 'TICKET_REPORTADO', $titulo, $u['nombre'], $nuevoId);

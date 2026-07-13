@@ -62,6 +62,20 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    $columnasTicketsArea = array_column($pdo->query("PRAGMA table_info(tickets)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('solicitante_area', $columnasTicketsArea, true)) {
+        $pdo->exec("ALTER TABLE tickets ADD COLUMN solicitante_area TEXT");
+    }
+
+    $columnasCargos = array_column($pdo->query("PRAGMA table_info(cargos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('rol_sugerido', $columnasCargos, true)) {
+        $pdo->exec("ALTER TABLE cargos ADD COLUMN rol_sugerido TEXT");
+    }
+    $columnasEmp2 = array_column($pdo->query("PRAGMA table_info(empleados)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('cargo_id', $columnasEmp2, true)) {
+        $pdo->exec("ALTER TABLE empleados ADD COLUMN cargo_id INTEGER REFERENCES cargos(id) ON DELETE SET NULL");
+    }
+
     $columnasCred = array_column($pdo->query("PRAGMA table_info(credenciales)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     if (!in_array('usuario_id', $columnasCred, true)) {
         $pdo->exec("ALTER TABLE credenciales ADD COLUMN usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL");
@@ -1131,6 +1145,42 @@ function es_solo_empleado(): bool {
     return $secundario === null || $secundario === 'EMPLEADO';
 }
 
+/**
+ * Mantiene sincronizado el usuario_sistema vinculado a un empleado (por documento)
+ * cada vez que RRHH cambia su área o cargo — así "Usuarios y roles", "Perfiles por
+ * rol" y el alcance por área de Directores siempre reflejan la realidad de RRHH sin
+ * que haya que tocar dos pantallas distintas a mano.
+ */
+function sincronizar_usuario_desde_empleado(PDO $pdo, ?string $documento, ?string $area, ?string $nombreCargo): void {
+    if (!$documento) return;
+    $stmt = $pdo->prepare("SELECT id FROM usuarios_sistema WHERE documento = ?");
+    $stmt->execute([$documento]);
+    $usuarioId = $stmt->fetchColumn();
+    if (!$usuarioId) return;
+    $pdo->prepare("UPDATE usuarios_sistema SET area_responsable = ? WHERE id = ?")->execute([$area ?: null, $usuarioId]);
+}
+
+/**
+ * Resuelve el área real de quien solicita algo (ticket, aprobación...), cruzando por
+ * nombre o correo contra RRHH/usuarios - así un Director puede ver solo lo de su área
+ * sin que el solicitante tenga que escribirla a mano cada vez.
+ */
+function area_por_solicitante(PDO $pdo, ?string $nombre, ?string $contacto = null): ?string {
+    if ($nombre) {
+        $stmt = $pdo->prepare("SELECT area FROM empleados WHERE nombres = ? COLLATE NOCASE LIMIT 1");
+        $stmt->execute([$nombre]);
+        $area = $stmt->fetchColumn();
+        if ($area) return $area;
+    }
+    if ($contacto) {
+        $stmt = $pdo->prepare("SELECT area_responsable FROM usuarios_sistema WHERE email = ? COLLATE NOCASE LIMIT 1");
+        $stmt->execute([$contacto]);
+        $area = $stmt->fetchColumn();
+        if ($area) return $area;
+    }
+    return null;
+}
+
 /** Rol adicional del usuario en sesión (ej. un ADMIN que también tiene el perfil EMPLEADO), o null si no tiene. */
 function rol_secundario_efectivo(): ?string {
     if (!empty($_SESSION['ver_como_rol'])) return null; // al "ver como", no se mezclan perfiles reales
@@ -1198,7 +1248,10 @@ function modulos_extra_usuario(): array {
 
 /** SUPER_ADMIN (real, sin estar "viendo como" otro rol) ve y gestiona todo. */
 function usuario_ve_todo(): bool {
-    return rol_efectivo() === 'SUPER_ADMIN';
+    // Gerencia y CEO tienen perfil tipo Admin: ven todos los módulos y todos los datos
+    // sin restricción de área, igual que SUPER_ADMIN pero sin las capacidades de
+    // administración de cuentas/seguridad (eso lo sigue decidiendo tiene_rol(['ADMIN']) puntual).
+    return in_array(rol_efectivo(), ['SUPER_ADMIN', 'GERENCIA', 'CEO'], true);
 }
 
 /** Area a la que esta limitado el usuario actual (NULL = sin restriccion de area). */

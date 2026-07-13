@@ -10,7 +10,7 @@ require_once __DIR__ . '/icons.php';
 function nav_grupos() {
     return [
         'Mesa de servicios' => [
-            'icon' => 'ticket', 'roles' => ['ADMIN', 'TI', 'COORDINADOR', 'RRHH'],
+            'icon' => 'ticket', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR', 'RRHH', 'DIRECTOR'],
             'items' => [
                 'modules/mesa_ayuda.php' => ['Mesa de Ayuda', 'ticket'],
                 'modules/solicitudes.php' => ['Solicitudes de tiendas', 'store'],
@@ -27,7 +27,7 @@ function nav_grupos() {
             ],
         ],
         'Inventario y activos' => [
-            'icon' => 'inventory', 'roles' => ['ADMIN', 'TI'],
+            'icon' => 'inventory', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
             'items' => [
                 'modules/inventario.php' => ['Inventario', 'inventory'],
                 'modules/movimientos.php' => ['Movimientos', 'arrow-right'],
@@ -43,7 +43,7 @@ function nav_grupos() {
             ],
         ],
         'Tiendas e infraestructura' => [
-            'icon' => 'store', 'roles' => ['ADMIN', 'TI', 'COORDINADOR'],
+            'icon' => 'store', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR'],
             'items' => [
                 'modules/sedes.php' => ['Sedes', 'building'],
                 'modules/formulario_tienda.php' => ['Formulario para tiendas', 'file'],
@@ -53,7 +53,7 @@ function nav_grupos() {
             ],
         ],
         'Automatización e IA' => [
-            'icon' => 'robot', 'roles' => ['ADMIN', 'TI'],
+            'icon' => 'robot', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
             'items' => [
                 'modules/automatizaciones.php' => ['Automatizaciones y alertas', 'bell'],
                 'modules/whatsapp.php' => ['WhatsApp Business', 'chat'],
@@ -63,13 +63,13 @@ function nav_grupos() {
             ],
         ],
         'CRM y ecommerce' => [
-            'icon' => 'users', 'roles' => ['ADMIN', 'COORDINADOR'],
+            'icon' => 'users', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'COORDINADOR'],
             'items' => [
                 'modules/crm.php' => ['Clientes y proveedores', 'users'],
             ],
         ],
         'Canales y Microsoft 365' => [
-            'icon' => 'cloud', 'roles' => ['ADMIN', 'TI'],
+            'icon' => 'cloud', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
             'items' => [
                 'modules/microsoft365.php' => ['Microsoft 365', 'cloud'],
                 'modules/conexiones_microsoft.php' => ['OneDrive / SharePoint / Teams', 'folder'],
@@ -95,7 +95,7 @@ function nav_grupos() {
             ],
         ],
         'Talento Humano' => [
-            'icon' => 'briefcase', 'roles' => ['ADMIN', 'RRHH'],
+            'icon' => 'briefcase', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'RRHH', 'DIRECTOR'],
             'items' => [
                 'modules/rrhh.php' => ['Empleados', 'users'],
                 'modules/rrhh_certificados.php' => ['Certificados y desprendibles', 'dollar'],

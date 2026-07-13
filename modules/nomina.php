@@ -75,6 +75,12 @@ if ($periodoActivo) {
         // Alcance personal: un EMPLEADO sin rol elevado solo ve su propio pago del periodo, nunca el de otros.
         $stmt = $pdo->prepare("SELECT * FROM nominas WHERE periodo_id = ? AND empleado_documento = ? ORDER BY empleado_nombre");
         $stmt->execute([$periodoActivo, $personalNom['documento']]);
+    } elseif (alcance_area() !== null) {
+        // Un Director solo ve la nómina de la gente de su propia área, nunca la de toda la empresa.
+        $stmt = $pdo->prepare("SELECT n.* FROM nominas n
+            JOIN empleados e ON e.documento = n.empleado_documento
+            WHERE n.periodo_id = ? AND e.area = ? ORDER BY n.empleado_nombre");
+        $stmt->execute([$periodoActivo, alcance_area()]);
     } else {
         $stmt = $pdo->prepare("SELECT * FROM nominas WHERE periodo_id = ? ORDER BY empleado_nombre");
         $stmt->execute([$periodoActivo]);

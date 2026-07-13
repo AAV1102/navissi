@@ -50,6 +50,14 @@ $documentoFiltro = trim($_GET['documento'] ?? '');
 $sql = "SELECT * FROM evaluaciones_desempeno WHERE 1=1";
 $params = [];
 if ($documentoFiltro !== '') { $sql .= " AND empleado_documento = ?"; $params[] = $documentoFiltro; }
+if (alcance_area() !== null) {
+    // Un Director solo ve evaluaciones de la gente de su propia área.
+    $sql .= " AND empleado_documento IN (SELECT documento FROM empleados WHERE area = ?)";
+    $params[] = alcance_area();
+}
+if (rol_efectivo() === 'RRHH') {
+    $sql .= " AND empleado_documento NOT IN (SELECT documento FROM usuarios_sistema WHERE rol IN ('GERENCIA','CEO') AND documento IS NOT NULL)";
+}
 // Alcance personal: un EMPLEADO sin rol elevado solo ve sus propias evaluaciones.
 $personalEv = alcance_personal();
 if ($personalEv !== null) {

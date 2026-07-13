@@ -36,10 +36,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("INSERT INTO empleados ({$cols}) VALUES ({$ph})")->execute($datos);
                 $msg = ['ok', 'Empleado agregado.'];
             }
+            // Si este empleado ya tiene cuenta de NAVISSI, su área queda sincronizada
+            // automáticamente - así el alcance por área de un Director no se desactualiza.
+            sincronizar_usuario_desde_empleado($pdo, $datos['documento'], $datos['area'], $datos['cargo']);
         }
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM empleados WHERE id = ?")->execute([(int) $_POST['id']]);
         $msg = ['ok', 'Empleado eliminado.'];
+    } elseif ($accion === 'asignar_rol') {
+        // Asignación masiva de rol desde el listado: elige el rol del sistema para
+        // el usuario ya vinculado a este empleado por documento.
+        $stmtEmp = $pdo->prepare("SELECT documento FROM empleados WHERE id = ?");
+        $stmtEmp->execute([(int) $_POST['id']]);
+        $documentoObjetivo = $stmtEmp->fetchColumn();
+        $rolNuevo = trim($_POST['rol'] ?? '');
+        if ($documentoObjetivo && in_array($rolNuevo, ROLES_DISPONIBLES, true)) {
+            $stmtU = $pdo->prepare("SELECT id FROM usuarios_sistema WHERE documento = ?");
+            $stmtU->execute([$documentoObjetivo]);
+            $usuarioObjetivo = $stmtU->fetchColumn();
+            if ($usuarioObjetivo) {
+                $pdo->prepare("UPDATE usuarios_sistema SET rol = ? WHERE id = ?")->execute([$rolNuevo, $usuarioObjetivo]);
+                $msg = ['ok', "Rol actualizado a {$rolNuevo}."];
+            } else {
+                $msg = ['error', 'Este empleado todavía no tiene cuenta de NAVISSI - créala primero desde su ficha.'];
+            }
+        }
     }
 }
 
@@ -61,6 +82,11 @@ if (alcance_area() !== null) {
     $sql .= " AND e.area = :area";
     $params['area'] = alcance_area();
 }
+// RRHH ve a todo el mundo excepto a Gerencia/CEO - esas fichas quedan reservadas
+// para SUPER_ADMIN o para ellos mismos.
+if (rol_efectivo() === 'RRHH') {
+    $sql .= " AND e.documento NOT IN (SELECT documento FROM usuarios_sistema WHERE rol IN ('GERENCIA','CEO') AND documento IS NOT NULL)";
+}
 // Alcance personal: un EMPLEADO sin rol elevado solo se ve a sí mismo en el listado.
 $personalRr = alcance_personal();
 if ($personalRr !== null) {
@@ -72,6 +98,13 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$departamentosCat = $pdo->query("SELECT nombre FROM departamentos ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);
+$cargosCat = $pdo->query("SELECT nombre FROM cargos ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);
+// Para la asignación de rol en bloque: qué documentos ya tienen cuenta de NAVISSI y con qué rol.
+$cuentasPorDocumento = [];
+foreach ($pdo->query("SELECT documento, rol FROM usuarios_sistema WHERE documento IS NOT NULL AND documento != ''") as $fila) {
+    $cuentasPorDocumento[$fila['documento']] = $fila['rol'];
+}
 
 layout_inicio('RRHH', 'RRHH', '../');
 ?>
@@ -87,8 +120,12 @@ layout_inicio('RRHH', 'RRHH', '../');
         <div class="grid-form">
             <div><label>Documento</label><input type="text" name="documento" value="<?= e($editar['documento'] ?? '') ?>"></div>
             <div><label>Nombres *</label><input type="text" name="nombres" required value="<?= e($editar['nombres'] ?? '') ?>"></div>
-            <div><label>Cargo</label><input type="text" name="cargo" value="<?= e($editar['cargo'] ?? '') ?>"></div>
-            <div><label>Área</label><input type="text" name="area" value="<?= e($editar['area'] ?? '') ?>"></div>
+            <div><label>Cargo</label><input type="text" name="cargo" list="lista-cargos" value="<?= e($editar['cargo'] ?? '') ?>">
+                <datalist id="lista-cargos"><?php foreach ($cargosCat as $c): ?><option value="<?= e($c) ?>"><?php endforeach; ?></datalist>
+            </div>
+            <div><label>Área / Departamento</label><input type="text" name="area" list="lista-departamentos" value="<?= e($editar['area'] ?? '') ?>">
+                <datalist id="lista-departamentos"><?php foreach ($departamentosCat as $d): ?><option value="<?= e($d) ?>"><?php endforeach; ?></datalist>
+            </div>
             <div><label>Sede</label>
                 <select name="sede">
                     <option value="">-- seleccionar --</option>
@@ -128,8 +165,8 @@ layout_inicio('RRHH', 'RRHH', '../');
 </form>
 
 <table>
-    <tr><th>Documento</th><th>Nombres</th><th>Cargo</th><th>Área</th><th>Sede</th><th>Email</th><th>Estado</th><th></th></tr>
-    <?php foreach ($empleados as $emp): ?>
+    <tr><th>Documento</th><th>Nombres</th><th>Cargo</th><th>Área</th><th>Sede</th><th>Email</th><th>Estado</th><th>Rol en NAVISSI</th><th></th></tr>
+    <?php foreach ($empleados as $emp): $rolActual = $cuentasPorDocumento[$emp['documento']] ?? null; ?>
     <tr>
         <td><?= e($emp['documento']) ?></td>
         <td><a href="empleado_detalle.php?id=<?= (int)$emp['id'] ?>"><strong><?= e($emp['nombres']) ?></strong></a></td>
@@ -138,6 +175,20 @@ layout_inicio('RRHH', 'RRHH', '../');
         <td><?= e($emp['sede_nombre']) ?></td>
         <td><?= e($emp['email']) ?></td>
         <td><span class="badge <?= $emp['estado']==='ACTIVO'?'badge-activo':'badge-otro' ?>"><?= e($emp['estado']) ?></span></td>
+        <td>
+            <?php if ($rolActual): ?>
+            <form method="post" class="inline">
+                <input type="hidden" name="accion" value="asignar_rol"><input type="hidden" name="id" value="<?= (int)$emp['id'] ?>">
+                <select name="rol" onchange="this.form.requestSubmit()" style="font-size:12px;">
+                    <?php foreach (ROLES_DISPONIBLES as $r): if ($r === 'SUPER_ADMIN' && !usuario_ve_todo()) continue; ?>
+                    <option <?= $rolActual === $r ? 'selected' : '' ?>><?= $r ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+            <?php else: ?>
+                <span class="small">Sin cuenta — <a href="empleado_detalle.php?id=<?= (int)$emp['id'] ?>">crear acceso</a></span>
+            <?php endif; ?>
+        </td>
         <td>
             <a href="?editar=<?= (int)$emp['id'] ?>">Editar</a>
             <form class="inline" method="post" onsubmit="return confirm('¿Eliminar?');">
