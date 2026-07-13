@@ -1,31 +1,31 @@
-/* ============ NAVISSI Design System — editorial de boutique, no plantilla SaaS genérica ============ */
+/* ============ NAVISSI Design System — identidad real de marca (navissi.com): negro/blanco editorial + rojo coral ============ */
 :root {
-    /* Sidebar: negro cálido con base tinta (no navy ni verde corporativo genérico) */
-    --navy-900:#1b140f; --navy-800:#241b14; --navy-700:#33261b; --navy-600:#4a3626;
-    /* Acento primario: vino/burdeos editorial. Secundario: dorado cálido. Nada de morado/magenta SaaS. */
-    --accent-600:#7a2331; --accent-500:#9c3244; --accent-100:#f5e3e0;
-    --gold-500:#b8823f; --gold-600:#8f6329;
-    --teal-500:#5c7a63; --teal-600:#3f5c47;
-    --ink-900:#1c1712; --ink-700:#453a30; --ink-500:#7a6c5c; --ink-300:#b6a992;
-    --line:#e7ddc9; --bg:#faf6ee; --card:#fffdf8;
+    /* Sidebar: negro puro, igual a la barra superior real de navissi.com */
+    --navy-900:#000000; --navy-800:#0d0d0d; --navy-700:#1a1a1a; --navy-600:#2b2b2b;
+    /* Acento primario: rojo coral (igual al "OUTLET" del sitio real). Secundario: rosa del corazón del logo. */
+    --accent-600:#d0342c; --accent-500:#e0473f; --accent-100:#fbe4e2;
+    --gold-500:#e8a0a8; --gold-600:#cf7e88;
+    --teal-500:#4a4a4a; --teal-600:#2b2b2b;
+    --ink-900:#0a0a0a; --ink-700:#3d3d3d; --ink-500:#767676; --ink-300:#b8b8b8;
+    --line:#e5e2dc; --bg:#faf8f5; --card:#ffffff;
     --ok-bg:#eef3e6; --ok-fg:#3f5c2a; --ok-line:#c3d6ab;
     --warn-bg:#fbf1de; --warn-fg:#8a5a12; --warn-line:#e8c785;
-    --err-bg:#f7e9e3; --err-fg:#8a2f1c; --err-line:#dba48d;
-    --radius:4px; --radius-sm:3px;
-    /* Sombra cálida y baja, tono tinta en vez de gris frío neutro */
-    --shadow-sm: 0 1px 2px rgba(45,32,18,.06);
-    --shadow-md: 0 3px 10px rgba(45,32,18,.10);
-    --shadow-lg: 0 14px 34px rgba(45,32,18,.18);
+    --err-bg:#fbe4e2; --err-fg:#a3241d; --err-line:#eab3ae;
+    --radius:2px; --radius-sm:2px;
+    /* Sombra minimalista casi plana, editorial */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+    --shadow-md: 0 3px 10px rgba(0,0,0,.08);
+    --shadow-lg: 0 14px 34px rgba(0,0,0,.16);
     --font-heading: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
     --font-body: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 :root[data-theme="dark"] {
-    --navy-900:#0c0908; --navy-800:#16110d; --navy-700:#211a13; --navy-600:#332619;
-    --accent-600:#c9707f; --accent-500:#d68b98; --accent-100:#2e1a1d;
-    --gold-500:#d4a45f; --gold-600:#b8823f;
-    --teal-500:#8fae95; --teal-600:#6f8f76;
-    --ink-900:#f3ede2; --ink-700:#d2c6b3; --ink-500:#a3937b; --ink-300:#6b5d4a;
-    --line:#332a1f; --bg:#120e0a; --card:#1c1611;
+    --navy-900:#000000; --navy-800:#0a0a0a; --navy-700:#161616; --navy-600:#242424;
+    --accent-600:#e0473f; --accent-500:#e8635c; --accent-100:#2e1210;
+    --gold-500:#e8a0a8; --gold-600:#cf7e88;
+    --teal-500:#8a8a8a; --teal-600:#6b6b6b;
+    --ink-900:#f5f5f5; --ink-700:#d0d0d0; --ink-500:#9a9a9a; --ink-300:#5c5c5c;
+    --line:#242424; --bg:#0a0a0a; --card:#151515;
     --ok-bg:#1c2916; --ok-fg:#9bc47e; --ok-line:#3a4e2c;
     --warn-bg:#2e2308; --warn-fg:#e8c785; --warn-line:#4d3d10;
     --err-bg:#2e1712; --err-fg:#e0967d; --err-line:#4d281e;
