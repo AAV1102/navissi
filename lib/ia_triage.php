@@ -112,6 +112,18 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
             $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
                 ->execute([$ticketId, 'Sistema', "Clasificado como {$categoriaDetectada} y asignado automáticamente a {$tecnicoDefault}.", 'SISTEMA']);
             hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'ESCALADO_IA', "Clasificado como {$categoriaDetectada} y asignado a {$tecnicoDefault} (técnico por defecto de esa categoría, no de otra área).", 'IA', $ticketId);
+
+            $enviadoAsignacion = false;
+            if ($tieneContacto) {
+                $htmlAsig = plantilla_correo_html("Tu ticket #{$ticketId} ya fue asignado",
+                    "<p>Hola " . e($ticket['solicitante']) . ",</p>"
+                    . "<p>Tu solicitud <strong>#{$ticketId} — " . e($ticket['titulo']) . "</strong> fue clasificada como <strong>{$categoriaDetectada}</strong> "
+                    . "y quedó asignada a <strong>" . e($tecnicoDefault) . "</strong>, quien te contactará pronto.</p>"
+                    . "<p class=\"small\">Puedes hacer seguimiento con el número de ticket #{$ticketId}.</p>");
+                $enviadoAsignacion = enviar_correo($ticket['solicitante_contacto'], "Tu ticket #{$ticketId} fue asignado a {$tecnicoDefault}", $htmlAsig, $ticket['solicitante']);
+            }
+            $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo, visible_cliente, enviado_correo) VALUES (?,?,?,?,?,?)")
+                ->execute([$ticketId, 'Sistema', "Correo de confirmación de asignación enviado al cliente (ticket #{$ticketId}, técnico {$tecnicoDefault}).", 'SISTEMA', 1, $enviadoAsignacion ? 1 : 0]);
         } else {
             $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
                 ->execute([$ticketId, 'Sistema', "Clasificado como {$categoriaDetectada} - sin técnico por defecto configurado para esa categoría todavía.", 'SISTEMA']);
