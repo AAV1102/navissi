@@ -30,6 +30,7 @@ layout_inicio('Noticias', 'Noticias', '../');
 ?>
 <h1><?= icon('megaphone','icon-lg') ?> Comunicación y Noticias</h1>
 <p class="subtitle">Cartelera interna: anuncios generales o dirigidos a una sede en particular.</p>
+<p><a class="btn btn-secondary" href="canales.php"><?= icon('cloud') ?> Ver canales de Teams y sitios de SharePoint de tu área</a></p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <div class="panel">

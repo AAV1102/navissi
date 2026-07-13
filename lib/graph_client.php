@@ -176,6 +176,12 @@ class GraphClient {
         return $data['value'] ?? [];
     }
 
+    /** Lista los canales de un Team específico. */
+    public function listarCanalesEquipo($teamId) {
+        $data = $this->get("/teams/{$teamId}/channels");
+        return $data['value'] ?? [];
+    }
+
     // ---------------- Correo (para convertir en tickets) ----------------
     // Requiere el permiso de aplicación Mail.Read sobre el buzón indicado.
 

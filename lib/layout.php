@@ -160,6 +160,7 @@ function layout_inicio($titulo, $activo, $prefix = '') {
             <a class="sidebar-link <?= $activo === 'Dashboard' ? 'active' : '' ?>" href="<?= $prefix ?>index.php" <?= $activo === 'Dashboard' ? 'aria-current="page"' : '' ?>><?= icon('dashboard') ?> Dashboard</a>
             <a class="sidebar-link <?= $activo === 'Mis Accesos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_accesos.php" <?= $activo === 'Mis Accesos' ? 'aria-current="page"' : '' ?>><?= icon('key') ?> Mis Accesos</a>
             <a class="sidebar-link <?= $activo === 'Mis Documentos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_documentos.php" <?= $activo === 'Mis Documentos' ? 'aria-current="page"' : '' ?>><?= icon('folder') ?> Mis Documentos</a>
+            <a class="sidebar-link <?= $activo === 'Canales' ? 'active' : '' ?>" href="<?= $prefix ?>modules/canales.php" <?= $activo === 'Canales' ? 'aria-current="page"' : '' ?>><?= icon('cloud') ?> Canales</a>
             <?php $modulosExtra = modulos_extra_usuario(); ?>
             <?php foreach (nav_grupos() as $grupo => $def):
                 $tieneAccesoPorRol = tiene_rol($def['roles']);

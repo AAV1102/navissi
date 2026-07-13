@@ -62,6 +62,16 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS enlaces_colaboracion (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        nombre TEXT NOT NULL,
+        url TEXT NOT NULL,
+        area TEXT,
+        empleado_documento TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     $columnasLecciones = array_column($pdo->query("PRAGMA table_info(lecciones)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     $nuevasLecciones = ['tipo' => "TEXT DEFAULT 'TEXTO'", 'archivo_ruta' => 'TEXT', 'archivo_nombre' => 'TEXT'];
     foreach ($nuevasLecciones as $col => $tipo) {
