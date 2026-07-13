@@ -170,6 +170,23 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Servicio al Cliente / PQRS ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pqrs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        cliente_nombre TEXT NOT NULL,
+        cliente_documento TEXT,
+        cliente_contacto TEXT,
+        canal TEXT DEFAULT 'WEB',
+        referencia_liveconnect TEXT,
+        descripcion TEXT NOT NULL,
+        estado TEXT DEFAULT 'RECIBIDA',
+        respuesta TEXT,
+        atendido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        resuelto_en TEXT
+    )");
+
     // ---- Actas de Entrega / Devolución de Equipos (firma digital) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS actas_equipos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

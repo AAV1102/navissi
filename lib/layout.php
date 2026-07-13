@@ -70,6 +70,7 @@ function nav_grupos() {
             'items' => [
                 'modules/crm.php' => ['Clientes y proveedores', 'users'],
                 'modules/oportunidades.php' => ['Pipeline de Ventas', 'dollar'],
+                'modules/servicio_cliente.php' => ['Servicio al Cliente (PQRS)', 'chat'],
             ],
         ],
         'Canales y Microsoft 365' => [
