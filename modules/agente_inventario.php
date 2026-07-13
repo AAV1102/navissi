@@ -27,8 +27,18 @@ layout_inicio('Agente de Inventario', 'Agente de inventario', '../');
     <p class="small" style="margin-top:10px;">Descarga e instala el agente en todos los equipos que quieras supervisar.</p>
 </div>
 
+<div class="panel" style="border-left:4px solid var(--accent-600);">
+    <h3><?= icon('zap') ?> Instalador de un clic (recomendado)</h3>
+    <p class="small">Descarga un <code>.bat</code> que hace todo solo: descarga el agente, lo ejecuta una vez, instala RustDesk para control remoto (si tu servidor lo tiene configurado) y programa la tarea de Windows — sin tocar el Programador de tareas a mano.</p>
+    <form method="get" action="../instalar_agente.php" class="toolbar" style="margin-top:10px;">
+        <input type="text" name="sede" placeholder="Nombre de la sede (opcional, si no lo pones lo pregunta al ejecutar)" style="min-width:280px">
+        <button type="submit"><?= icon('upload') ?> Descargar instalar_agente_navissi.bat</button>
+    </form>
+    <p class="small" style="margin-top:8px;">Cópialo al equipo de la tienda (USB, carpeta de red, correo) y haz doble clic. Pide permisos de administrador la primera vez.</p>
+</div>
+
 <div class="panel">
-    <h3>Cómo desplegarlo</h3>
+    <h3>Instalación manual (avanzado)</h3>
     <ol>
         <li>Descarga el script: <a href="../data/agente_navissi.ps1" download>agente_navissi.ps1</a></li>
         <li>Cópialo a cada equipo (o compártelo por una carpeta de red/OneDrive).</li>
