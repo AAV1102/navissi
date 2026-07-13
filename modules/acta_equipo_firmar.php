@@ -46,7 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 layout_inicio("Acta #{$id}", 'Actas de Equipos', '../');
 ?>
 <p class="small"><a href="actas_equipos.php">← Volver a Actas de Equipos</a></p>
-<h1><?= icon('file','icon-lg') ?> Acta de <?= $acta['tipo'] === 'ENTREGA' ? 'Entrega' : 'Devolución' ?> de Equipo #<?= (int)$acta['id'] ?></h1>
+<?php
+$tipoEtiquetas = ['ENTREGA' => 'Entrega', 'DEVOLUCION' => 'Devolución', 'PRESTAMO_TEMPORAL' => 'Préstamo temporal',
+    'BAJA' => 'Baja', 'MANTENIMIENTO' => 'Mantenimiento', 'CAMBIO_REPUESTO' => 'Cambio de repuesto'];
+?>
+<h1><?= icon('file','icon-lg') ?> Acta de <?= e($tipoEtiquetas[$acta['tipo']] ?? $acta['tipo']) ?> de Equipo #<?= (int)$acta['id'] ?></h1>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <div class="panel">

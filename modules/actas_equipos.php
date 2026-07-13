@@ -55,6 +55,10 @@ layout_inicio('Actas de Equipos', 'Actas de Equipos', '../');
                 <select name="tipo" required>
                     <option value="ENTREGA">Entrega de equipo</option>
                     <option value="DEVOLUCION">Devolución de equipo</option>
+                    <option value="PRESTAMO_TEMPORAL">Préstamo temporal</option>
+                    <option value="BAJA">Baja / dado de baja</option>
+                    <option value="MANTENIMIENTO">Ingreso a mantenimiento/soporte</option>
+                    <option value="CAMBIO_REPUESTO">Cambio de repuesto/pieza</option>
                 </select>
             </div>
             <div><label>Empleado *</label>
@@ -79,7 +83,12 @@ layout_inicio('Actas de Equipos', 'Actas de Equipos', '../');
     <tr><th>Tipo</th><th>Empleado</th><th>Equipo</th><th>Fecha</th><th>Firmas</th><th></th></tr>
     <?php foreach ($actas as $a): ?>
     <tr>
-        <td><span class="badge <?= $a['tipo']==='ENTREGA'?'badge-activo':'badge-otro' ?>"><?= e($a['tipo']) ?></span></td>
+        <?php
+        $tipoEtiquetas = ['ENTREGA' => 'Entrega', 'DEVOLUCION' => 'Devolución', 'PRESTAMO_TEMPORAL' => 'Préstamo temporal',
+            'BAJA' => 'Baja', 'MANTENIMIENTO' => 'Mantenimiento', 'CAMBIO_REPUESTO' => 'Cambio de repuesto'];
+        $tipoClase = match ($a['tipo']) { 'ENTREGA', 'PRESTAMO_TEMPORAL' => 'badge-activo', 'BAJA' => 'badge-err', 'MANTENIMIENTO', 'CAMBIO_REPUESTO' => 'badge-warn', default => 'badge-otro' };
+        ?>
+        <td><span class="badge <?= $tipoClase ?>"><?= e($tipoEtiquetas[$a['tipo']] ?? $a['tipo']) ?></span></td>
         <td><?= e($a['empleado_nombre']) ?: e($a['empleado_documento']) ?></td>
         <td><?= e($a['equipo_descripcion']) ?: '—' ?> <?php if ($a['equipo_serial']): ?><br><span class="small"><?= e($a['equipo_serial']) ?></span><?php endif; ?></td>
         <td class="small"><?= e($a['creado_en']) ?></td>
