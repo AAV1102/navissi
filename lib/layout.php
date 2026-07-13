@@ -24,6 +24,7 @@ function nav_grupos() {
                 'modules/sla_politicas.php' => ['Políticas SLA', 'shield'],
                 'modules/informes.php' => ['Informes', 'inventory'],
                 'modules/plantillas_correo.php' => ['Plantillas de Correo', 'chat'],
+                'modules/proyectos.php' => ['Proyectos', 'dashboard'],
             ],
         ],
         'Inventario y activos' => [
@@ -98,12 +99,15 @@ function nav_grupos() {
             'icon' => 'briefcase', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'RRHH', 'DIRECTOR'],
             'items' => [
                 'modules/rrhh.php' => ['Empleados', 'users'],
+                'modules/asistencia.php' => ['Control de Asistencia', 'briefcase'],
                 'modules/rrhh_certificados.php' => ['Certificados y desprendibles', 'dollar'],
                 'modules/rrhh_documentos.php' => ['Documentos y firmas (OneDrive)', 'file'],
                 'modules/documentacion.php' => ['Documentación / capacitación', 'graduation'],
                 'modules/vacaciones.php' => ['Vacaciones y Permisos', 'briefcase'],
                 'modules/nomina.php' => ['Nómina', 'dollar'],
                 'modules/evaluaciones.php' => ['Evaluaciones de Desempeño', 'graduation'],
+                'modules/denuncias_admin.php' => ['Gestión de Denuncias', 'shield'],
+                'modules/vacantes.php' => ['Vacantes', 'briefcase'],
             ],
         ],
     ];
@@ -161,6 +165,7 @@ function layout_inicio($titulo, $activo, $prefix = '') {
             <a class="sidebar-link <?= $activo === 'Mis Accesos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_accesos.php" <?= $activo === 'Mis Accesos' ? 'aria-current="page"' : '' ?>><?= icon('key') ?> Mis Accesos</a>
             <a class="sidebar-link <?= $activo === 'Mis Documentos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_documentos.php" <?= $activo === 'Mis Documentos' ? 'aria-current="page"' : '' ?>><?= icon('folder') ?> Mis Documentos</a>
             <a class="sidebar-link <?= $activo === 'Canales' ? 'active' : '' ?>" href="<?= $prefix ?>modules/canales.php" <?= $activo === 'Canales' ? 'aria-current="page"' : '' ?>><?= icon('cloud') ?> Canales</a>
+            <a class="sidebar-link <?= $activo === 'Canal de Denuncias' ? 'active' : '' ?>" href="<?= $prefix ?>modules/denuncias.php" <?= $activo === 'Canal de Denuncias' ? 'aria-current="page"' : '' ?>><?= icon('shield') ?> Canal de Denuncias</a>
             <?php $modulosExtra = modulos_extra_usuario(); ?>
             <?php foreach (nav_grupos() as $grupo => $def):
                 $tieneAccesoPorRol = tiene_rol($def['roles']);

@@ -501,6 +501,17 @@ table.tabla-tickets .t-title { font-weight:600; color:var(--ink-900); font-size:
 .so-opcion.deshabilitada { opacity:.45; cursor:not-allowed; }
 
 .btn-link-inline { background:none; border:none; padding:0; color:var(--accent-600); font-weight:600; text-decoration:underline; cursor:pointer; font-size:inherit; display:inline-flex; align-items:center; gap:4px; }
+
+/* ============ Tableros de Proyectos (Kanban) ============ */
+.kanban-board { display:flex; gap:14px; overflow-x:auto; padding-bottom:12px; align-items:flex-start; }
+.kanban-columna { background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:12px; min-width:270px; max-width:270px; flex-shrink:0; }
+.kanban-columna h3 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.02em; color:var(--ink-500); }
+.kanban-columna-nueva { background:transparent; border:1px dashed var(--line); }
+.kanban-tarjeta { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; box-shadow:var(--shadow-sm); }
+:root[data-theme="dark"] .kanban-tarjeta { background:var(--navy-800); }
+.kanban-tarjeta-titulo { font-weight:600; font-size:13.5px; margin-bottom:4px; }
+.kanban-tarjeta-meta { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0; }
+.kanban-tarjeta-acciones select { width:100%; font-size:12px; padding:4px; margin-bottom:4px; }
 .conv-bubble.ia { background:#eefaf4; border:1px solid var(--ok-line); border-bottom-left-radius:4px; }
 .conv-meta { font-size:11px; color:var(--ink-500); margin-bottom:3px; font-weight:600; }
 

@@ -62,6 +62,89 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Tableros de Proyectos (Kanban) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tableros (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        area TEXT,
+        descripcion TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tablero_columnas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tablero_id INTEGER NOT NULL REFERENCES tableros(id) ON DELETE CASCADE,
+        nombre TEXT NOT NULL,
+        orden INTEGER DEFAULT 0
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tablero_tareas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tablero_id INTEGER NOT NULL REFERENCES tableros(id) ON DELETE CASCADE,
+        columna_id INTEGER NOT NULL REFERENCES tablero_columnas(id) ON DELETE CASCADE,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        responsable_documento TEXT,
+        responsable_nombre TEXT,
+        prioridad TEXT DEFAULT 'NORMAL',
+        fecha_vencimiento TEXT,
+        orden INTEGER DEFAULT 0,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Control de Asistencia ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS asistencia (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        empleado_documento TEXT NOT NULL,
+        empleado_nombre TEXT,
+        fecha TEXT NOT NULL,
+        hora_entrada TEXT,
+        hora_salida TEXT,
+        ip_entrada TEXT,
+        ip_salida TEXT,
+        UNIQUE(empleado_documento, fecha)
+    )");
+
+    // ---- Canal de Denuncias ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS denuncias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        categoria TEXT DEFAULT 'OTRO',
+        descripcion TEXT NOT NULL,
+        anonimo INTEGER DEFAULT 1,
+        denunciante_documento TEXT,
+        denunciante_nombre TEXT,
+        area_involucrada TEXT,
+        estado TEXT DEFAULT 'RECIBIDA',
+        respuesta TEXT,
+        atendido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        resuelto_en TEXT
+    )");
+
+    // ---- Reclutamiento y Selección ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS vacantes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        area TEXT,
+        descripcion TEXT,
+        requisitos TEXT,
+        estado TEXT DEFAULT 'ABIERTA',
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS candidatos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        vacante_id INTEGER NOT NULL REFERENCES vacantes(id) ON DELETE CASCADE,
+        nombre TEXT NOT NULL,
+        documento TEXT,
+        email TEXT,
+        celular TEXT,
+        cv_ruta TEXT,
+        cv_nombre TEXT,
+        estado TEXT DEFAULT 'RECIBIDO',
+        notas TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS enlaces_colaboracion (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo TEXT NOT NULL,

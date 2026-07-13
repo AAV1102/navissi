@@ -15,6 +15,32 @@ if ($u['documento']) {
     $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+// Control de asistencia: marcar entrada/salida del día de hoy.
+$msgAsistencia = null;
+$hoyFecha = date('Y-m-d');
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['accion'] ?? '', ['marcar_entrada', 'marcar_salida'], true) && $u['documento']) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+    if (($_POST['accion'] ?? '') === 'marcar_entrada') {
+        try {
+            $pdo->prepare("INSERT INTO asistencia (empleado_documento, empleado_nombre, fecha, hora_entrada, ip_entrada) VALUES (?,?,?,?,?)")
+                ->execute([$u['documento'], $u['nombre'], $hoyFecha, date('H:i:s'), $ip]);
+            $msgAsistencia = ['ok', 'Entrada marcada a las ' . date('H:i') . '.'];
+        } catch (PDOException $e) {
+            $msgAsistencia = ['error', 'Ya marcaste entrada hoy.'];
+        }
+    } else {
+        $pdo->prepare("UPDATE asistencia SET hora_salida = ?, ip_salida = ? WHERE empleado_documento = ? AND fecha = ? AND hora_salida IS NULL")
+            ->execute([date('H:i:s'), $ip, $u['documento'], $hoyFecha]);
+        $msgAsistencia = ['ok', 'Salida marcada a las ' . date('H:i') . '.'];
+    }
+}
+$asistenciaHoy = null;
+if ($u['documento']) {
+    $stmt = $pdo->prepare("SELECT * FROM asistencia WHERE empleado_documento = ? AND fecha = ?");
+    $stmt->execute([$u['documento'], $hoyFecha]);
+    $asistenciaHoy = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
 // Detecta automáticamente el/los equipos asignados a este empleado (por nombre,
 // igual que en la ficha de empleado), para que el ticket lleve el contexto técnico
 // (serial, marca, modelo, SO) SIN que el empleado tenga que saber ni escribir nada
@@ -142,6 +168,28 @@ if ($u['documento']) {
 <p class="subtitle">Solicita ayuda a TI, descarga tus certificados y consulta tus desprendibles - todo en un solo lugar.</p>
 <p><a class="btn btn-secondary" href="mis_accesos.php"><?= icon('key') ?> Ver mis accesos (Siesa, Office 365, OneDrive)</a></p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
+
+<?php if ($u['documento']): ?>
+<div class="panel" style="border-left:4px solid var(--teal-500);">
+    <h3><?= icon('briefcase') ?> Control de Asistencia - hoy <?= date('d/m/Y') ?></h3>
+    <?php if ($msgAsistencia): ?><div class="msg-<?= $msgAsistencia[0] ?>"><?= e($msgAsistencia[1]) ?></div><?php endif; ?>
+    <p class="small">
+        Entrada: <strong><?= $asistenciaHoy['hora_entrada'] ?? 'sin marcar' ?></strong>
+        · Salida: <strong><?= $asistenciaHoy['hora_salida'] ?? 'sin marcar' ?></strong>
+    </p>
+    <form method="post" class="toolbar" style="margin-bottom:0;">
+        <?php if (!$asistenciaHoy): ?>
+        <input type="hidden" name="accion" value="marcar_entrada">
+        <button type="submit"><?= icon('check') ?> Marcar entrada</button>
+        <?php elseif (!$asistenciaHoy['hora_salida']): ?>
+        <input type="hidden" name="accion" value="marcar_salida">
+        <button type="submit"><?= icon('check') ?> Marcar salida</button>
+        <?php else: ?>
+        <span class="badge badge-activo"><?= icon('check') ?> Jornada de hoy completa</span>
+        <?php endif; ?>
+    </form>
+</div>
+<?php endif; ?>
 
 <?php if ($empleado): ?>
 <div class="panel">
