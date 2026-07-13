@@ -197,6 +197,13 @@ class GraphClient {
         return $this->patch("/users/{$buzon}/messages/{$mensajeId}", ['isRead' => true]);
     }
 
+    /** Últimos correos de la bandeja (leídos y no leídos), para auditoría/verificación. */
+    public function leerMensajesRecientes($buzon, $top = 10) {
+        $orderby = rawurlencode('receivedDateTime desc');
+        $data = $this->get("/users/{$buzon}/mailFolders/inbox/messages?\$top={$top}&\$select=subject,receivedDateTime,isRead&\$orderby={$orderby}");
+        return $data['value'] ?? [];
+    }
+
     /** Sube un archivo pequeño (<4MB) al OneDrive de un usuario, dentro de una carpeta dada. */
     public function subirArchivoOneDrive($userId, $carpeta, $nombreArchivo, $contenidoBinario) {
         $token = $this->obtenerToken();
