@@ -1,33 +1,37 @@
-/* ============ NAVISSI Design System — basado en la referencia real (Atera) ============ */
+/* ============ NAVISSI Design System — editorial de boutique, no plantilla SaaS genérica ============ */
 :root {
-    /* Sidebar verde oscuro (igual a la referencia en IMAGENES/), no navy generico */
-    --navy-900:#07211d; --navy-800:#0b2b25; --navy-700:#123a32; --navy-600:#1b4c42;
-    /* Acento: magenta/rosa para botones primarios y estados activos, igual que la referencia */
-    --accent-600:#e31c6c; --accent-500:#ec4899; --accent-100:#fde7f0;
-    --teal-500:#0d9488; --teal-600:#0f766e;
-    --ink-900:#0f1521; --ink-700:#3c4658; --ink-500:#67728a; --ink-300:#a6afc2;
-    --line:#e3e6ec; --bg:#f4f5f7; --card:#ffffff;
-    --ok-bg:#ecfdf3; --ok-fg:#087443; --ok-line:#a6f4c5;
-    --warn-bg:#fffaeb; --warn-fg:#93650c; --warn-line:#fedf89;
-    --err-bg:#fef3f2; --err-fg:#b42318; --err-line:#fda29b;
-    --radius:10px; --radius-sm:7px;
-    /* La referencia es casi plana: bordes finos, casi sin sombra */
-    --shadow-sm: 0 1px 2px rgba(16,24,40,.04);
-    --shadow-md: 0 2px 6px rgba(16,24,40,.06);
-    --shadow-lg: 0 10px 28px rgba(16,24,40,.12);
+    /* Sidebar: negro cálido con base tinta (no navy ni verde corporativo genérico) */
+    --navy-900:#1b140f; --navy-800:#241b14; --navy-700:#33261b; --navy-600:#4a3626;
+    /* Acento primario: vino/burdeos editorial. Secundario: dorado cálido. Nada de morado/magenta SaaS. */
+    --accent-600:#7a2331; --accent-500:#9c3244; --accent-100:#f5e3e0;
+    --gold-500:#b8823f; --gold-600:#8f6329;
+    --teal-500:#5c7a63; --teal-600:#3f5c47;
+    --ink-900:#1c1712; --ink-700:#453a30; --ink-500:#7a6c5c; --ink-300:#b6a992;
+    --line:#e7ddc9; --bg:#faf6ee; --card:#fffdf8;
+    --ok-bg:#eef3e6; --ok-fg:#3f5c2a; --ok-line:#c3d6ab;
+    --warn-bg:#fbf1de; --warn-fg:#8a5a12; --warn-line:#e8c785;
+    --err-bg:#f7e9e3; --err-fg:#8a2f1c; --err-line:#dba48d;
+    --radius:4px; --radius-sm:3px;
+    /* Sombra cálida y baja, tono tinta en vez de gris frío neutro */
+    --shadow-sm: 0 1px 2px rgba(45,32,18,.06);
+    --shadow-md: 0 3px 10px rgba(45,32,18,.10);
+    --shadow-lg: 0 14px 34px rgba(45,32,18,.18);
+    --font-heading: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 :root[data-theme="dark"] {
-    --navy-900:#05070d; --navy-800:#0a0f1a; --navy-700:#111a2c; --navy-600:#1b2740;
-    --accent-600:#7c7ff1; --accent-500:#9497f5; --accent-100:#1c2040;
-    --teal-500:#2dd4bf; --teal-600:#14b8a6;
-    --ink-900:#eef1f8; --ink-700:#c3cadb; --ink-500:#8b93aa; --ink-300:#5a6580;
-    --line:#232c40; --bg:#0b0f18; --card:#131a29;
-    --ok-bg:#0d2a1e; --ok-fg:#4ade80; --ok-line:#1e4d38;
-    --warn-bg:#2e2308; --warn-fg:#fbbf24; --warn-line:#4d3d10;
-    --err-bg:#2e1210; --err-fg:#f87171; --err-line:#4d1e1a;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
-    --shadow-md: 0 4px 14px rgba(0,0,0,.4);
-    --shadow-lg: 0 18px 44px rgba(0,0,0,.55);
+    --navy-900:#0c0908; --navy-800:#16110d; --navy-700:#211a13; --navy-600:#332619;
+    --accent-600:#c9707f; --accent-500:#d68b98; --accent-100:#2e1a1d;
+    --gold-500:#d4a45f; --gold-600:#b8823f;
+    --teal-500:#8fae95; --teal-600:#6f8f76;
+    --ink-900:#f3ede2; --ink-700:#d2c6b3; --ink-500:#a3937b; --ink-300:#6b5d4a;
+    --line:#332a1f; --bg:#120e0a; --card:#1c1611;
+    --ok-bg:#1c2916; --ok-fg:#9bc47e; --ok-line:#3a4e2c;
+    --warn-bg:#2e2308; --warn-fg:#e8c785; --warn-line:#4d3d10;
+    --err-bg:#2e1712; --err-fg:#e0967d; --err-line:#4d281e;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
+    --shadow-md: 0 4px 14px rgba(0,0,0,.45);
+    --shadow-lg: 0 18px 44px rgba(0,0,0,.6);
 }
 :root[data-theme="dark"] body { background: var(--bg); color: var(--ink-700); }
 :root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea {
@@ -51,8 +55,12 @@ body { overflow-x: hidden; }
 .skip-link:focus { left:0; }
 body {
     margin:0; background:var(--bg); color:var(--ink-700);
-    font-family: -apple-system, "Segoe UI", "Inter", Roboto, Arial, sans-serif;
+    font-family: var(--font-body);
     font-size:14px; line-height:1.5;
+}
+h1, h2, h3, .sidebar-brand-text, .user-panel-head strong, .notif-panel-title {
+    font-family: var(--font-heading);
+    letter-spacing: -.01em;
 }
 a { color: var(--teal-600); }
 .icon { width:16px; height:16px; display:inline-block; vertical-align:-3px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
@@ -131,7 +139,7 @@ a { color: var(--teal-600); }
 main { max-width:1240px; width:100%; margin:14px auto 26px; padding:0 22px 70px; }
 
 /* ---- Page header ---- */
-h1 { font-size:21px; font-weight:700; color:var(--ink-900); margin:0 0 4px; display:flex; align-items:center; gap:10px; }
+h1 { font-size:25px; font-weight:600; color:var(--ink-900); margin:0 0 4px; display:flex; align-items:center; gap:10px; }
 .subtitle { color:var(--ink-500); margin-bottom:22px; font-size:13.5px; }
 
 /* ---- Stat cards ----

@@ -116,7 +116,7 @@ function plantilla_correo_html(string $titulo, string $cuerpoHtml, ?string $boto
     $boton = '';
     if ($botonTexto && $botonUrl) {
         $boton = "<p style=\"text-align:center;margin:28px 0;\">
-            <a href=\"" . htmlspecialchars($botonUrl) . "\" style=\"background:#e31c6c;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;\">" . htmlspecialchars($botonTexto) . "</a>
+            <a href=\"" . htmlspecialchars($botonUrl) . "\" style=\"background:#7a2331;color:#fff;padding:12px 26px;border-radius:4px;text-decoration:none;font-weight:600;display:inline-block;\">" . htmlspecialchars($botonTexto) . "</a>
         </p>";
     }
     return "<!DOCTYPE html><html><body style=\"margin:0;padding:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;\">
