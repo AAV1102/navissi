@@ -15,6 +15,10 @@ $pdo = db();
 $area = alcance_area();
 $condEquipo = $area !== null ? " WHERE area = " . $pdo->quote($area) : '';
 $condEmpleado = $area !== null ? " WHERE area = " . $pdo->quote($area) : '';
+// Los tickets y solicitudes de aprobación SÍ tienen su propio campo de área -
+// antes el dashboard los contaba globales aunque el usuario tuviera alcance limitado.
+$condTicketArea = $area !== null ? " AND solicitante_area = " . $pdo->quote($area) : '';
+$condSolicitudArea = $area !== null ? " AND area_responsable = " . $pdo->quote($area) : '';
 
 // El panel NO es el mismo para todos: cada familia de roles ve los widgets
 // que le sirven a su trabajo, no una lista genérica de conteos.
@@ -34,7 +38,7 @@ if (!empty($uActual['nombre'])) {
     $misTickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$solicitudesPendientes = (int) $pdo->query("SELECT COUNT(*) FROM solicitudes_aprobacion WHERE estado='PENDIENTE'")->fetchColumn();
+$solicitudesPendientes = (int) $pdo->query("SELECT COUNT(*) FROM solicitudes_aprobacion WHERE estado='PENDIENTE'{$condSolicitudArea}")->fetchColumn();
 $proximosEventos = $pdo->query("SELECT e.*, s.nombre AS sede_nombre FROM calendario_eventos e LEFT JOIN sedes s ON e.sede_id = s.id
     WHERE fecha_inicio >= datetime('now') ORDER BY fecha_inicio ASC LIMIT 6")->fetchAll(PDO::FETCH_ASSOC);
 $contratosPorVencer = $pdo->query("SELECT proveedor_nombre, tipo, fecha_fin, julianday(fecha_fin) - julianday('now') AS dias
@@ -47,16 +51,16 @@ if ($vistaTecnica) {
     $totalCred = $pdo->query("SELECT COUNT(*) FROM credenciales")->fetchColumn();
     $totalLicencias = $pdo->query("SELECT COALESCE(SUM(cantidad),0) FROM licencias")->fetchColumn();
     $pendientesImport = $pdo->query("SELECT COUNT(*) FROM importaciones_log")->fetchColumn();
-    $ticketsAbiertos = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado='ABIERTO'")->fetchColumn();
-    $slaVencidos = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado NOT IN ('CERRADO','RESUELTO POR IA') AND sla_limite IS NOT NULL AND sla_limite < datetime('now')")->fetchColumn();
+    $ticketsAbiertos = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado='ABIERTO'{$condTicketArea}")->fetchColumn();
+    $slaVencidos = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado NOT IN ('CERRADO','RESUELTO POR IA') AND sla_limite IS NOT NULL AND sla_limite < datetime('now'){$condTicketArea}")->fetchColumn();
     $porSistema = $pdo->query("SELECT sistema, COUNT(*) c FROM credenciales GROUP BY sistema ORDER BY c DESC")->fetchAll(PDO::FETCH_ASSOC);
     $porSede = $pdo->query("SELECT s.nombre, COUNT(i.id) c FROM sedes s LEFT JOIN inventario i ON i.sede_id = s.id{$condEquipo} GROUP BY s.id ORDER BY c DESC")->fetchAll(PDO::FETCH_ASSOC);
 
     // Widget "Estado del ticket" estilo Atera: pastillas con conteos reales
-    $ticketsPendientes = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado = 'EN PROCESO'")->fetchColumn();
-    $ticketsVenceHoy = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado NOT IN ('CERRADO','RESUELTO POR IA') AND sla_limite IS NOT NULL AND date(sla_limite) = date('now')")->fetchColumn();
+    $ticketsPendientes = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado = 'EN PROCESO'{$condTicketArea}")->fetchColumn();
+    $ticketsVenceHoy = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado NOT IN ('CERRADO','RESUELTO POR IA') AND sla_limite IS NOT NULL AND date(sla_limite) = date('now'){$condTicketArea}")->fetchColumn();
     $ticketsConRetraso = $slaVencidos;
-    $ticketsSinAsignar = $pdo->query("SELECT id, titulo, prioridad, sla_limite FROM tickets WHERE (asignado_a IS NULL OR asignado_a = '') AND estado NOT IN ('CERRADO','RESUELTO POR IA') ORDER BY creado_en DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+    $ticketsSinAsignar = $pdo->query("SELECT id, titulo, prioridad, sla_limite FROM tickets WHERE (asignado_a IS NULL OR asignado_a = '') AND estado NOT IN ('CERRADO','RESUELTO POR IA'){$condTicketArea} ORDER BY creado_en DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
 
     // Tendencia real dia contra dia (se guarda un snapshot diario la primera vez que se abre el dashboard cada dia)
     $tendenciaEquipos = tendencia_metrica($pdo, 'dash_equipos' . ($area ?: ''), (float) $totalEquipos);
@@ -72,7 +76,9 @@ if ($vistaTecnica) {
 } else { // vista ejecutiva
     $totalEquipos = $pdo->query("SELECT COUNT(*) FROM inventario{$condEquipo}")->fetchColumn();
     $totalEmpleados = $pdo->query("SELECT COUNT(*) FROM empleados{$condEmpleado}")->fetchColumn();
-    $ticketsAbiertos = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado='ABIERTO'")->fetchColumn();
+    $ticketsAbiertos = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado='ABIERTO'{$condTicketArea}")->fetchColumn();
+    // El valor de contratos SÍ es global a propósito: los contratos no tienen concepto de área
+    // (son de la empresa como un todo), solo GERENCIA/CEO/DIRECTOR ven esta vista de todas formas.
     $valorContratosVigentes = (float) $pdo->query("SELECT COALESCE(SUM(valor),0) FROM contratos WHERE estado='VIGENTE'")->fetchColumn();
     $porSede = $pdo->query("SELECT s.nombre, COUNT(i.id) c FROM sedes s LEFT JOIN inventario i ON i.sede_id = s.id{$condEquipo} GROUP BY s.id ORDER BY c DESC")->fetchAll(PDO::FETCH_ASSOC);
 }
