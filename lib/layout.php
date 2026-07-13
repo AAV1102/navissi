@@ -26,6 +26,7 @@ function nav_grupos() {
                 'modules/plantillas_correo.php' => ['Plantillas de Correo', 'chat'],
                 'modules/proyectos.php' => ['Proyectos', 'dashboard'],
                 'modules/gestion_documental.php' => ['Gestión Documental', 'folder'],
+                'modules/firmas_oficiales.php' => ['Firmas Oficiales', 'check'],
             ],
         ],
         'Inventario y activos' => [

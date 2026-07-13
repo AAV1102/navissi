@@ -85,8 +85,20 @@ if ($tipo === 'retiro') {
 
 $pdf->espacio(30);
 $pdf->parrafo('Atentamente,');
-$pdf->espacio(30);
-$pdf->linea();
-$pdf->parrafo('Recursos Humanos - Grupo 10Z SAS');
+$pdf->espacio(10);
+
+$stmtFirma = $pdo->prepare("SELECT * FROM firmas_oficiales WHERE area = 'RRHH'");
+$stmtFirma->execute();
+$firmaRrhh = $stmtFirma->fetch(PDO::FETCH_ASSOC);
+
+if ($firmaRrhh) {
+    $pdf->imagenJpeg($firmaRrhh['firma_jpeg_base64'], 140);
+    $pdf->parrafo($firmaRrhh['nombre_firmante'] ?: 'Recursos Humanos - Grupo 10Z SAS');
+    if ($firmaRrhh['cargo_firmante']) { $pdf->parrafo($firmaRrhh['cargo_firmante']); }
+} else {
+    $pdf->espacio(20);
+    $pdf->linea();
+    $pdf->parrafo('Recursos Humanos - Grupo 10Z SAS');
+}
 
 $pdf->salida($nombreArchivo, false);

@@ -17,6 +17,9 @@ if (!$acta) {
 }
 
 $esTI = tiene_rol(['ADMIN', 'TI', 'RRHH']);
+$stmtFirmaTI = $pdo->prepare("SELECT * FROM firmas_oficiales WHERE area = 'TI'");
+$stmtFirmaTI->execute();
+$firmaOficialTI = $stmtFirmaTI->fetch(PDO::FETCH_ASSOC);
 $esElEmpleado = !empty($u['documento']) && $u['documento'] === $acta['empleado_documento'];
 if (!$esTI && !$esElEmpleado) {
     layout_inicio('Sin acceso', 'Actas de Equipos', '../');
@@ -73,6 +76,14 @@ $tipoEtiquetas = ['ENTREGA' => 'Entrega', 'DEVOLUCION' => 'Devolución', 'PRESTA
         <img src="<?= e($acta['firma_entrega']) ?>" alt="Firma" style="max-width:100%;border:1px solid var(--line);border-radius:6px;background:#fff;">
         <p class="small">Firmado por <?= e($acta['firmado_entrega_por']) ?> el <?= e($acta['firmado_entrega_en']) ?></p>
         <?php elseif ($esTI): ?>
+        <?php if ($firmaOficialTI): ?>
+        <p class="small">Tienes una firma oficial de TI guardada — puedes usarla directamente o dibujar una nueva abajo.</p>
+        <form method="post" style="margin-bottom:10px;">
+            <input type="hidden" name="accion" value="firmar_entrega">
+            <input type="hidden" name="firma" value="<?= e($firmaOficialTI['firma_jpeg_base64']) ?>">
+            <button type="submit"><?= icon('check') ?> Usar firma oficial guardada</button>
+        </form>
+        <?php endif; ?>
         <canvas id="canvas-entrega" width="400" height="150" style="border:1px solid var(--line);border-radius:6px;background:#fff;width:100%;touch-action:none;"></canvas>
         <div class="toolbar" style="margin-top:8px;">
             <button type="button" class="btn-secondary" onclick="limpiarCanvas('canvas-entrega')">Limpiar</button>

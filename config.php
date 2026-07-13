@@ -184,6 +184,16 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Firmas oficiales guardadas (se adjuntan automáticamente en certificados/actas) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS firmas_oficiales (
+        area TEXT PRIMARY KEY,
+        firma_jpeg_base64 TEXT NOT NULL,
+        nombre_firmante TEXT,
+        cargo_firmante TEXT,
+        actualizado_por TEXT,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // ---- Etiquetas de menú personalizadas (edición de textos sin tocar código) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS etiquetas_menu (
         href TEXT PRIMARY KEY,
