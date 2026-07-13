@@ -113,6 +113,13 @@ if ($personalTk === null && alcance_area() !== null && $ticket['solicitante_area
     exit;
 }
 
+$equipoRelacionado = null;
+if (!empty($ticket['equipo_serial'])) {
+    $stmtEq = $pdo->prepare("SELECT * FROM inventario WHERE serial = ?");
+    $stmtEq->execute([$ticket['equipo_serial']]);
+    $equipoRelacionado = $stmtEq->fetch(PDO::FETCH_ASSOC);
+}
+
 $camposDef = $pdo->query("SELECT * FROM campos_personalizados_def WHERE entidad = 'tickets' ORDER BY nombre_campo")->fetchAll(PDO::FETCH_ASSOC);
 $camposValores = [];
 if ($camposDef) {
@@ -155,6 +162,23 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
                 <tr><th>SLA límite</th><td class="small"><?= e($ticket['sla_limite']) ?: '—' ?></td></tr>
             </table>
         </div>
+        <?php if ($equipoRelacionado && tiene_rol(['ADMIN', 'TI'])): ?>
+        <div class="panel" style="border-left:4px solid var(--teal-500);">
+            <h3><?= icon('zap') ?> Equipo relacionado</h3>
+            <table class="deftable">
+                <tr><th>Equipo</th><td><?= e($equipoRelacionado['marca']) ?> <?= e($equipoRelacionado['modelo']) ?><br><span class="small"><?= e($equipoRelacionado['serial']) ?></span></td></tr>
+                <tr><th>Usuario</th><td><?= e($equipoRelacionado['asignado_a']) ?: '—' ?></td></tr>
+                <tr><th>SO</th><td class="small"><?= e($equipoRelacionado['sistema_operativo']) ?: '—' ?></td></tr>
+            </table>
+            <?php if ($equipoRelacionado['rustdesk_id']): ?>
+            <a class="btn" style="width:100%;justify-content:center;margin-top:8px;" href="rustdesk://<?= e($equipoRelacionado['rustdesk_id']) ?>?password=<?= e($equipoRelacionado['rustdesk_password']) ?>"><?= icon('zap') ?> Conectar remoto (RustDesk)</a>
+            <?php elseif ($equipoRelacionado['ip_local']): ?>
+            <a class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:8px;" href="ms-rd:subscribe?url=rdp://full%20address=s:<?= e($equipoRelacionado['ip_local']) ?>" title="Requiere Escritorio Remoto de Windows habilitado"><?= icon('cloud') ?> RDP (<?= e($equipoRelacionado['ip_local']) ?>)</a>
+            <?php else: ?>
+            <p class="small">Este equipo aún no tiene agente RustDesk ni IP registrada — <a href="acceso_remoto.php">ver en Acceso Remoto</a>.</p>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
         <?php if ($camposDef): ?>
         <div class="panel">
             <h3><?= icon('ticket') ?> Campos personalizados</h3>
