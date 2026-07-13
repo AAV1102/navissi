@@ -100,6 +100,20 @@ layout_inicio('Dashboard', 'Dashboard');
 </p>
 
 <?php if ($vistaTecnica): ?>
+<div class="dash-hero">
+    <div>
+        <div class="dash-hero-eyebrow">Mesa de Ayuda · hoy</div>
+        <div class="dash-hero-num"><?= (int)$ticketsAbiertos ?></div>
+        <div class="dash-hero-label">Tickets abiertos<?= $area !== null ? ' en tu área' : ' en el sistema' ?> — <?= $slaVencidos ?> con SLA vencido</div>
+    </div>
+    <div class="dash-hero-side">
+        <div class="dash-hero-mini"><span class="n"><?= (int)$totalEquipos ?></span><span class="l">Equipos</span></div>
+        <div class="dash-hero-mini"><span class="n"><?= (int)$totalCred ?></span><span class="l">Credenciales</span></div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($vistaTecnica): ?>
 <div class="cards">
     <a class="card card-link" href="modules/inventario.php"><div class="num"><?= (int)$totalEquipos ?></div><div class="label">Equipos en inventario</div><?= badge_tendencia($tendenciaEquipos) ?></a>
     <a class="card card-link" href="modules/sedes.php"><div class="num"><?= (int)$totalSedes ?></div><div class="label">Sedes registradas</div></a>
@@ -180,6 +194,17 @@ layout_inicio('Dashboard', 'Dashboard');
 <p class="small">Si el dashboard está vacío, ve a <a href="modules/importar.php">Importar</a> y carga los maestros de TI 2026.</p>
 
 <?php elseif ($vistaRRHH): ?>
+<div class="dash-hero">
+    <div>
+        <div class="dash-hero-eyebrow">Talento Humano</div>
+        <div class="dash-hero-num"><?= (int)$totalActivos ?></div>
+        <div class="dash-hero-label">Empleados activos — <?= $vacacionesPendientes ?> vacaciones/permisos por revisar</div>
+    </div>
+    <div class="dash-hero-side">
+        <div class="dash-hero-mini"><span class="n"><?= (int)$totalEmpleados ?></span><span class="l">Registrados</span></div>
+        <div class="dash-hero-mini"><span class="n"><?= $evaluacionesBorrador ?></span><span class="l">Evaluaciones</span></div>
+    </div>
+</div>
 <div class="cards">
     <div class="card"><div class="num"><?= (int)$totalEmpleados ?></div><div class="label">Empleados registrados</div></div>
     <div class="card"><div class="num"><?= (int)$totalActivos ?></div><div class="label">Empleados activos</div></div>
@@ -206,6 +231,17 @@ layout_inicio('Dashboard', 'Dashboard');
 </div>
 
 <?php else: ?>
+<div class="dash-hero">
+    <div>
+        <div class="dash-hero-eyebrow">Resumen ejecutivo</div>
+        <div class="dash-hero-num">$<?= number_format($valorContratosVigentes, 0, ',', '.') ?></div>
+        <div class="dash-hero-label">Valor en contratos vigentes — <?= $ticketsAbiertos ?> tickets abiertos<?= $area !== null ? ' en tu área' : '' ?></div>
+    </div>
+    <div class="dash-hero-side">
+        <div class="dash-hero-mini"><span class="n"><?= (int)$totalEquipos ?></span><span class="l">Equipos</span></div>
+        <div class="dash-hero-mini"><span class="n"><?= (int)$totalEmpleados ?></span><span class="l">Empleados</span></div>
+    </div>
+</div>
 <div class="cards">
     <div class="card"><div class="num"><?= (int)$totalEquipos ?></div><div class="label">Equipos en inventario</div></div>
     <div class="card"><div class="num"><?= (int)$totalEmpleados ?></div><div class="label">Empleados</div></div>

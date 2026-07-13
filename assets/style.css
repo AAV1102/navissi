@@ -171,6 +171,30 @@ a.card-link:hover { border-color:var(--accent-500); box-shadow:var(--shadow-md);
 .tendencia { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700; margin-top:4px; color:var(--ink-500); }
 .tendencia-igual { color:var(--ink-300); font-weight:500; }
 
+/* ---- Hero de dashboard: rompe la cuadrícula uniforme con un bloque negro
+   editorial, como la portada de navissi.com, en vez de otra tarjeta más. ---- */
+.dash-hero {
+    background:var(--navy-900); color:#fff; border-radius:var(--radius); padding:34px 30px;
+    margin-bottom:22px; position:relative; overflow:hidden;
+    display:grid; grid-template-columns:1fr auto; gap:24px; align-items:end;
+}
+.dash-hero::before {
+    content:""; position:absolute; top:-40%; right:-10%; width:280px; height:280px; border-radius:50%;
+    background:radial-gradient(circle, var(--accent-600) 0%, transparent 70%); opacity:.35;
+}
+.dash-hero-eyebrow { text-transform:uppercase; letter-spacing:.12em; font-size:11px; color:var(--gold-500); font-weight:700; margin-bottom:8px; }
+.dash-hero-num { font-family:var(--font-heading); font-size:56px; font-weight:700; line-height:1; position:relative; }
+.dash-hero-label { color:#d8d8d8; font-size:13.5px; margin-top:8px; position:relative; }
+.dash-hero-side { display:flex; flex-direction:column; gap:14px; position:relative; }
+.dash-hero-mini { text-align:right; }
+.dash-hero-mini .n { font-size:22px; font-weight:700; display:block; }
+.dash-hero-mini .l { font-size:11px; color:#b8b8b8; text-transform:uppercase; letter-spacing:.05em; }
+@media (max-width: 640px) { .dash-hero { grid-template-columns:1fr; } .dash-hero-side { flex-direction:row; justify-content:space-between; } .dash-hero-mini { text-align:left; } }
+
+/* Variedad en las tarjetas: alterna un poco de peso visual entre ellas
+   en vez de que todas se vean identicas en tamaño e importancia. */
+.cards > *:first-child, .stat-cards > *:first-child { border-color:var(--ink-900); border-width:1.5px; }
+
 /* ---- Panels ---- */
 .panel { background:var(--card); border-radius:var(--radius); padding:22px; border:1px solid var(--line); margin-bottom:20px; position:relative; }
 .panel h3 { margin:0 0 14px; font-size:15px; font-weight:700; color:var(--ink-900); display:flex; align-items:center; gap:8px; }
