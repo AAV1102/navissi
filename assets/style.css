@@ -38,9 +38,9 @@
     background: var(--card); color: var(--ink-900); border-color: var(--line);
 }
 :root[data-theme="dark"] table, :root[data-theme="dark"] .deftable { background: var(--card); }
-:root[data-theme="dark"] th { background: #0e1420; color: var(--ink-500); }
-:root[data-theme="dark"] tbody tr:hover td, :root[data-theme="dark"] table.tabla-viva tr:not(:first-child):hover td { background: #182238 !important; }
-:root[data-theme="dark"] table.tabla-viva tr:not(:first-child):nth-child(even) td { background: #10182a; }
+:root[data-theme="dark"] th { background: var(--navy-900); color: #fff; }
+:root[data-theme="dark"] tbody tr:hover td, :root[data-theme="dark"] table.tabla-viva tr:not(:first-child):hover td { background: var(--accent-100) !important; }
+:root[data-theme="dark"] table.tabla-viva tr:not(:first-child):nth-child(even) td { background: var(--bg); }
 :root[data-theme="dark"] .btn-secondary { background: var(--card); color: var(--ink-700); }
 :root[data-theme="dark"] .auth-panel { background: var(--bg); }
 :root[data-theme="dark"] .notif-panel, :root[data-theme="dark"] .ver-como-panel { background: var(--card); color: var(--ink-700); }
@@ -236,9 +236,15 @@ body.tiene-panel-fullscreen::before { content:""; position:fixed; inset:0; backg
 .tabla-scroll table { border:none; border-radius:0; }
 table { width:100%; min-width:640px; border-collapse:collapse; background:var(--card); border-radius:var(--radius); border:1px solid var(--line); }
 th, td { padding:11px 14px; text-align:left; font-size:13px; border-bottom:1px solid var(--line); }
-th { background:var(--bg); color:var(--ink-500); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; }
-tbody tr:hover td { background:#fafbfe; }
+th { background:var(--navy-900); color:#fff; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.05em; border-bottom:none; }
+th:first-child { border-top-left-radius:var(--radius); }
+th:last-child { border-top-right-radius:var(--radius); }
+tbody tr:nth-child(even) td { background:var(--bg); }
+tbody tr:hover td { background:var(--accent-100); }
 tbody tr:last-child td { border-bottom:none; }
+/* Primera columna con mas peso tipografico - guia el ojo, evita que toda
+   la fila se lea plana/uniforme. */
+tr > td:first-child { font-weight:600; color:var(--ink-900); }
 
 /* ---- Definition tables (ficha detalle: pares etiqueta/valor) ---- */
 .deftable { width:100%; border-collapse:collapse; background:var(--card); border-radius:var(--radius); overflow:hidden; border:1px solid var(--line); }
