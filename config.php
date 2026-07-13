@@ -145,6 +145,11 @@ function migrar_esquema(PDO $pdo) {
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
+    $columnasCategoriasTk = array_column($pdo->query("PRAGMA table_info(categorias_tickets)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('tecnico_default', $columnasCategoriasTk, true)) {
+        $pdo->exec("ALTER TABLE categorias_tickets ADD COLUMN tecnico_default TEXT");
+    }
+
     // ---- Mesa de Ayuda: adjuntos y respuestas al cliente ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS tickets_adjuntos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

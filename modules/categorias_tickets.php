@@ -19,8 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = ['error', 'El nombre es obligatorio.'];
         } else {
             try {
-                $pdo->prepare("INSERT INTO categorias_tickets (nombre, descripcion, area_responsable, color) VALUES (?,?,?,?)")
-                    ->execute([$nombre, limpio($_POST['descripcion'] ?? null), limpio($_POST['area_responsable'] ?? null), $_POST['color'] ?? '#e31c6c']);
+                $pdo->prepare("INSERT INTO categorias_tickets (nombre, descripcion, area_responsable, color, tecnico_default) VALUES (?,?,?,?,?)")
+                    ->execute([$nombre, limpio($_POST['descripcion'] ?? null), limpio($_POST['area_responsable'] ?? null), $_POST['color'] ?? '#e31c6c', limpio($_POST['tecnico_default'] ?? null)]);
                 $msg = ['ok', 'Categoría creada.'];
             } catch (PDOException $e) {
                 $msg = ['error', 'Ya existe una categoría con ese nombre.'];
@@ -29,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($accion === 'cambiar_estado') {
         $pdo->prepare("UPDATE categorias_tickets SET activa = ? WHERE id = ?")->execute([(int) $_POST['activa'], (int) $_POST['id']]);
         $msg = ['ok', 'Actualizado.'];
+    } elseif ($accion === 'guardar_tecnico') {
+        $pdo->prepare("UPDATE categorias_tickets SET tecnico_default = ? WHERE id = ?")
+            ->execute([limpio($_POST['tecnico_default'] ?? null), (int) $_POST['id']]);
+        $msg = ['ok', 'Técnico por defecto actualizado.'];
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM categorias_tickets WHERE id = ?")->execute([(int) $_POST['id']]);
         $msg = ['ok', 'Eliminada.'];
@@ -55,18 +59,26 @@ layout_inicio('Categorías de Tickets', 'Categorías de Tickets', '../');
         </div>
         <label>Descripción</label>
         <input type="text" name="descripcion" style="width:100%;margin-bottom:10px;">
+        <label>Técnico por defecto (se asigna automáticamente cuando la IA escala un ticket de correo a esta categoría/área)</label>
+        <input type="text" name="tecnico_default" style="width:100%;margin-bottom:10px;" placeholder="Nombre del técnico">
         <button type="submit"><?= icon('check') ?> Crear categoría</button>
     </form>
 </div>
 
 <table>
-    <tr><th>Color</th><th>Nombre</th><th>Área</th><th>Descripción</th><th>Tickets con esta categoría</th><th>Estado</th><th></th></tr>
+    <tr><th>Color</th><th>Nombre</th><th>Área</th><th>Descripción</th><th>Técnico por defecto</th><th>Tickets con esta categoría</th><th>Estado</th><th></th></tr>
     <?php foreach ($categorias as $c): ?>
     <tr>
         <td><span style="display:inline-block;width:16px;height:16px;border-radius:4px;background:<?= e($c['color']) ?>;"></span></td>
         <td><strong><?= e($c['nombre']) ?></strong></td>
         <td><?= e($c['area_responsable']) ?: '—' ?></td>
         <td><?= e($c['descripcion']) ?: '—' ?></td>
+        <td>
+            <form method="post" class="inline">
+                <input type="hidden" name="accion" value="guardar_tecnico"><input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
+                <input type="text" name="tecnico_default" value="<?= e($c['tecnico_default'] ?? '') ?>" placeholder="Sin asignar" style="width:140px;font-size:12px;" onblur="this.form.requestSubmit()">
+            </form>
+        </td>
         <td><?= (int)$c['uso'] ?></td>
         <td>
             <form method="post" class="inline">

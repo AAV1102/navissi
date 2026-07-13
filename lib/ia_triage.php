@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/ia_client.php';
+require_once __DIR__ . '/mailer.php';
 
 /**
  * Autogestión con IA: cuando entra un ticket nuevo (de cualquier canal),
@@ -55,19 +56,39 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
 
     $resuelto = str_contains($respuesta, 'RESUELTO');
     $textoLimpio = trim(preg_replace('/RESUELTO\s*$/', '', preg_replace('/ESCALAR:\w+\s*$/', '', $respuesta)));
-
-    $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
-        ->execute([$ticketId, 'Agente IA', $textoLimpio, 'IA']);
+    $tieneContacto = $ticket['solicitante_contacto'] && filter_var($ticket['solicitante_contacto'], FILTER_VALIDATE_EMAIL);
 
     if ($resuelto) {
+        $enviado = false;
+        if ($tieneContacto) {
+            $html = plantilla_correo_html("Solución a tu ticket #{$ticketId}",
+                "<p>Hola " . e($ticket['solicitante']) . ",</p><p>" . nl2br(e($textoLimpio)) . "</p><p class=\"small\">— Agente IA, Mesa de Ayuda NAVISSI</p>");
+            $enviado = enviar_correo($ticket['solicitante_contacto'], "Solución a tu ticket #{$ticketId} — {$ticket['titulo']}", $html, $ticket['solicitante']);
+        }
+        $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo, visible_cliente, enviado_correo) VALUES (?,?,?,?,?,?)")
+            ->execute([$ticketId, 'Agente IA', $textoLimpio, 'IA', 1, $enviado ? 1 : 0]);
         $pdo->prepare("UPDATE tickets SET estado = 'RESUELTO POR IA', actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$ticketId]);
-        hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'AUTOGESTION_IA', 'La IA resolvió el ticket sin técnico, usando la base de conocimiento.', 'IA', $ticketId);
+        hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'AUTOGESTION_IA', 'La IA resolvió el ticket sin técnico, usando la base de conocimiento, y respondió al cliente por correo.', 'IA', $ticketId);
     } else {
+        $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
+            ->execute([$ticketId, 'Agente IA', $textoLimpio, 'IA']);
+
         preg_match('/ESCALAR:(\w+)/', $respuesta, $m);
         $area = $m[1] ?? 'TI';
-        $pdo->prepare("UPDATE tickets SET categoria = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$area, $ticketId]);
-        $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
-            ->execute([$ticketId, 'Sistema', "Escalado automáticamente al área {$area} - requiere técnico.", 'SISTEMA']);
-        hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'ESCALADO_IA', "Escalado al área {$area} por la IA (no se pudo autogestionar).", 'IA', $ticketId);
+        $stmtCat = $pdo->prepare("SELECT tecnico_default FROM categorias_tickets WHERE UPPER(nombre) = ? OR UPPER(area_responsable) = ? LIMIT 1");
+        $stmtCat->execute([$area, $area]);
+        $tecnico = $stmtCat->fetchColumn() ?: null;
+
+        if ($tecnico) {
+            $pdo->prepare("UPDATE tickets SET categoria = ?, asignado_a = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$area, $tecnico, $ticketId]);
+            $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
+                ->execute([$ticketId, 'Sistema', "Escalado automáticamente al área {$area} y asignado a {$tecnico}.", 'SISTEMA']);
+            hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'ESCALADO_IA', "Escalado al área {$area} y asignado a {$tecnico} automáticamente.", 'IA', $ticketId);
+        } else {
+            $pdo->prepare("UPDATE tickets SET categoria = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$area, $ticketId]);
+            $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
+                ->execute([$ticketId, 'Sistema', "Escalado automáticamente al área {$area} - sin técnico por defecto configurado para esa categoría.", 'SISTEMA']);
+            hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'ESCALADO_IA', "Escalado al área {$area} por la IA (no se pudo autogestionar; sin técnico por defecto).", 'IA', $ticketId);
+        }
     }
 }
