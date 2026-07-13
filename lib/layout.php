@@ -41,6 +41,7 @@ function nav_grupos() {
                 'modules/qr_equipos.php' => ['Códigos QR de Equipos', 'inventory'],
                 'modules/grupos_codigos.php' => ['Códigos Agrupados', 'inventory'],
                 'modules/gestion_parches.php' => ['Gestión de Parches', 'shield'],
+                'modules/actas_equipos.php' => ['Actas de Entrega/Devolución', 'file'],
                 'modules/network_discovery.php' => ['Network Discovery', 'cloud'],
             ],
         ],

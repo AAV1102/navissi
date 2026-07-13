@@ -1,0 +1,95 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../lib/layout.php';
+$pdo = db();
+$u = usuario_actual();
+$msg = null;
+
+if (!tiene_rol(['ADMIN', 'TI', 'RRHH'])) {
+    layout_inicio('Actas de Equipos', 'Actas de Equipos', '../');
+    echo '<div class="msg-error">No tienes permiso para gestionar actas de equipos.</div>';
+    layout_fin();
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear') {
+    $empleadoDoc = limpio($_POST['empleado_documento'] ?? null);
+    $serial = limpio($_POST['equipo_serial'] ?? null);
+    $tipo = limpio($_POST['tipo'] ?? null) ?: 'ENTREGA';
+    if ($empleadoDoc && $tipo) {
+        $stmtE = $pdo->prepare("SELECT nombres FROM empleados WHERE documento = ?");
+        $stmtE->execute([$empleadoDoc]);
+        $empleadoNombre = $stmtE->fetchColumn();
+
+        $equipoDescripcion = null;
+        if ($serial) {
+            $stmtEq = $pdo->prepare("SELECT marca, modelo FROM inventario WHERE serial = ?");
+            $stmtEq->execute([$serial]);
+            if ($eq = $stmtEq->fetch(PDO::FETCH_ASSOC)) $equipoDescripcion = trim($eq['marca'] . ' ' . $eq['modelo']);
+        }
+
+        $pdo->prepare("INSERT INTO actas_equipos (tipo, empleado_documento, empleado_nombre, equipo_serial, equipo_descripcion, accesorios, estado_equipo, observaciones, creado_por) VALUES (?,?,?,?,?,?,?,?,?)")
+            ->execute([$tipo, $empleadoDoc, $empleadoNombre, $serial, $equipoDescripcion,
+                limpio($_POST['accesorios'] ?? null), limpio($_POST['estado_equipo'] ?? null),
+                limpio($_POST['observaciones'] ?? null), $u['nombre']]);
+        $msg = ['ok', 'Acta creada. Ahora hay que firmarla (por TI/quien entrega y por el empleado).'];
+    }
+}
+
+$actas = $pdo->query("SELECT * FROM actas_equipos ORDER BY creado_en DESC")->fetchAll(PDO::FETCH_ASSOC);
+$empleados = $pdo->query("SELECT documento, nombres FROM empleados WHERE estado='ACTIVO' ORDER BY nombres")->fetchAll(PDO::FETCH_ASSOC);
+$equipos = $pdo->query("SELECT serial, marca, modelo FROM inventario ORDER BY marca")->fetchAll(PDO::FETCH_ASSOC);
+
+layout_inicio('Actas de Equipos', 'Actas de Equipos', '../');
+?>
+<h1><?= icon('file','icon-lg') ?> Actas de Entrega / Devolución de Equipos</h1>
+<p class="subtitle">Diligenciado y firmado digitalmente por ambas partes — queda como respaldo legal del estado del equipo.</p>
+<?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
+
+<div class="panel">
+    <h3><?= icon('plus') ?> Nueva acta</h3>
+    <form method="post">
+        <input type="hidden" name="accion" value="crear">
+        <div class="grid-form">
+            <div><label>Tipo *</label>
+                <select name="tipo" required>
+                    <option value="ENTREGA">Entrega de equipo</option>
+                    <option value="DEVOLUCION">Devolución de equipo</option>
+                </select>
+            </div>
+            <div><label>Empleado *</label>
+                <input type="text" name="empleado_documento" list="lista-emp-acta" placeholder="Documento" required>
+                <datalist id="lista-emp-acta"><?php foreach ($empleados as $e): ?><option value="<?= e($e['documento']) ?>"><?= e($e['nombres']) ?><?php endforeach; ?></datalist>
+            </div>
+            <div><label>Equipo (serial)</label>
+                <input type="text" name="equipo_serial" list="lista-eq-acta" placeholder="Serial (opcional)">
+                <datalist id="lista-eq-acta"><?php foreach ($equipos as $eq): ?><option value="<?= e($eq['serial']) ?>"><?= e($eq['marca']) ?> <?= e($eq['modelo']) ?><?php endforeach; ?></datalist>
+            </div>
+            <div><label>Estado del equipo</label><input type="text" name="estado_equipo" placeholder="Ej. Buen estado, sin daños visibles"></div>
+        </div>
+        <label>Accesorios entregados</label>
+        <input type="text" name="accesorios" style="width:100%;margin-bottom:10px;" placeholder="Cargador, mouse, maletín...">
+        <label>Observaciones</label>
+        <textarea name="observaciones" rows="2" style="width:100%;padding:8px;border:1px solid #d3dae3;border-radius:6px;font-family:inherit;margin-bottom:10px;"></textarea>
+        <button type="submit"><?= icon('check') ?> Crear acta</button>
+    </form>
+</div>
+
+<table>
+    <tr><th>Tipo</th><th>Empleado</th><th>Equipo</th><th>Fecha</th><th>Firmas</th><th></th></tr>
+    <?php foreach ($actas as $a): ?>
+    <tr>
+        <td><span class="badge <?= $a['tipo']==='ENTREGA'?'badge-activo':'badge-otro' ?>"><?= e($a['tipo']) ?></span></td>
+        <td><?= e($a['empleado_nombre']) ?: e($a['empleado_documento']) ?></td>
+        <td><?= e($a['equipo_descripcion']) ?: '—' ?> <?php if ($a['equipo_serial']): ?><br><span class="small"><?= e($a['equipo_serial']) ?></span><?php endif; ?></td>
+        <td class="small"><?= e($a['creado_en']) ?></td>
+        <td>
+            <?= $a['firma_entrega'] ? '<span class="badge badge-activo">Entrega firmada</span>' : '<span class="badge badge-warn">Falta firma entrega</span>' ?><br>
+            <?= $a['firma_empleado'] ? '<span class="badge badge-activo">Empleado firmó</span>' : '<span class="badge badge-warn">Falta firma empleado</span>' ?>
+        </td>
+        <td><a href="acta_equipo_firmar.php?id=<?= (int)$a['id'] ?>">Ver / Firmar</a></td>
+    </tr>
+    <?php endforeach; ?>
+    <?php if (!$actas): ?><tr><td colspan="6" class="small">Sin actas registradas.</td></tr><?php endif; ?>
+</table>
+<?php layout_fin(); ?>

@@ -170,6 +170,28 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Actas de Entrega / Devolución de Equipos (firma digital) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS actas_equipos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL,
+        empleado_documento TEXT,
+        empleado_nombre TEXT,
+        equipo_serial TEXT,
+        equipo_descripcion TEXT,
+        accesorios TEXT,
+        estado_equipo TEXT,
+        observaciones TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        firma_entrega TEXT,
+        firmado_entrega_por TEXT,
+        firmado_entrega_en TEXT,
+        firmado_entrega_ip TEXT,
+        firma_empleado TEXT,
+        firmado_empleado_en TEXT,
+        firmado_empleado_ip TEXT
+    )");
+
     // ---- Gestión Documental ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS gd_carpetas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
