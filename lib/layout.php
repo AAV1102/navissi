@@ -469,6 +469,10 @@ function layout_fin() {
             <span><?= icon('users','icon') ?> Subrayar enlaces</span>
             <input type="checkbox" id="a11y-subrayado">
         </label>
+        <label class="a11y-row a11y-toggle">
+            <span><?= icon('sliders','icon') ?> Reordenar arrastrando (tarjetas/paneles)</span>
+            <input type="checkbox" id="a11y-reordenar">
+        </label>
         <button type="button" id="a11y-limpiar" class="btn btn-secondary" style="width:100%;margin-top:6px;">Restablecer todo</button>
     </div>
 </div>

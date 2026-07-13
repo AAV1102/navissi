@@ -222,7 +222,7 @@ a.card-link:hover { border-color:var(--accent-500); box-shadow:var(--shadow-md);
 .panel-drag-handle:hover { color:var(--ink-500); }
 .panel-drag-handle .icon { width:14px; height:14px; }
 .draggable-item.arrastrando { opacity:.4; }
-.cards > .draggable-item { cursor:grab; }
+.draggable-item { cursor:grab; }
 .panel.panel-fullscreen {
     position:fixed; inset:16px; z-index:1000; margin:0; overflow-y:auto; box-shadow:var(--shadow-lg);
 }

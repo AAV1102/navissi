@@ -211,25 +211,42 @@
         });
     }
 
-    var pagina = window.location.pathname;
-    document.querySelectorAll('main .cards').forEach(function (cards, idx) {
-        activarDragDrop(cards, 'navissi_orden_cards_' + pagina + '_' + idx, ':scope > .card, :scope > a.card-link');
-    });
-
-    // Paneles de nivel superior directamente dentro de <main> (no los que
-    // estan anidados en layouts especiales como helpdesk-layout).
-    var panelesNivelSuperior = Array.prototype.slice.call(document.querySelectorAll('main > .panel'));
-    if (panelesNivelSuperior.length >= 2) {
-        var main = document.querySelector('main');
-        panelesNivelSuperior.forEach(function (panel) {
-            if (panel.hidden) return; // no agregar mango a paneles de formulario ocultos
-            var mango = document.createElement('span');
-            mango.className = 'panel-drag-handle';
-            mango.title = 'Arrastrar para reordenar';
-            mango.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>';
-            var h3 = panel.querySelector(':scope > h3');
-            if (h3) h3.insertBefore(mango, h3.firstChild); else panel.insertBefore(mango, panel.firstChild);
+    // Apagado por defecto: el arrastre automático en TODA tarjeta/panel del
+    // sitio interfería con clics normales en botones/enlaces dentro de esas
+    // tarjetas ("no funciona nada"). Ahora solo se activa si el usuario lo
+    // prende a propósito desde el panel de Accesibilidad.
+    function inicializarReordenarArrastrando() {
+        var pagina = window.location.pathname;
+        document.querySelectorAll('main .cards').forEach(function (cards, idx) {
+            activarDragDrop(cards, 'navissi_orden_cards_' + pagina + '_' + idx, ':scope > .card, :scope > a.card-link');
         });
-        activarDragDrop(main, 'navissi_orden_paneles_' + pagina, ':scope > .panel:not([hidden])');
+
+        // Paneles de nivel superior directamente dentro de <main> (no los que
+        // estan anidados en layouts especiales como helpdesk-layout).
+        var panelesNivelSuperior = Array.prototype.slice.call(document.querySelectorAll('main > .panel'));
+        if (panelesNivelSuperior.length >= 2) {
+            var main = document.querySelector('main');
+            panelesNivelSuperior.forEach(function (panel) {
+                if (panel.hidden) return; // no agregar mango a paneles de formulario ocultos
+                var mango = document.createElement('span');
+                mango.className = 'panel-drag-handle';
+                mango.title = 'Arrastrar para reordenar';
+                mango.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>';
+                var h3 = panel.querySelector(':scope > h3');
+                if (h3) h3.insertBefore(mango, h3.firstChild); else panel.insertBefore(mango, panel.firstChild);
+            });
+            activarDragDrop(main, 'navissi_orden_paneles_' + pagina, ':scope > .panel:not([hidden])');
+        }
+    }
+    if (localStorage.getItem('navissi_reordenar_arrastrando') === '1') {
+        inicializarReordenarArrastrando();
+    }
+    var toggleReordenar = document.getElementById('a11y-reordenar');
+    if (toggleReordenar) {
+        toggleReordenar.checked = localStorage.getItem('navissi_reordenar_arrastrando') === '1';
+        toggleReordenar.addEventListener('change', function (e) {
+            localStorage.setItem('navissi_reordenar_arrastrando', e.target.checked ? '1' : '0');
+            if (e.target.checked) { alert('Activado. Recarga la página para ver los controles de arrastre.'); }
+        });
     }
 })();
