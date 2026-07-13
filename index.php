@@ -88,9 +88,10 @@ function badge_prioridad_dashboard($p) {
     return "<span class=\"badge {$cls}\">" . e($p) . "</span>";
 }
 
-layout_inicio('Dashboard', 'Dashboard');
+layout_inicio('Pulso operativo', 'Dashboard');
 ?>
-<h1>Panel General</h1>
+<div class="page-kicker">NAVISSI BACKSTAGE · CONTROL OPERATIVO</div>
+<h1>Pulso operativo</h1>
 <p class="subtitle">
     <?php if ($vistaRRHH): ?>Resumen de Talento Humano: empleados, vacaciones y evaluaciones.
     <?php elseif ($vistaEjecutiva): ?>Resumen ejecutivo: equipos, personal, contratos y mesa de ayuda.

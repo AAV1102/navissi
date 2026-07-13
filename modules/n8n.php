@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
+requiere_roles(['ADMIN', 'TI'], '../');
 $pdo = db();
 $pdo->exec("CREATE TABLE IF NOT EXISTS config_general (clave TEXT PRIMARY KEY, valor TEXT)");
 $msg = null;
@@ -52,6 +53,12 @@ layout_inicio('n8n', 'n8n (flujos)', '../');
         <?php $base = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST']; ?>
         <?= e($base) ?>/api_webhook_ticket.php
     </code></p>
+    <p class="small">La solicitud debe llevar <code>X-Navissi-Signature</code> con el HMAC-SHA256 hexadecimal del cuerpo JSON exacto.</p>
+    <details>
+        <summary>Ver secreto de firma para configurar n8n</summary>
+        <code style="word-break:break-all;"><?= e(navissi_webhook_secret()) ?></code>
+        <p class="small">Trátalo como una contraseña. Si se comparte por error, TI debe rotar <code>webhook_hmac.key</code> en el directorio privado.</p>
+    </details>
 </div>
 
 <div class="panel">

@@ -161,6 +161,7 @@ function layout_inicio($titulo, $activo, $prefix = '') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<?= e(csrf_token()) ?>">
 <title><?= e($titulo) ?> - NAVISSI Inventario</title>
 <link rel="stylesheet" href="<?= $prefix ?>assets/style.css?v=<?= @filemtime(__DIR__ . '/../assets/style.css') ?: time() ?>">
 <script>
@@ -174,6 +175,46 @@ function layout_inicio($titulo, $activo, $prefix = '') {
     if (localStorage.getItem('navissi_contraste') === '1') html.classList.add('alto-contraste');
     if (localStorage.getItem('navissi_movimiento') === '1') html.classList.add('reducir-movimiento');
     if (localStorage.getItem('navissi_subrayado') === '1') html.classList.add('subrayar-enlaces');
+})();
+</script>
+<script>
+(function () {
+    const token = document.querySelector('meta[name="csrf-token"]').content;
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function (form) {
+            if (form.querySelector('input[name="_csrf"]')) return;
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = '_csrf'; input.value = token;
+            form.appendChild(input);
+        });
+    });
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+        init = init || {};
+        const method = (init.method || 'GET').toUpperCase();
+        const url = typeof input === 'string' ? new URL(input, location.href) : new URL(input.url, location.href);
+        if (url.origin === location.origin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+            const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+            headers.set('X-CSRF-Token', token);
+            init.headers = headers;
+        }
+        return originalFetch(input, init);
+    };
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('.revelar-credencial');
+        if (!button) return;
+        const target = document.getElementById(button.dataset.target);
+        if (button.classList.contains('visible')) {
+            target.textContent = '••••••••'; button.textContent = 'Ver'; button.classList.remove('visible');
+            return;
+        }
+        button.disabled = true;
+        fetch('<?= $prefix ?>api_revelar_credencial.php?id=' + encodeURIComponent(button.dataset.id), {headers: {'Accept': 'application/json'}})
+            .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+            .then(function (data) { target.textContent = data.secreto || '(vacía)'; button.textContent = 'Ocultar'; button.classList.add('visible'); })
+            .catch(function () { target.textContent = 'No autorizado'; })
+            .finally(function () { button.disabled = false; });
+    });
 })();
 </script>
 </head>
@@ -193,7 +234,7 @@ function layout_inicio($titulo, $activo, $prefix = '') {
                 <?php else: ?>
                 <span class="brand-mark"><?= icon('inventory', 'icon icon-lg') ?></span>
                 <?php endif; ?>
-                <span class="sidebar-brand-text"><?= e($marca['nombre_sitio'] ?? 'NAVISSI') ?><br><span><?= e($marca['subtitulo'] ?? 'Inventario · Grupo 10Z') ?></span></span>
+                <span class="sidebar-brand-text"><?= e($marca['nombre_sitio'] ?? 'NAVISSI') ?><br><span><?= e($marca['subtitulo'] ?? 'Backstage · Operación retail') ?></span></span>
             </a>
             <button class="sidebar-close" id="sidebar-close" aria-label="Cerrar menú"><?= icon('x','icon') ?></button>
         </div>
@@ -246,7 +287,7 @@ function layout_inicio($titulo, $activo, $prefix = '') {
         </div>
         <?php endif; ?>
         <div class="topbar-slim">
-            <button class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="sidebar" aria-label="Abrir menú"><?= icon('sliders','icon') ?></button>
+            <button class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="sidebar" aria-label="Abrir menú"><?= icon('dashboard','icon') ?></button>
             <div class="topbar-center">
                 <input type="search" id="buscador-modulos" class="buscador-modulos" placeholder="Buscar un módulo... (ej. contratos, tickets, nómina)" autocomplete="off" aria-label="Buscar un módulo" role="combobox" aria-expanded="false" aria-controls="resultados-modulos">
                 <div id="resultados-modulos" class="resultados-modulos" role="listbox" hidden></div>

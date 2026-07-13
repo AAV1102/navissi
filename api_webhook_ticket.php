@@ -1,15 +1,22 @@
 <?php
 /**
  * Endpoint público para que n8n (u otro flujo externo) cree tickets de Mesa de
- * Ayuda. Pensado para uso en red local/confiable - si se expone a internet,
- * agregar validación de una clave compartida en el header.
+ * Ayuda. Toda solicitud debe estar firmada con HMAC-SHA256 usando el secreto
+ * privado de NAVISSI y el header X-Navissi-Signature.
  */
+define('CSRF_EXEMPT', true);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/ia_triage.php';
 header('Content-Type: application/json; charset=utf-8');
 $pdo = db();
 
-$data = json_decode(file_get_contents('php://input'), true) ?: [];
+$rawBody = (string) file_get_contents('php://input');
+if (!firma_hmac_valida($rawBody, $_SERVER['HTTP_X_NAVISSI_SIGNATURE'] ?? null, navissi_webhook_secret())) {
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'error' => 'Firma del webhook inválida.']);
+    exit;
+}
+$data = json_decode($rawBody, true) ?: [];
 $titulo = limpio($data['titulo'] ?? null);
 if (!$titulo) {
     http_response_code(400);

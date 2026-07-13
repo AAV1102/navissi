@@ -5,10 +5,9 @@ require_once __DIR__ . '/../lib/ia_client.php';
 $pdo = db();
 $msg = null; $respuesta = null;
 
-define('IA_CONFIG_PATH', BASE_DIR . '/data/ia_config.json');
+define('IA_CONFIG_PATH', private_path('ia_config.json'));
 function ia_config(): array {
-    if (!file_exists(IA_CONFIG_PATH)) return ['proveedor' => 'anthropic', 'api_key' => ''];
-    $d = json_decode(file_get_contents(IA_CONFIG_PATH), true);
+    $d = leer_config_json(IA_CONFIG_PATH);
     return is_array($d) ? $d : ['proveedor' => 'anthropic', 'api_key' => ''];
 }
 
@@ -46,10 +45,10 @@ function contexto_real(PDO $pdo, string $agente): string {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
     if ($accion === 'guardar_config') {
-        file_put_contents(IA_CONFIG_PATH, json_encode([
+        guardar_config_json(IA_CONFIG_PATH, [
             'proveedor' => $_POST['proveedor'] ?? 'anthropic',
             'api_key' => trim($_POST['api_key'] ?? ''),
-        ], JSON_PRETTY_PRINT));
+        ]);
         $msg = ['ok', 'Configuración guardada.'];
     }
     if ($accion === 'preguntar') {

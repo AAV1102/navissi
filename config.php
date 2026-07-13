@@ -1,17 +1,74 @@
 <?php
 /**
  * NAVISSI INVENTARIO - Configuración y conexión.
- * Base de datos: SQLite en data/navissi.sqlite (cero configuración, sin
+ * Base de datos: SQLite en el directorio privado fuera del sitio web (sin
  * servidor MySQL que instalar - funciona local con solo tener PHP con
  * pdo_sqlite habilitado, que viene activo por defecto en casi cualquier PHP).
  */
 
 error_reporting(E_ALL);
-ini_set('display_errors', '1');
+ini_set('display_errors', getenv('NAVISSI_DEBUG') === '1' ? '1' : '0');
+ini_set('log_errors', '1');
 date_default_timezone_set('America/Bogota');
 
 define('BASE_DIR', __DIR__);
-define('DB_PATH', BASE_DIR . '/data/navissi.sqlite');
+
+/**
+ * Datos sensibles fuera del document root. La variable permite usar un volumen
+ * dedicado en Docker; en la instalación local queda junto al proyecto.
+ */
+function navissi_private_dir(): string {
+    static $dir = null;
+    if ($dir !== null) return $dir;
+    $env = trim((string) getenv('NAVISSI_PRIVATE_DIR'));
+    $dir = $env !== '' ? rtrim($env, '\\/') : dirname(BASE_DIR) . DIRECTORY_SEPARATOR . 'NAVISSI-INVENTARIO-private';
+    if (!is_dir($dir) && !mkdir($dir, 0700, true) && !is_dir($dir)) {
+        throw new RuntimeException('No se pudo crear el directorio privado de NAVISSI.');
+    }
+    @chmod($dir, 0700);
+    return $dir;
+}
+
+function private_path(string $name): string {
+    $name = ltrim(str_replace(['..', '\\'], ['', '/'], $name), '/');
+    return navissi_private_dir() . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $name);
+}
+
+function migrar_archivo_privado(string $name, ?string $destinoPrivado = null): string {
+    $destino = private_path($destinoPrivado ?? $name);
+    $origen = BASE_DIR . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . $name;
+    $parent = dirname($destino);
+    if (!is_dir($parent)) @mkdir($parent, 0700, true);
+    if (!file_exists($destino) && file_exists($origen)) {
+        if (!@rename($origen, $destino)) {
+            if (!@copy($origen, $destino) || filesize($origen) !== filesize($destino)) {
+                throw new RuntimeException("No se pudo proteger el archivo {$name}.");
+            }
+            @unlink($origen);
+        }
+    }
+    if (file_exists($destino)) @chmod($destino, 0600);
+    return $destino;
+}
+
+if (getenv('NAVISSI_SKIP_FILE_MIGRATION') !== '1') {
+    foreach (['navissi.sqlite', 'ia_config.json', 'ms365_config.json', 'smtp_config.json',
+              'whatsapp_config.json', 'importador_config.json', 'smtp_correo.log', 'n8n_err.log', 'n8n_out.log',
+              'ultima_sincronizacion_correo.txt'] as $archivoPrivado) {
+        migrar_archivo_privado($archivoPrivado);
+    }
+    foreach (['INVENTARIO_INTEGRAL_IPS.xlsx', '~$INVENTARIO_INTEGRAL_IPS.xlsx',
+              'Licencias Office 365 Activas.csv', 'Licencias Office 365 Asignadas.csv'] as $archivoLegadoIps) {
+        migrar_archivo_privado($archivoLegadoIps, 'legacy-ips/' . $archivoLegadoIps);
+    }
+    foreach (glob(BASE_DIR . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'navissi.sqlite.bak-*') ?: [] as $respaldoLegado) {
+        migrar_archivo_privado(basename($respaldoLegado), 'backups/' . basename($respaldoLegado));
+    }
+}
+
+define('DB_PATH', private_path('navissi.sqlite'));
+define('MS365_CONFIG_PATH', private_path('ms365_config.json'));
+define('WHATSAPP_CONFIG_PATH', private_path('whatsapp_config.json'));
 define('MASTER_DIR', 'C:\\Users\\SISTEMAS\\OneDrive - GRUPO 10Z SAS\\TI 2026\\MASTER');
 define('DATOS_PDV_PATH', 'C:\\Users\\SISTEMAS\\OneDrive - GRUPO 10Z SAS\\Escritorio\\PC ANTERIOS DE SISTEMAS\\DATOS PDV.xlsx');
 define('CONTACTOS_TIENDAS_PATH', 'C:\\Users\\SISTEMAS\\Downloads\\ACTUALIZAR DATOS CONTACTOS DE TIENDAS NAVISSI 2026.xlsx');
@@ -23,10 +80,22 @@ define('CONTACTOS_TIENDAS_PATH', 'C:\\Users\\SISTEMAS\\Downloads\\ACTUALIZAR DAT
 // no romper cuentas ya creadas).
 define('ROLES_DISPONIBLES', ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO', 'COORDINADOR', 'ANALISTA', 'TI', 'RRHH', 'EMPLEADO']);
 
+function respaldo_pre_fase0(): void {
+    if (!file_exists(DB_PATH)) return;
+    $dir = private_path('backups');
+    if (!is_dir($dir)) @mkdir($dir, 0700, true);
+    $destino = $dir . DIRECTORY_SEPARATOR . 'pre-fase0-navissi.sqlite';
+    if (!file_exists($destino) && !copy(DB_PATH, $destino)) {
+        throw new RuntimeException('No se pudo crear el respaldo previo a Fase 0.');
+    }
+    if (file_exists($destino)) @chmod($destino, 0600);
+}
+
 function db(): PDO {
     static $pdo = null;
     if ($pdo === null) {
         $isNew = !file_exists(DB_PATH);
+        if (!$isNew) respaldo_pre_fase0();
         $pdo = new PDO('sqlite:' . DB_PATH);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->exec('PRAGMA foreign_keys = ON');
@@ -35,6 +104,7 @@ function db(): PDO {
         } else {
             migrar_esquema($pdo);
         }
+        aplicar_migraciones_seguridad($pdo);
     }
     return $pdo;
 }
@@ -768,7 +838,7 @@ function migrar_esquema(PDO $pdo) {
 
     if ((int) $pdo->query("SELECT COUNT(*) FROM usuarios_sistema")->fetchColumn() === 0) {
         $pdo->prepare("INSERT INTO usuarios_sistema (nombre, email, password_hash, rol) VALUES (?,?,?,?)")
-            ->execute(['Administrador', 'admin@navissi.com', password_hash('navissi2026', PASSWORD_DEFAULT), 'SUPER_ADMIN']);
+            ->execute(['Administrador', 'admin@navissi.com', password_hash(navissi_bootstrap_password(), PASSWORD_DEFAULT), 'SUPER_ADMIN']);
     }
 
     $pdo->exec("
@@ -1515,10 +1585,154 @@ function crear_esquema(PDO $pdo) {
     foreach ($sedes as $s) $stmt->execute([$s]);
 
     $pdo->prepare("INSERT INTO usuarios_sistema (nombre, email, password_hash, rol) VALUES (?,?,?,?)")
-        ->execute(['Administrador', 'admin@navissi.com', password_hash('navissi2026', PASSWORD_DEFAULT), 'SUPER_ADMIN']);
+        ->execute(['Administrador', 'admin@navissi.com', password_hash(navissi_bootstrap_password(), PASSWORD_DEFAULT), 'SUPER_ADMIN']);
 }
 
 // ---------------- Sesión / autenticación ----------------
+function iniciar_sesion_segura(): void {
+    if (session_status() !== PHP_SESSION_NONE) return;
+    $segura = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.cookie_httponly', '1');
+    session_name('NAVISSISESSID');
+    session_set_cookie_params([
+        'lifetime' => 0, 'path' => '/', 'secure' => $segura,
+        'httponly' => true, 'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+function csrf_token(): string {
+    iniciar_sesion_segura();
+    if (empty($_SESSION['_csrf'])) $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+    return $_SESSION['_csrf'];
+}
+
+function csrf_token_valido(?string $token): bool {
+    iniciar_sesion_segura();
+    return is_string($token) && !empty($_SESSION['_csrf']) && hash_equals($_SESSION['_csrf'], $token);
+}
+
+function csrf_requerir(): void {
+    $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_csrf'] ?? null);
+    if (!csrf_token_valido(is_string($token) ? $token : null)) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'error' => 'Solicitud vencida o no autorizada. Recarga la página.']);
+        exit;
+    }
+}
+
+function navissi_bootstrap_password(): string {
+    $ruta = private_path('bootstrap-admin.txt');
+    $env = (string) getenv('NAVISSI_BOOTSTRAP_PASSWORD');
+    if ($env !== '') return $env;
+    if (file_exists($ruta)) return trim((string) file_get_contents($ruta));
+    $clave = rtrim(strtr(base64_encode(random_bytes(18)), '+/', '-_'), '=');
+    file_put_contents($ruta, $clave . PHP_EOL, LOCK_EX);
+    @chmod($ruta, 0600);
+    return $clave;
+}
+
+function navissi_secret_key(): string {
+    $ruta = private_path('encryption.key');
+    if (!file_exists($ruta)) {
+        file_put_contents($ruta, base64_encode(random_bytes(32)), LOCK_EX);
+        @chmod($ruta, 0600);
+    }
+    $key = base64_decode(trim((string) file_get_contents($ruta)), true);
+    if (!is_string($key) || strlen($key) !== 32) throw new RuntimeException('Clave de cifrado inválida.');
+    return $key;
+}
+
+function secreto_cifrado(?string $valor): bool {
+    return is_string($valor) && str_starts_with($valor, 'enc:v1:');
+}
+
+function secreto_cifrar(?string $valor): ?string {
+    if ($valor === null || $valor === '' || secreto_cifrado($valor)) return $valor;
+    $iv = random_bytes(12); $tag = '';
+    $cipher = openssl_encrypt($valor, 'aes-256-gcm', navissi_secret_key(), OPENSSL_RAW_DATA, $iv, $tag);
+    if ($cipher === false) throw new RuntimeException('No se pudo cifrar el secreto.');
+    return 'enc:v1:' . base64_encode($iv . $tag . $cipher);
+}
+
+function secreto_descifrar(?string $valor): ?string {
+    if ($valor === null || $valor === '' || !secreto_cifrado($valor)) return $valor;
+    $raw = base64_decode(substr($valor, 7), true);
+    if (!is_string($raw) || strlen($raw) < 29) return null;
+    $plain = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', navissi_secret_key(), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
+    return $plain === false ? null : $plain;
+}
+
+/**
+ * Guarda un array de configuracion sensible (credenciales de Microsoft 365,
+ * SMTP, proveedores de IA, etc.) cifrado en disco con el mismo AES-256-GCM
+ * que ya protege la tabla `credenciales`, en vez de JSON plano.
+ */
+function guardar_config_json(string $ruta, array $datos): void {
+    $json = json_encode($datos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $parent = dirname($ruta);
+    if (!is_dir($parent)) @mkdir($parent, 0700, true);
+    file_put_contents($ruta, secreto_cifrar($json), LOCK_EX);
+    @chmod($ruta, 0600);
+}
+
+/** Lee una configuracion guardada con guardar_config_json(). Migra de forma
+ *  transparente los archivos JSON planos que hayan quedado de antes. */
+function leer_config_json(string $ruta): ?array {
+    if (!file_exists($ruta)) return null;
+    $contenido = trim((string) file_get_contents($ruta));
+    if ($contenido === '') return null;
+    $json = secreto_cifrado($contenido) ? secreto_descifrar($contenido) : $contenido;
+    $datos = json_decode((string) $json, true);
+    if (!is_array($datos)) return null;
+    if (!secreto_cifrado($contenido)) {
+        try { guardar_config_json($ruta, $datos); } catch (Throwable $e) { /* se reintenta en la siguiente escritura */ }
+    }
+    return $datos;
+}
+
+function navissi_webhook_secret(): string {
+    $ruta = private_path('webhook_hmac.key');
+    if (!file_exists($ruta)) {
+        file_put_contents($ruta, bin2hex(random_bytes(32)), LOCK_EX);
+        @chmod($ruta, 0600);
+    }
+    return trim((string) file_get_contents($ruta));
+}
+
+function firma_hmac_valida(string $body, ?string $firma, string $secreto): bool {
+    if (!$firma || $secreto === '') return false;
+    $firma = str_starts_with($firma, 'sha256=') ? substr($firma, 7) : $firma;
+    return hash_equals(hash_hmac('sha256', $body, $secreto), strtolower($firma));
+}
+
+function aplicar_migraciones_seguridad(PDO $pdo): void {
+    $cols = array_column($pdo->query("PRAGMA table_info(usuarios_sistema)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('password_temporal', $cols, true)) $pdo->exec("ALTER TABLE usuarios_sistema ADD COLUMN password_temporal INTEGER DEFAULT 0");
+
+    $stmt = $pdo->prepare("SELECT id, password_hash FROM usuarios_sistema WHERE email = ? COLLATE NOCASE AND activo = 1 LIMIT 1");
+    $stmt->execute(['admin@navissi.com']);
+    $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($admin && password_verify('navissi2026', $admin['password_hash'])) {
+        $pdo->prepare("UPDATE usuarios_sistema SET password_hash = ?, password_temporal = 1 WHERE id = ?")
+            ->execute([password_hash(navissi_bootstrap_password(), PASSWORD_DEFAULT), $admin['id']]);
+    } elseif ($admin && file_exists(private_path('bootstrap-admin.txt'))
+        && password_verify(trim((string) file_get_contents(private_path('bootstrap-admin.txt'))), $admin['password_hash'])) {
+        $pdo->prepare("UPDATE usuarios_sistema SET password_temporal = 1 WHERE id = ?")->execute([$admin['id']]);
+    }
+
+    $existeCredenciales = (bool) $pdo->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='credenciales'")->fetchColumn();
+    if ($existeCredenciales) {
+        $filas = $pdo->query("SELECT id, contrasena FROM credenciales WHERE contrasena IS NOT NULL AND contrasena <> ''")->fetchAll(PDO::FETCH_ASSOC);
+        $update = $pdo->prepare("UPDATE credenciales SET contrasena = ? WHERE id = ?");
+        foreach ($filas as $fila) if (!secreto_cifrado($fila['contrasena'])) $update->execute([secreto_cifrar($fila['contrasena']), $fila['id']]);
+    }
+}
+
 /** Arma el array de sesión de un usuario autenticado (usado por login normal y SSO). */
 function sesion_desde_usuario(array $u): array {
     return ['id' => $u['id'], 'nombre' => $u['nombre'], 'email' => $u['email'], 'rol' => $u['rol'],
@@ -1582,12 +1796,12 @@ function rol_secundario_efectivo(): ?string {
 }
 
 function usuario_actual(): ?array {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    iniciar_sesion_segura();
     return $_SESSION['usuario'] ?? null;
 }
 
 function requiere_login($prefix = '') {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    iniciar_sesion_segura();
     if (empty($_SESSION['usuario'])) {
         header("Location: {$prefix}login.php");
         exit;
@@ -1620,6 +1834,14 @@ function tiene_rol(array $rolesPermitidos): bool {
     // Un usuario puede tener un segundo perfil (ej. ADMIN + EMPLEADO) - da acceso a lo que cualquiera de los dos permita.
     $secundario = rol_secundario_efectivo();
     return $secundario !== null && in_array($secundario, $rolesPermitidos, true);
+}
+
+function requiere_roles(array $rolesPermitidos, string $prefix = ''): void {
+    requiere_login($prefix);
+    if (!tiene_rol($rolesPermitidos)) {
+        http_response_code(403);
+        exit('No tienes permisos para acceder a este módulo.');
+    }
 }
 
 /**
@@ -1842,25 +2064,31 @@ function e($v) {
     return htmlspecialchars((string) ($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-define('MS365_CONFIG_PATH', BASE_DIR . '/data/ms365_config.json');
-
 function ms365_config(): array {
-    if (!file_exists(MS365_CONFIG_PATH)) {
-        return ['tenant_id' => '', 'client_id' => '', 'client_secret' => ''];
-    }
-    $data = json_decode(file_get_contents(MS365_CONFIG_PATH), true);
+    $data = leer_config_json(MS365_CONFIG_PATH);
     return is_array($data) ? $data : ['tenant_id' => '', 'client_id' => '', 'client_secret' => ''];
 }
 
 function ms365_config_guardar(string $tenantId, string $clientId, string $clientSecret) {
-    file_put_contents(MS365_CONFIG_PATH, json_encode([
+    guardar_config_json(MS365_CONFIG_PATH, [
         'tenant_id' => trim($tenantId),
         'client_id' => trim($clientId),
         'client_secret' => trim($clientSecret),
-    ], JSON_PRETTY_PRINT));
+    ]);
 }
 
 function ms365_configurado(): bool {
     $c = ms365_config();
     return !empty($c['tenant_id']) && !empty($c['client_id']) && !empty($c['client_secret']);
+}
+
+// Las acciones autenticadas deben provenir de una página que emitió el token.
+// Los webhooks públicos declaran CSRF_EXEMPT y aplican su propia firma HMAC.
+$scriptActual = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+if (PHP_SAPI !== 'cli' && str_contains($scriptActual, '/modules/')) {
+    requiere_login('../');
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !defined('CSRF_EXEMPT')) {
+    iniciar_sesion_segura();
+    if (!empty($_SESSION['usuario'])) csrf_requerir();
 }

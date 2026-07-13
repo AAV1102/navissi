@@ -19,6 +19,6 @@ if (($_GET['token'] ?? '') !== $tokenEsperado) {
 $pdo = db();
 // Registro simple de la última vez que se llamó este endpoint - así se puede verificar
 // desde fuera si la automatización (Power Automate, cron, etc.) sigue corriendo.
-@file_put_contents(__DIR__ . '/data/ultima_sincronizacion_correo.txt', gmdate('Y-m-d H:i:s') . " UTC\n", FILE_APPEND);
+@file_put_contents(private_path('ultima_sincronizacion_correo.txt'), gmdate('Y-m-d H:i:s') . " UTC\n", FILE_APPEND);
 $resultado = sincronizar_correo_a_tickets($pdo);
 echo json_encode($resultado, JSON_UNESCAPED_UNICODE);

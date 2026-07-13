@@ -20,5 +20,5 @@ echo Desde otro equipo de la misma red: http://%COMPUTERNAME%:8099 (o la IP de e
 echo (deja esta ventana abierta mientras usas el software)
 echo.
 start "" http://127.0.0.1:8099/index.php
-"C:\xampp\php\windowsXamppPhp\php.exe" -c "C:\xampp\php\windowsXamppPhp\php.ini" -S 0.0.0.0:8099 -t "%~dp0"
+"C:\xampp\php\windowsXamppPhp\php.exe" -c "C:\xampp\php\windowsXamppPhp\php.ini" -S 0.0.0.0:8099 -t "%~dp0" "%~dp0router.php"
 pause

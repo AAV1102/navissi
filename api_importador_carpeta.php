@@ -12,14 +12,14 @@ require_once __DIR__ . '/lib/importador_universal.php';
 
 $esCli = php_sapi_name() === 'cli';
 if (!$esCli) {
-    if (session_status() === PHP_SESSION_NONE) session_start();
+    iniciar_sesion_segura();
     requiere_login('');
     header('Content-Type: application/json; charset=utf-8');
 }
 
 $pdo = db();
-$configPath = __DIR__ . '/data/importador_config.json';
-$config = file_exists($configPath) ? json_decode(file_get_contents($configPath), true) : [];
+$configPath = private_path('importador_config.json');
+$config = leer_config_json($configPath) ?? [];
 $ruta = $config['ruta_carpeta'] ?? '';
 
 $resumen = iu_sincronizar_carpeta($pdo, $ruta);

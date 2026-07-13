@@ -4,8 +4,8 @@ require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 
 $rustdeskActivo = file_exists(__DIR__ . '/../rustdesk-server/id_ed25519.pub');
-$ms365Activo = file_exists(__DIR__ . '/../data/ms365_config.json');
-$iaActivo = file_exists(__DIR__ . '/../data/ia_config.json');
+$ms365Activo = file_exists(MS365_CONFIG_PATH);
+$iaActivo = file_exists(private_path('ia_config.json'));
 $equiposConAgente = (int) $pdo->query("SELECT COUNT(*) FROM inventario WHERE rustdesk_id IS NOT NULL AND rustdesk_id != ''")->fetchColumn();
 $licenciasM365 = (int) $pdo->query("SELECT COUNT(*) FROM ms365_usuarios")->fetchColumn();
 

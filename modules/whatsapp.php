@@ -2,24 +2,25 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 require_once __DIR__ . '/../lib/whatsapp_client.php';
+requiere_roles(['ADMIN', 'TI'], '../');
 $pdo = db();
 $msg = null;
 
-define('WHATSAPP_CONFIG_PATH', BASE_DIR . '/data/whatsapp_config.json');
-
 function whatsapp_config(): array {
-    if (!file_exists(WHATSAPP_CONFIG_PATH)) return ['token' => '', 'phone_number_id' => '', 'verify_token' => ''];
+    if (!file_exists(WHATSAPP_CONFIG_PATH)) return ['token' => '', 'phone_number_id' => '', 'verify_token' => '', 'app_secret' => ''];
     $d = json_decode(file_get_contents(WHATSAPP_CONFIG_PATH), true);
-    return is_array($d) ? $d : ['token' => '', 'phone_number_id' => '', 'verify_token' => ''];
+    return is_array($d) ? $d : ['token' => '', 'phone_number_id' => '', 'verify_token' => '', 'app_secret' => ''];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
     if ($accion === 'guardar') {
+        $actual = whatsapp_config();
         file_put_contents(WHATSAPP_CONFIG_PATH, json_encode([
-            'token' => trim($_POST['token'] ?? ''),
+            'token' => trim($_POST['token'] ?? '') ?: ($actual['token'] ?? ''),
             'phone_number_id' => trim($_POST['phone_number_id'] ?? ''),
             'verify_token' => trim($_POST['verify_token'] ?? ''),
+            'app_secret' => trim($_POST['app_secret'] ?? '') ?: ($actual['app_secret'] ?? ''),
         ], JSON_PRETTY_PRINT));
         $msg = ['ok', 'Credenciales guardadas.'];
     }
@@ -60,9 +61,10 @@ layout_inicio('WhatsApp Business', 'WhatsApp Business', '../');
     <form method="post">
         <input type="hidden" name="accion" value="guardar">
         <div class="grid-form">
-            <div style="grid-column:span 2;"><label>Access Token (permanente, no el temporal de 24h)</label><input type="password" name="token" value="<?= e($c['token']) ?>"></div>
+            <div style="grid-column:span 2;"><label>Access Token (permanente, no el temporal de 24h)</label><input type="password" name="token" value="" autocomplete="new-password" placeholder="Dejar vacío para conservar"></div>
             <div><label>Phone Number ID</label><input type="text" name="phone_number_id" value="<?= e($c['phone_number_id']) ?>"></div>
             <div><label>Verify Token (lo inventas tú, para el webhook)</label><input type="text" name="verify_token" value="<?= e($c['verify_token']) ?>" placeholder="navissi_webhook_2026"></div>
+            <div style="grid-column:span 2;"><label>App Secret de Meta (valida la firma de cada mensaje)</label><input type="password" name="app_secret" value="" autocomplete="new-password" placeholder="Dejar vacío para conservar"></div>
         </div>
         <button type="submit">Guardar credenciales</button>
     </form>

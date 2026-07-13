@@ -33,8 +33,8 @@ $discoTotal = @disk_total_space(BASE_DIR);
 
 // --- Conectividad de integraciones ---
 $rustdeskActivo = file_exists(__DIR__ . '/../rustdesk-server/id_ed25519.pub');
-$ms365Configurado = file_exists(__DIR__ . '/../data/ms365_config.json');
-$iaConfigurada = file_exists(__DIR__ . '/../data/ia_config.json');
+$ms365Configurado = file_exists(MS365_CONFIG_PATH);
+$iaConfigurada = file_exists(private_path('ia_config.json'));
 $agentesActivos24h = (int) $pdo->query("SELECT COUNT(*) FROM inventario WHERE julianday('now') - julianday(ultima_conexion_agente) < 1")->fetchColumn();
 
 // --- Salud de datos: huerfanos y filas incompletas ---

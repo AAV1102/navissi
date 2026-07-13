@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/config.php';
+iniciar_sesion_segura();
 
 // Destruir todas las variables de sesión
 $_SESSION = array();

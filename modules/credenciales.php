@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
+requiere_roles(['ADMIN', 'TI'], '../');
 $pdo = db();
 $msg = null;
 
@@ -24,12 +25,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $id = (int) ($_POST['id'] ?? 0);
             if ($id > 0) {
+                if ($datos['contrasena'] === null) {
+                    unset($datos['contrasena']); // vacío al editar conserva el secreto actual
+                } else {
+                    $datos['contrasena'] = secreto_cifrar($datos['contrasena']);
+                }
                 $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($datos)));
                 $stmt = $pdo->prepare("UPDATE credenciales SET {$set} WHERE id = :id");
                 $datos['id'] = $id;
                 $stmt->execute($datos);
                 $msg = ['ok', 'Credencial actualizada.'];
             } else {
+                $datos['contrasena'] = secreto_cifrar($datos['contrasena']);
                 try {
                     $cols = implode(', ', array_keys($datos));
                     $ph = implode(', ', array_map(fn($k) => ":$k", array_keys($datos)));
@@ -95,7 +102,7 @@ layout_inicio('Credenciales', 'Credenciales', '../');
                 <datalist id="sistemas"><?php foreach ($sistemas as $s): ?><option value="<?= e($s) ?>"><?php endforeach; ?></datalist>
             </div>
             <div><label>Usuario / Red *</label><input type="text" name="usuario" required value="<?= e($editar['usuario'] ?? '') ?>"></div>
-            <div><label>Contraseña</label><input type="text" name="contrasena" value="<?= e($editar['contrasena'] ?? '') ?>"></div>
+            <div><label>Contraseña</label><input type="password" name="contrasena" value="" autocomplete="new-password" placeholder="<?= $editar ? 'Dejar vacío para conservar' : 'Contraseña' ?>"></div>
             <div><label>Categoría</label><input type="text" name="categoria" value="<?= e($editar['categoria'] ?? '') ?>"></div>
             <div><label>Vincular a usuario (para "Mis Accesos")</label>
                 <select name="usuario_id">
@@ -132,7 +139,7 @@ layout_inicio('Credenciales', 'Credenciales', '../');
         <td><?= e($f['sede_nombre']) ?></td>
         <td><?= e($f['nombre']) ?></td>
         <td><?= e($f['usuario']) ?></td>
-        <td><?= e($f['contrasena']) ?></td>
+        <td><code id="credencial-<?= (int)$f['id'] ?>">••••••••</code> <button type="button" class="btn btn-secondary revelar-credencial" data-id="<?= (int)$f['id'] ?>" data-target="credencial-<?= (int)$f['id'] ?>" style="padding:3px 8px;font-size:12px;">Ver</button></td>
         <td><?= e($f['categoria']) ?></td>
         <td><?= !empty($f['usuario_id']) ? e($mapaUsuarios[$f['usuario_id']] ?? '—') : '<span class="small">Sin vincular</span>' ?></td>
         <td>

@@ -36,10 +36,10 @@ function ia_clasificar_categoria(IAClient $client, array $ticket, array $categor
  * Todo queda registrado como comentario del ticket y en la hoja de vida.
  */
 function ia_triage_ticket(PDO $pdo, int $ticketId) {
-    $configPath = BASE_DIR . '/data/ia_config.json';
+    $configPath = private_path('ia_config.json');
     if (!file_exists($configPath)) return; // IA no configurada: no hace nada, el ticket sigue como manual
 
-    $config = json_decode(file_get_contents($configPath), true);
+    $config = leer_config_json($configPath);
     if (empty($config['api_key'])) return;
 
     $stmt = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");

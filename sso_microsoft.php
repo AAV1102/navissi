@@ -13,14 +13,14 @@
  * rechaza el login con "redirect_uri_mismatch".
  */
 require_once __DIR__ . '/config.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+iniciar_sesion_segura();
 
-$configPath = __DIR__ . '/data/ms365_config.json';
+$configPath = MS365_CONFIG_PATH;
 if (!file_exists($configPath)) {
     http_response_code(500);
     die('El inicio de sesión con Microsoft no está configurado (falta data/ms365_config.json).');
 }
-$cfg = json_decode(file_get_contents($configPath), true);
+$cfg = leer_config_json($configPath);
 
 $state = bin2hex(random_bytes(16));
 $_SESSION['sso_state'] = $state;

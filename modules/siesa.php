@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
+requiere_roles(['ADMIN', 'TI'], '../');
 $pdo = db();
 $msg = null;
 
@@ -24,12 +25,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $id = (int) ($_POST['id'] ?? 0);
             if ($id > 0) {
+                if ($datos['contrasena'] === null) unset($datos['contrasena']);
+                else $datos['contrasena'] = secreto_cifrar($datos['contrasena']);
                 $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($datos)));
                 $stmt = $pdo->prepare("UPDATE credenciales SET {$set} WHERE id = :id");
                 $datos['id'] = $id;
                 $stmt->execute($datos);
                 $msg = ['ok', 'Credencial actualizada.'];
             } else {
+                $datos['contrasena'] = secreto_cifrar($datos['contrasena']);
                 try {
                     $cols = implode(', ', array_keys($datos));
                     $ph = implode(', ', array_map(fn($k) => ":$k", array_keys($datos)));
@@ -93,7 +97,7 @@ layout_inicio('Siesa', 'Siesa', '../');
                 </select>
             </div>
             <div><label>Usuario *</label><input type="text" name="usuario" required value="<?= e($editar['usuario'] ?? '') ?>"></div>
-            <div><label>Contraseña</label><input type="text" name="contrasena" value="<?= e($editar['contrasena'] ?? '') ?>"></div>
+            <div><label>Contraseña</label><input type="password" name="contrasena" value="" autocomplete="new-password" placeholder="<?= $editar ? 'Dejar vacío para conservar' : 'Contraseña' ?>"></div>
             <div><label>Área / Cargo</label><input type="text" name="categoria" value="<?= e($editar['categoria'] ?? '') ?>"></div>
             <div><label>Vincular a usuario (para "Mis Accesos")</label>
                 <select name="usuario_id">
@@ -116,7 +120,7 @@ layout_inicio('Siesa', 'Siesa', '../');
         <td><?= e($f['sede_nombre']) ?></td>
         <td><?= e($f['sistema']) ?></td>
         <td><?= e($f['usuario']) ?></td>
-        <td><?= e($f['contrasena']) ?></td>
+        <td><code id="credencial-<?= (int)$f['id'] ?>">••••••••</code> <button type="button" class="btn btn-secondary revelar-credencial" data-id="<?= (int)$f['id'] ?>" data-target="credencial-<?= (int)$f['id'] ?>" style="padding:3px 8px;font-size:12px;">Ver</button></td>
         <td><?= e($f['nombre']) ?> <?= e($f['categoria']) ?></td>
         <td>
             <a href="?editar=<?= (int)$f['id'] ?>">Editar</a>

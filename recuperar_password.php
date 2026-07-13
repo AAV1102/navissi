@@ -6,6 +6,7 @@ $pdo = db();
 $enviado = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_requerir();
     $email = trim($_POST['email'] ?? '');
     $stmt = $pdo->prepare("SELECT * FROM usuarios_sistema WHERE email = ? COLLATE NOCASE AND activo = 1");
     $stmt->execute([$email]);
@@ -57,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php else: ?>
                 <p class="auth-sub">Ingresa tu correo y te enviamos un enlace para crear una nueva contraseña.</p>
                 <form method="post" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                     <label>Correo</label>
                     <input type="email" name="email" required autofocus placeholder="tu.correo@grupo10z.com">
                     <button type="submit" class="btn-primary-lg"><?= icon('key') ?> Enviar enlace</button>

@@ -1,4 +1,13 @@
-﻿RewriteEngine On
+RewriteEngine On
+Options -Indexes
+
+# Los datos persistentes nunca se sirven directamente.
+RewriteRule ^data/(?!agente_navissi\.ps1$|desplegar_en_pc_empleado\.ps1$) - [F,L,NC]
+RewriteRule (^|/)\.(?!well-known/) - [F,L]
+<FilesMatch "(?i)\.(sqlite|db|json|log|env|ini|bak|sql|key)$">
+    Require all denied
+</FilesMatch>
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]

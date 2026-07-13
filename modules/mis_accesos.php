@@ -25,9 +25,9 @@ if ($u && !empty($u['email'])) {
 }
 
 $tenant = null;
-$configM365Path = __DIR__ . '/../data/ms365_config.json';
-if (file_exists($configM365Path)) {
-    $cfgM365 = json_decode(file_get_contents($configM365Path), true);
+$configM365Path = MS365_CONFIG_PATH;
+$cfgM365 = leer_config_json($configM365Path);
+if ($cfgM365) {
     $tenant = $cfgM365['tenant_dominio'] ?? $cfgM365['tenant'] ?? null;
 }
 
@@ -63,7 +63,7 @@ layout_inicio('Mis Accesos', 'Mis Accesos', '../');
             <td><?= e($c['sistema']) ?></td>
             <td><?= e($c['sede_nombre']) ?: '—' ?></td>
             <td><?= e($c['usuario']) ?></td>
-            <td><code><?= e($c['contrasena']) ?></code></td>
+            <td><code id="credencial-<?= (int)$c['id'] ?>">••••••••</code> <button type="button" class="btn btn-secondary revelar-credencial" data-id="<?= (int)$c['id'] ?>" data-target="credencial-<?= (int)$c['id'] ?>" style="padding:3px 8px;font-size:12px;">Ver</button></td>
             <td><?= e($c['categoria']) ?></td>
         </tr>
         <?php endforeach; ?>

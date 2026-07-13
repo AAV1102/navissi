@@ -12,6 +12,7 @@ $stmt->execute([$vacanteId]);
 $vacante = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $vacante) {
+    csrf_requerir();
     $nombre = limpio($_POST['nombre'] ?? null);
     $email = limpio($_POST['email'] ?? null);
     if ($nombre && $email) {
@@ -58,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $vacante) {
     <?php if ($error): ?><div class="msg-error"><?= e($error) ?></div><?php endif; ?>
     <div class="panel">
         <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
             <label>Nombre completo *</label><input type="text" name="nombre" required style="margin-bottom:10px;">
             <label>Documento</label><input type="text" name="documento" style="margin-bottom:10px;">
             <label>Correo *</label><input type="email" name="email" required style="margin-bottom:10px;">

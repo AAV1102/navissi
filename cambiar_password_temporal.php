@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/icons.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+iniciar_sesion_segura();
 $pdo = db();
 $error = null;
 
@@ -20,17 +20,22 @@ if (!$u) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_requerir();
     $clave = $_POST['password'] ?? '';
     $clave2 = $_POST['password2'] ?? '';
-    if (strlen($clave) < 6) {
-        $error = 'La contraseña debe tener al menos 6 caracteres.';
+    if (strlen($clave) < 12) {
+        $error = 'La contraseña debe tener al menos 12 caracteres.';
     } elseif ($clave !== $clave2) {
         $error = 'Las contraseñas no coinciden.';
     } else {
         $pdo->prepare("UPDATE usuarios_sistema SET password_hash = ?, password_temporal = 0 WHERE id = ?")
             ->execute([password_hash($clave, PASSWORD_DEFAULT), $u['id']]);
+        if (strcasecmp((string) ($u['email'] ?? ''), 'admin@navissi.com') === 0) {
+            @unlink(private_path('bootstrap-admin.txt'));
+        }
         unset($_SESSION['pendiente_cambio_clave']);
         $_SESSION['usuario'] = sesion_desde_usuario($u);
+        session_regenerate_id(true);
         $destino = es_solo_empleado() ? 'modules/portal_empleado.php' : 'index.php';
         header("Location: {$destino}");
         exit;
@@ -60,10 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p class="auth-sub">Hola <?= e($u['nombre']) ?>, tu cuenta tiene una contraseña temporal. Antes de continuar, crea una nueva que solo tú conozcas.</p>
             <?php if ($error): ?><div class="msg-error"><?= icon('x') ?> <?= e($error) ?></div><?php endif; ?>
             <form method="post" class="auth-form">
+                <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                 <label>Nueva contraseña</label>
-                <input type="password" name="password" required minlength="6" placeholder="Mínimo 6 caracteres" autofocus>
+                <input type="password" name="password" required minlength="12" placeholder="Mínimo 12 caracteres" autofocus>
                 <label>Repite la contraseña</label>
-                <input type="password" name="password2" required minlength="6">
+                <input type="password" name="password2" required minlength="12">
                 <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Guardar y continuar</button>
             </form>
         </div>

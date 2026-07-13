@@ -6,14 +6,11 @@
  */
 
 function smtp_config(): ?array {
-    $path = __DIR__ . '/../data/smtp_config.json';
-    if (!file_exists($path)) return null;
-    $cfg = json_decode(file_get_contents($path), true);
-    return $cfg ?: null;
+    return leer_config_json(private_path('smtp_config.json'));
 }
 
 function smtp_log(string $linea): void {
-    $ruta = __DIR__ . '/../data/smtp_correo.log';
+    $ruta = private_path('smtp_correo.log');
     @file_put_contents($ruta, '[' . gmdate('Y-m-d H:i:s') . " UTC] {$linea}\n", FILE_APPEND);
 }
 

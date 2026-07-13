@@ -210,7 +210,7 @@ if (!empty($hojasInv['CREDENCIALES_365'])) {
         $existe->execute([$usuario]);
         if (!$existe->fetchColumn()) {
             $pdo->prepare("INSERT INTO credenciales (nombre, sistema, usuario, contrasena, categoria, estado, origen) VALUES (?,?,?,?,?,?,?)")
-                ->execute([$usuario, 'Microsoft 365', $usuario, $clave, 'O365', 'ACTIVO', normaliza($f[$idx['FUENTE']] ?? null) ?: 'MASTER_TI_2026']);
+                ->execute([$usuario, 'Microsoft 365', $usuario, secreto_cifrar($clave), 'O365', 'ACTIVO', normaliza($f[$idx['FUENTE']] ?? null) ?: 'MASTER_TI_2026']);
         }
     }
 }
@@ -236,7 +236,7 @@ if (!empty($hojasInv['USUARIOS'])) {
                 ->execute([
                     normaliza($f[$idx['NOMBRE']] ?? null) ?: $usuario,
                     $sedeId > 0 ? $sedeId : null, $sistema, $usuario,
-                    normaliza($f[$idx['CONTRASEÑA']] ?? null),
+                    secreto_cifrar(normaliza($f[$idx['CONTRASEÑA']] ?? null)),
                     normaliza($f[$idx['AREA_CARGO']] ?? null) ?: 'SIESA',
                     normaliza($f[$idx['ESTADO']] ?? null) ?: 'ACTIVO',
                     normaliza($f[$idx['FUENTE']] ?? null) ?: 'MASTER_TI_2026',
@@ -266,7 +266,7 @@ if (file_exists($archivoMaestroTI)) {
             $existe->execute([$red]);
             if (!$existe->fetchColumn()) {
                 $pdo->prepare("INSERT INTO credenciales (nombre, sede_id, sistema, usuario, contrasena, categoria, estado, origen) VALUES (?,?,?,?,?,?,?,?)")
-                    ->execute([$red, $sedeId > 0 ? $sedeId : null, 'WIFI', $red, normaliza($f[$idx['CONTRASEÑA']] ?? null),
+                    ->execute([$red, $sedeId > 0 ? $sedeId : null, 'WIFI', $red, secreto_cifrar(normaliza($f[$idx['CONTRASEÑA']] ?? null)),
                         normaliza($f[$idx['TIPO']] ?? null) ?: 'WIFI', 'ACTIVO', 'MASTER_TI_2026']);
             }
         }
@@ -288,7 +288,7 @@ if (file_exists($archivoMaestroTI)) {
                 $pdo->prepare("INSERT INTO credenciales (nombre, sistema, usuario, contrasena, categoria, estado, origen) VALUES (?,?,?,?,?,?,?)")
                     ->execute([
                         normaliza($f[$idx['Usuario'] ?? -1] ?? null) ?: $correo, 'Correo O365', $correo,
-                        normaliza($f[$idx['Contraseña'] ?? -1] ?? null), 'CORREO', 'ACTIVO', 'MASTER_TI_2026',
+                        secreto_cifrar(normaliza($f[$idx['Contraseña'] ?? -1] ?? null)), 'CORREO', 'ACTIVO', 'MASTER_TI_2026',
                     ]);
             }
         }

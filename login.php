@@ -3,7 +3,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/totp.php';
 require_once __DIR__ . '/lib/icons.php';
 require_once __DIR__ . '/lib/mailer.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+iniciar_sesion_segura();
 $pdo = db();
 $error = null;
 $pedirCodigo = false;
@@ -15,6 +15,7 @@ if (!empty($_SESSION['usuario'])) {
 
 function login_completar(array $u): void {
     unset($_SESSION['pendiente_2fa']);
+    session_regenerate_id(true);
     if (!empty($u['password_temporal'])) {
         // Contraseña temporal asignada por un admin: hay que cambiarla antes de poder usar el sistema.
         $_SESSION['pendiente_cambio_clave'] = ['id' => $u['id']];
@@ -27,7 +28,7 @@ function login_completar(array $u): void {
     exit;
 }
 
-$ssoDisponible = file_exists(__DIR__ . '/data/ms365_config.json');
+$ssoDisponible = file_exists(MS365_CONFIG_PATH);
 $passwordCambiada = isset($_GET['clave_cambiada']);
 if (isset($_GET['error']) && !$error) {
     $error = match ($_GET['error']) {
@@ -38,6 +39,7 @@ if (isset($_GET['error']) && !$error) {
 }
 
 $codigoCorreoEnviado = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') csrf_requerir();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'enviar_codigo_correo') {
     $uid = $_SESSION['pendiente_2fa']['id'] ?? null;
     $stmt = $pdo->prepare("SELECT * FROM usuarios_sistema WHERE id = ? AND activo = 1");
@@ -99,8 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
     <div class="auth-brand">
         <div class="auth-brand-inner">
             <span class="auth-brand-mark"><?= icon('inventory', 'icon') ?></span>
-            <h1>NAVISSI Inventario</h1>
-            <p>La plataforma de TI de Grupo 10Z: inventario, mesa de ayuda, RRHH, automatización e IA — todo en un solo lugar.</p>
+            <p class="auth-brand-kicker">NAVISSI BACKSTAGE</p>
+            <h1>La operación detrás de cada tienda.</h1>
+            <p>Inventario, servicio, personas y automatización en un mismo pulso operativo para Grupo 10Z.</p>
             <ul class="auth-brand-list">
                 <li><?= icon('shield') ?> Verificación en dos pasos con Authenticator</li>
                 <li><?= icon('cloud') ?> Inicio de sesión con Microsoft 365</li>
@@ -117,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
                 <?php if ($error): ?><div class="msg-error"><?= icon('x') ?> <?= e($error) ?></div><?php endif; ?>
                 <?php if ($codigoCorreoEnviado): ?><div class="msg-ok"><?= icon('check') ?> Te enviamos un código por correo, vence en 10 minutos.</div><?php endif; ?>
                 <form method="post" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                     <label>Código de verificación</label>
                     <input type="text" name="codigo_2fa" required autofocus inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" class="auth-code-input">
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Verificar y entrar</button>
@@ -124,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
                 <p class="auth-foot">
                     ¿No tienes acceso a tu Authenticator?
                     <form method="post" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                         <input type="hidden" name="accion" value="enviar_codigo_correo">
                         <button type="submit" class="btn-link-inline"><?= icon('send') ?> Enviar código a mi correo</button>
                     </form>
@@ -141,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
                 <div class="auth-divider"><span>o con tu correo</span></div>
                 <?php endif; ?>
                 <form method="post" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                     <label>Correo</label>
                     <input type="email" name="email" required autofocus placeholder="tu.correo@grupo10z.com">
                     <label>Contraseña</label>
@@ -148,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Ingresar</button>
                 </form>
                 <p class="auth-foot"><a href="recuperar_password.php"><?= icon('key') ?> ¿Olvidaste tu contraseña?</a></p>
-                <p class="auth-foot small">Usuario inicial: admin@navissi.com / navissi2026</p>
+                <p class="auth-foot small">El acceso inicial se genera de forma segura y queda disponible solo para TI.</p>
             <?php endif; ?>
         </div>
     </div>

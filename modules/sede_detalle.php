@@ -119,7 +119,7 @@ layout_inicio($sede['nombre'], 'Sedes', '../');
         <tr>
             <td><?= e($c['sistema']) ?></td>
             <td><?= e($c['usuario']) ?></td>
-            <td><?= e($c['contrasena']) ?></td>
+            <td><code id="credencial-<?= (int)$c['id'] ?>">••••••••</code><?php if (tiene_rol(['ADMIN', 'TI'])): ?> <button type="button" class="btn btn-secondary revelar-credencial" data-id="<?= (int)$c['id'] ?>" data-target="credencial-<?= (int)$c['id'] ?>" style="padding:3px 8px;font-size:12px;">Ver</button><?php endif; ?></td>
             <td><?= e($c['categoria']) ?></td>
             <td><a href="credenciales.php?editar=<?= (int)$c['id'] ?>">Editar</a></td>
         </tr>

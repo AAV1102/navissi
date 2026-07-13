@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
+requiere_roles(['ADMIN', 'TI'], '../');
 require_once __DIR__ . '/../lib/xlsx_reader.php';
 $pdo = db();
 $resultado = null;
@@ -58,7 +59,7 @@ function importar_credenciales_generico(PDO $pdo, $filas, $archivo, $hoja, calla
         if (!$d['sistema'] || !$d['usuario']) { reg_pendiente($pdo, $archivo, $hoja, $num, 'Falta SISTEMA o USUARIO', $f); $stats['omitidos']++; continue; }
         $sedeId = $d['sede'] ? sede_id_por_nombre($pdo, $d['sede'], false) : null;
         $datos = ['nombre'=>$d['nombre'],'sede_id'=>$sedeId,'sistema'=>$d['sistema'],'usuario'=>$d['usuario'],
-            'contrasena'=>$d['contrasena'],'categoria'=>$d['categoria'],'estado'=>'ACTIVO','origen'=>"{$archivo} - {$hoja}"];
+            'contrasena'=>secreto_cifrar($d['contrasena']),'categoria'=>$d['categoria'],'estado'=>'ACTIVO','origen'=>"{$archivo} - {$hoja}"];
         $stmt = $pdo->prepare("SELECT id FROM credenciales WHERE sistema=? AND usuario=? AND (sede_id=? OR (sede_id IS NULL AND ? IS NULL))");
         $stmt->execute([$d['sistema'], $d['usuario'], $sedeId, $sedeId]);
         $ex = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -145,7 +146,7 @@ function importar_datos_pdv(PDO $pdo, $archivo, &$stats) {
         $clave = $filas[2][0] ?? null;
         if ($nombre && $usuario && $clave) {
             $datos = ['nombre'=>limpio($nombre),'sede_id'=>null,'sistema'=>'SERVIDOR','usuario'=>limpio($usuario),
-                'contrasena'=>limpio($clave),'categoria'=>'Acceso remoto','estado'=>'ACTIVO','origen'=>"{$nombreArchivo} - SERVIDOR"];
+                'contrasena'=>secreto_cifrar(limpio($clave)),'categoria'=>'Acceso remoto','estado'=>'ACTIVO','origen'=>"{$nombreArchivo} - SERVIDOR"];
             $stmt = $pdo->prepare("SELECT id FROM credenciales WHERE sistema='SERVIDOR' AND usuario=? AND sede_id IS NULL");
             $stmt->execute([$datos['usuario']]);
             $ex = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -171,7 +172,7 @@ function importar_datos_pdv(PDO $pdo, $archivo, &$stats) {
         }
         if ($usuario && $clave) {
             $datos = ['nombre'=>'DVR Cámaras Sede Principal','sede_id'=>sede_id_por_nombre($pdo,'PRINCIPAL - MEDELLIN',false),
-                'sistema'=>'DVR','usuario'=>$usuario,'contrasena'=>$clave,'categoria'=>'Cámaras','estado'=>'ACTIVO','origen'=>"{$nombreArchivo} - CONTRASEÑAS DVR"];
+                'sistema'=>'DVR','usuario'=>$usuario,'contrasena'=>secreto_cifrar($clave),'categoria'=>'Cámaras','estado'=>'ACTIVO','origen'=>"{$nombreArchivo} - CONTRASEÑAS DVR"];
             $stmt = $pdo->prepare("SELECT id FROM credenciales WHERE sistema='DVR' AND usuario=?");
             $stmt->execute([$usuario]);
             $ex = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -433,13 +434,13 @@ $totalPendientes = $pdo->query("SELECT COUNT(*) FROM importaciones_log")->fetchC
 
 // --- Importador automático de carpeta vigilada ---
 require_once __DIR__ . '/../lib/importador_universal.php';
-$configCarpetaPath = __DIR__ . '/../data/importador_config.json';
-$configCarpeta = file_exists($configCarpetaPath) ? json_decode(file_get_contents($configCarpetaPath), true) : [];
+$configCarpetaPath = private_path('importador_config.json');
+$configCarpeta = leer_config_json($configCarpetaPath) ?? [];
 $resumenCarpeta = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar_carpeta') {
     $configCarpeta['ruta_carpeta'] = limpio($_POST['ruta_carpeta'] ?? null);
-    file_put_contents($configCarpetaPath, json_encode($configCarpeta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    guardar_config_json($configCarpetaPath, $configCarpeta);
     $msg = ['ok', 'Carpeta configurada.'];
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'sincronizar_carpeta') {
     $resumenCarpeta = iu_sincronizar_carpeta($pdo, $configCarpeta['ruta_carpeta'] ?? '');

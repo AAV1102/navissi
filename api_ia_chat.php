@@ -2,16 +2,16 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/ia_client.php';
 header('Content-Type: application/json; charset=utf-8');
-if (session_status() === PHP_SESSION_NONE) session_start();
+iniciar_sesion_segura();
 if (empty($_SESSION['usuario'])) { http_response_code(401); echo json_encode(['error' => 'Sesión expirada, recarga la página.']); exit; }
 
 $pdo = db();
-$configPath = BASE_DIR . '/data/ia_config.json';
+$configPath = private_path('ia_config.json');
 if (!file_exists($configPath)) {
     echo json_encode(['error' => 'La IA no está configurada todavía. Ve a Automatización e IA → IA Multiagente y pon tu clave de API.']);
     exit;
 }
-$config = json_decode(file_get_contents($configPath), true);
+$config = leer_config_json($configPath);
 if (empty($config['api_key'])) {
     echo json_encode(['error' => 'La IA no está configurada todavía. Ve a Automatización e IA → IA Multiagente y pon tu clave de API.']);
     exit;

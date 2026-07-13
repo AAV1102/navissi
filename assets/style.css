@@ -615,3 +615,165 @@ table.tabla-viva tr:first-child th.sorted .sort-ic { opacity:1; color:var(--teal
 table.tabla-viva tr:not(:first-child):nth-child(even) td { background:#fbfcfe; }
 table.tabla-viva tr.fila-oculta { display:none; }
 table.tabla-viva tr:not(:first-child):hover td { background:#eefaf4 !important; }
+
+/* ========================================================================
+   NAVISSI BACKSTAGE · FASE VISUAL 1
+   Dirección editorial colombiana: tinta, marfil, coral, rosa, oliva y ámbar.
+   Sin gradientes, sin vidrio, sin tarjetas SaaS infladas.
+   ======================================================================== */
+:root {
+    --navy-900:#0a0a0a; --navy-800:#141312; --navy-700:#24211f; --navy-600:#35312e;
+    --accent-600:#d0342c; --accent-500:#df463e; --accent-100:#f9e5e3;
+    --gold-500:#e8a0a8; --gold-600:#c87984;
+    --teal-500:#3f5c2a; --teal-600:#304720;
+    --ink-900:#0a0a0a; --ink-700:#393531; --ink-500:#77706a; --ink-300:#b7afa8;
+    --line:#ded9d2; --bg:#faf8f5; --card:#fff;
+    --warn-bg:#f8ead8; --warn-fg:#8b5a12; --warn-line:#d7af72;
+    --radius:0; --radius-sm:0;
+    --shadow-sm:0 1px 0 rgba(10,10,10,.06);
+    --shadow-md:0 8px 20px rgba(10,10,10,.07);
+    --shadow-lg:0 18px 48px rgba(10,10,10,.14);
+}
+body { font-size:13.5px; letter-spacing:.002em; }
+h1, h2, h3 { text-wrap:balance; }
+h1 { font-size:31px; line-height:1.08; font-weight:600; letter-spacing:-.035em; }
+.subtitle { max-width:780px; margin-top:8px; margin-bottom:24px; line-height:1.55; }
+.page-kicker { margin:0 0 8px; color:var(--accent-600); font-size:10px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+
+/* Navegación: catálogo operativo, no colección de pastillas. */
+.sidebar { width:270px; border-right:0; }
+.sidebar-brand { min-height:78px; padding:18px 20px; border-bottom:1px solid #302d2a; }
+.brand-mark { width:30px; height:30px; border-radius:0; background:var(--accent-600); border:1px solid rgba(255,255,255,.22); box-shadow:none; }
+.sidebar-brand-text { font-size:17px; line-height:1.05; letter-spacing:.025em; }
+.sidebar-brand-text span { margin-top:7px; color:#c5bdb6; opacity:1; font-family:var(--font-body); font-size:9.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
+.sidebar-nav { padding:13px 0 24px; gap:0; }
+.sidebar-link { min-height:39px; padding:9px 20px; border-radius:0; border-left:3px solid transparent; color:#d4cec8; font-size:12.5px; }
+.sidebar-link:hover, .sidebar-link:focus-visible { background:#181716; border-left-color:#6c645e; }
+.sidebar-link.active { background:#181716; border-left-color:var(--accent-600); color:#fff; font-weight:750; }
+.sidebar-group { margin:0; border-top:1px solid #1e1c1b; }
+.sidebar-group-label { min-height:38px; padding:10px 20px; color:#a9a19a; letter-spacing:.085em; font-size:9.5px; line-height:1.35; }
+.sidebar-group-label:hover { color:#fff; background:#141312; }
+.sidebar-group-items { padding:0 0 7px; }
+.sidebar-group-items .sidebar-link { padding-left:47px; color:#bdb6b0; font-size:12px; }
+.sidebar-group-items .sidebar-link.active { color:#fff; }
+.sidebar-foot { padding:15px 20px; background:#070707; }
+
+/* Barra de trabajo y contenido. */
+.topbar-slim { min-height:60px; padding:10px 26px; box-shadow:none; }
+.topbar-center { max-width:520px; }
+.buscador-modulos { height:39px; border-color:#d8d3cc; border-radius:0; background:#fff; font-size:12.5px; }
+.buscador-modulos:focus { border-color:var(--ink-900); box-shadow:0 0 0 1px var(--ink-900); }
+.user-chip-btn { border-radius:0; padding:5px 11px 5px 5px; }
+.avatar { border-radius:0; background:var(--accent-600); }
+.breadcrumbs { max-width:1360px; margin-top:13px; padding:0 28px; font-size:11.5px; }
+main { max-width:1360px; margin-top:18px; padding:0 28px 72px; }
+.site-footer { max-width:1360px; }
+
+/* Portada operativa: bloque editorial plano. */
+.dash-hero { min-height:186px; padding:31px 32px 28px; margin-bottom:16px; border-radius:0; background:#0a0a0a; border-top:5px solid var(--accent-600); }
+.dash-hero::before { display:none; }
+.dash-hero-eyebrow { color:var(--gold-500); font-size:9.5px; letter-spacing:.16em; }
+.dash-hero-num { font-size:66px; font-weight:600; letter-spacing:-.04em; }
+.dash-hero-label { color:#d7d0ca; max-width:650px; }
+.dash-hero-side { min-width:150px; gap:20px; padding-left:24px; border-left:1px solid #393532; }
+.dash-hero-mini .n { font-family:var(--font-heading); font-size:28px; font-weight:600; }
+.dash-hero-mini .l { color:#a9a19a; font-size:9px; letter-spacing:.12em; }
+
+/* Indicadores: cuatro columnas legibles y una jerarquía contenida. */
+.cards, .stat-cards { grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; margin:0 0 22px; border-top:1px solid var(--line); border-left:1px solid var(--line); }
+.card, .stat-card { min-height:112px; padding:20px 20px 17px; border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); overflow:visible; box-shadow:none; }
+.cards > *:first-child, .stat-cards > *:first-child { border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+.card::before, .stat-card::before { left:0; right:0; top:0; bottom:auto; width:auto; height:3px; }
+.card .num, .stat-card .stat-num { font-family:var(--font-heading); font-size:29px; font-weight:600; letter-spacing:-.02em; }
+.card .label, .stat-card .stat-label { margin-top:8px; font-size:11.5px; line-height:1.4; }
+.card:has(a):hover, a.card-link:hover { background:#fffaf8; box-shadow:none; border-color:var(--line); }
+a.card-link::after { opacity:1; top:17px; right:17px; color:var(--accent-600); }
+
+/* Paneles y datos densos: líneas claras, poca decoración. */
+.panel-grid-2 { gap:14px; }
+.panel { padding:21px 22px; margin-bottom:16px; box-shadow:none; }
+.panel h3 { min-height:32px; margin-bottom:14px; padding-bottom:11px; border-bottom:2px solid var(--ink-900); font-size:16px; font-weight:600; letter-spacing:-.015em; }
+.pill-row { gap:22px; }
+.pill-stat { align-items:baseline; }
+.pill-stat strong { font-family:var(--font-heading); font-size:24px; font-weight:600; }
+.badge { border-radius:999px; padding:3px 9px; font-size:10px; }
+.tabla-scroll { max-height:570px; border:1px solid var(--line); }
+table { border-radius:0; }
+th, td { padding:10px 12px; font-size:12px; }
+th { position:sticky; top:0; z-index:2; background:var(--ink-900); font-size:9.5px; letter-spacing:.09em; font-weight:750; }
+tbody tr:nth-child(even) td { background:#fcfaf7; }
+tbody tr:hover td, table.tabla-viva tr:not(:first-child):hover td { background:#f9e5e3 !important; }
+
+/* Controles: rectos, explícitos, con estados visibles. */
+input[type=text], input[type=search], input[type=email], input[type=date], input[type=number], input[type=password], select, input[type=file], textarea { min-height:39px; border-color:#cbc5be; border-radius:0; background:#fff; }
+input:focus, select:focus, textarea:focus { border-color:var(--ink-900); box-shadow:0 0 0 1px var(--ink-900); }
+button, .btn { min-height:38px; border-radius:0; padding:9px 15px; font-size:12px; letter-spacing:.015em; transition:background .15s, color .15s, border-color .15s; }
+button:active, .btn:active { transform:none; }
+.btn-secondary { border-color:#bdb6af; }
+.toolbar { padding:0; gap:8px; }
+.grid-form { gap:14px 16px; }
+.grid-form label { color:var(--ink-700); font-size:10px; letter-spacing:.055em; text-transform:uppercase; }
+.msg-ok, .msg-error { border-radius:0; border-left-width:4px; }
+
+/* Login: portada de colección / backstage, sin degradados ni ilustraciones genéricas. */
+.auth-shell { grid-template-columns:minmax(460px,1.12fr) minmax(420px,.88fr); }
+.auth-brand { position:relative; justify-content:flex-start; padding:clamp(50px,7vw,110px); background:#0a0a0a; background-image:none; border-top:7px solid var(--accent-600); }
+.auth-brand::after { content:"GRUPO 10Z · MEDELLÍN · COLOMBIA"; position:absolute; left:clamp(50px,7vw,110px); bottom:38px; color:#88817b; font-size:9px; font-weight:750; letter-spacing:.15em; }
+.auth-brand-inner { max-width:560px; }
+.auth-brand-mark { width:38px; height:38px; border-radius:0; margin-bottom:45px; box-shadow:none; }
+.auth-brand-mark .icon { width:20px; height:20px; }
+.auth-brand-kicker { margin:0 0 14px !important; color:var(--gold-500) !important; font-size:10px !important; font-weight:800; letter-spacing:.17em; text-transform:uppercase; }
+.auth-brand-inner h1 { max-width:500px; margin-bottom:20px; color:#fff; font-size:clamp(38px,4.2vw,64px); line-height:.98; font-weight:600; letter-spacing:-.045em; }
+.auth-brand-inner > p:not(.auth-brand-kicker) { max-width:470px; color:#c6beb8; }
+.auth-brand-list { margin-top:38px; padding-top:22px; border-top:1px solid #37322f; display:grid; grid-template-columns:1fr 1fr; gap:15px 24px; }
+.auth-brand-list li { align-items:flex-start; color:#bdb5ae; font-size:11.5px; }
+.auth-brand-list .icon { color:var(--gold-500); }
+.auth-panel { background:#faf8f5; padding:55px clamp(30px,6vw,90px); }
+.auth-card { max-width:410px; }
+.auth-eyebrow { color:var(--accent-600); font-size:10px; letter-spacing:.15em; }
+.auth-card h2 { font-size:32px; font-weight:600; letter-spacing:-.03em; }
+.auth-sub { margin-bottom:26px; }
+.auth-form label { font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+.auth-form input { min-height:45px; }
+.btn-primary-lg { min-height:46px; margin-top:22px; }
+.user-panel, .notif-panel, .ver-como-panel, .resultados-modulos { border-radius:0; }
+
+/* Aplicaciones y herramientas: ficha editorial, no mosaico de app store. */
+.apps-grid { gap:0; border-top:1px solid var(--line); border-left:1px solid var(--line); }
+.app-card { min-height:180px; border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); border-radius:0; padding:20px; }
+.app-card:hover { background:#fffaf8; border-color:var(--line); }
+.app-icon { width:34px; height:34px; border-radius:0; }
+
+@media (max-width:1180px) {
+    .cards, .stat-cards { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .sidebar { width:248px; }
+}
+@media (max-width:900px) {
+    .sidebar { width:280px; }
+    .cards, .stat-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .topbar-slim { padding:9px 14px; }
+    .breadcrumbs, main { padding-left:16px; padding-right:16px; }
+    .auth-shell { grid-template-columns:1fr; }
+    .auth-brand { min-height:390px; padding:48px 28px 82px; }
+    .auth-brand::after { left:28px; bottom:30px; }
+    .auth-brand-inner h1 { max-width:620px; font-size:44px; }
+    .auth-brand-list { max-width:640px; }
+}
+@media (max-width:600px) {
+    .app-main, .auth-brand-inner, .auth-card { width:100%; min-width:0; }
+    .topbar-center { display:none; }
+    .topbar-slim { flex-wrap:nowrap; }
+    h1 { font-size:27px; }
+    .cards, .stat-cards { grid-template-columns:1fr 1fr; }
+    .card, .stat-card { min-height:104px; padding:16px; }
+    .dash-hero { padding:25px 22px; }
+    .dash-hero-num { font-size:56px; }
+    .dash-hero-side { width:100%; min-width:0; padding:18px 0 0; border-left:0; border-top:1px solid #393532; }
+    .auth-brand-inner > p, .auth-brand-list li, .auth-sub { overflow-wrap:anywhere; }
+    .auth-brand-list { grid-template-columns:1fr; }
+    .auth-brand-inner h1 { font-size:37px; }
+    .auth-panel { padding:42px 22px; }
+}
+@media (max-width:390px) {
+    .cards, .stat-cards { grid-template-columns:1fr; }
+}

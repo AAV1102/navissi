@@ -1,7 +1,6 @@
 # Levanta NAVISSI Inventario completo en un NAS (Synology/QNAP con Container
-# Manager) o cualquier VPS Linux. La carpeta ./data (SQLite + ia_config.json)
-# queda en un volumen persistente para que las actualizaciones de la imagen
-# no borren la base de datos.
+# Manager) o cualquier VPS Linux. Los secretos y SQLite viven en ./private,
+# fuera del document root; ./data queda solo para adjuntos y agentes públicos.
 #
 # USO:
 #   1. Copia toda esta carpeta (NAVISSI-INVENTARIO) al NAS/VPS
@@ -16,4 +15,7 @@ services:
       - "8099:80"
     volumes:
       - ./data:/var/www/html/data
+      - ./private:/var/lib/navissi
+    environment:
+      NAVISSI_PRIVATE_DIR: /var/lib/navissi
     restart: unless-stopped

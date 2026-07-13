@@ -15,10 +15,11 @@ $tokenFila = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$token || !$tokenFila) {
     $error = 'Este enlace ya no es válido — puede haber expirado (dura 1 hora) o ya haberse usado. Pide uno nuevo.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_requerir();
     $clave = $_POST['password'] ?? '';
     $clave2 = $_POST['password2'] ?? '';
-    if (strlen($clave) < 6) {
-        $error = 'La contraseña debe tener al menos 6 caracteres.';
+    if (strlen($clave) < 12) {
+        $error = 'La contraseña debe tener al menos 12 caracteres.';
     } elseif ($clave !== $clave2) {
         $error = 'Las contraseñas no coinciden.';
     } else {
@@ -59,11 +60,12 @@ if (!$token || !$tokenFila) {
                 <p class="auth-sub">Hola <?= e($tokenFila['nombre']) ?>, elige tu nueva contraseña.</p>
                 <?php if ($error): ?><div class="msg-error"><?= icon('x') ?> <?= e($error) ?></div><?php endif; ?>
                 <form method="post" class="auth-form">
+                    <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                     <input type="hidden" name="token" value="<?= e($token) ?>">
                     <label>Nueva contraseña</label>
-                    <input type="password" name="password" required minlength="6" placeholder="Mínimo 6 caracteres">
+                    <input type="password" name="password" required minlength="12" placeholder="Mínimo 12 caracteres">
                     <label>Repite la contraseña</label>
-                    <input type="password" name="password2" required minlength="6">
+                    <input type="password" name="password2" required minlength="12">
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Guardar contraseña</button>
                 </form>
             <?php endif; ?>

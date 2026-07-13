@@ -7,6 +7,7 @@ $enviado = false;
 $folio = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_requerir();
     $nombre = limpio($_POST['nombre'] ?? null);
     $descripcion = limpio($_POST['descripcion'] ?? null);
     if ($nombre && $descripcion) {
@@ -36,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php else: ?>
     <div class="panel">
         <form method="post">
+            <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
             <label>Tipo *</label>
             <select name="tipo" required style="margin-bottom:10px;">
                 <?php foreach (['PETICION'=>'Petición','QUEJA'=>'Queja','RECLAMO'=>'Reclamo','SUGERENCIA'=>'Sugerencia'] as $v=>$l): ?>

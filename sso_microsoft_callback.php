@@ -9,12 +9,12 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/totp.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+iniciar_sesion_segura();
 $pdo = db();
 
-$configPath = __DIR__ . '/data/ms365_config.json';
+$configPath = MS365_CONFIG_PATH;
 if (!file_exists($configPath)) { die('Inicio de sesión con Microsoft no configurado.'); }
-$cfg = json_decode(file_get_contents($configPath), true);
+$cfg = leer_config_json($configPath);
 
 if (empty($_GET['code']) || empty($_GET['state']) || $_GET['state'] !== ($_SESSION['sso_state'] ?? null)) {
     header('Location: login.php?error=sso');
@@ -76,5 +76,6 @@ if (!empty($u['totp_habilitado'])) {
 }
 
 $_SESSION['usuario'] = sesion_desde_usuario($u);
+session_regenerate_id(true);
 $destino = $u['rol'] === 'EMPLEADO' ? 'modules/portal_empleado.php' : 'index.php';
 header("Location: {$destino}");

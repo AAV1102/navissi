@@ -50,6 +50,7 @@ function iu_importar_hoja(PDO $pdo, array $hojaCruda, string $nombreArchivo, str
                 'categoria' => $get($f, ['AREA_CARGO', 'Departamento', 'TIPO']), 'estado' => 'ACTIVO',
                 'origen' => "Carpeta vigilada - {$nombreArchivo}/{$hoja}",
             ];
+            $datos['contrasena'] = secreto_cifrar($datos['contrasena']);
             $stmt = $pdo->prepare("SELECT id FROM credenciales WHERE sistema=? AND usuario=? AND (sede_id=? OR (sede_id IS NULL AND ? IS NULL))");
             $stmt->execute([$sistema, $usuario, $sedeId, $sedeId]);
             $ex = $stmt->fetchColumn();

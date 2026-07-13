@@ -1,10 +1,11 @@
 <?php
+define('CSRF_EXEMPT', true);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/whatsapp_client.php';
 require_once __DIR__ . '/lib/ia_triage.php';
 $pdo = db();
 
-$configPath = BASE_DIR . '/data/whatsapp_config.json';
+$configPath = WHATSAPP_CONFIG_PATH;
 $c = file_exists($configPath) ? json_decode(file_get_contents($configPath), true) : [];
 
 // Verificación inicial que pide Meta al registrar el webhook (GET).
@@ -18,11 +19,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // Mensajes entrantes reales (POST).
-$data = json_decode(file_get_contents('php://input'), true) ?: [];
+$rawBody = (string) file_get_contents('php://input');
+if (empty($c['app_secret'])) {
+    http_response_code(503);
+    echo 'APP_SECRET_REQUIRED';
+    exit;
+}
+if (!firma_hmac_valida($rawBody, $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? null, $c['app_secret'])) {
+    http_response_code(401);
+    echo 'INVALID_SIGNATURE';
+    exit;
+}
+$data = json_decode($rawBody, true) ?: [];
 $mensajes = $data['entry'][0]['changes'][0]['value']['messages'] ?? [];
 
-$dirMedia = BASE_DIR . '/data/whatsapp_media';
-if (!is_dir($dirMedia)) mkdir($dirMedia, 0777, true);
+$dirMedia = private_path('whatsapp_media');
+if (!is_dir($dirMedia)) mkdir($dirMedia, 0700, true);
 
 foreach ($mensajes as $m) {
     $numero = $m['from'] ?? 'desconocido';
@@ -47,7 +59,7 @@ foreach ($mensajes as $m) {
                 $ext = ['image' => 'jpg', 'document' => 'pdf', 'video' => 'mp4', 'audio' => 'ogg'][$tipoMedia] ?? 'bin';
                 $destino = $dirMedia . '/' . uniqid() . '.' . $ext;
                 $client->descargarMedia($mediaId, $destino);
-                $mediaUrl = 'data/whatsapp_media/' . basename($destino);
+                $mediaUrl = 'whatsapp_media/' . basename($destino);
             } catch (WhatsAppException $e) {
                 $texto .= " (no se pudo descargar el archivo: {$e->getMessage()})";
             }
