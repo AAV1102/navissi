@@ -58,7 +58,7 @@ $fechaTexto = $hoy->format('d') . ' de ' . $meses[(int)$hoy->format('n') - 1] . 
         la empresa realiza el aporte patronal complementario de ley).
     </p>
     <?php else: ?>
-    <p class="small" style="color:#a12b1f;">⚠ No hay periodos de nómina registrados todavía para este empleado en el sistema - esta certificación se expide de forma general, sin cifras de un periodo específico.</p>
+    <p class="small" style="color:var(--accent-600);">⚠ No hay periodos de nómina registrados todavía para este empleado en el sistema - esta certificación se expide de forma general, sin cifras de un periodo específico.</p>
     <?php endif; ?>
 
     <p style="text-align:justify;">

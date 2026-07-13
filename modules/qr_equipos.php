@@ -22,7 +22,7 @@ layout_inicio('Códigos QR de Equipos', 'Códigos QR de Equipos', '../');
     .qr-grid { break-inside: avoid; }
 }
 .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top:16px; }
-.qr-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; text-align: center; background: #fff; }
+.qr-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; text-align: center; background: var(--bg); }
 .qr-card img { width: 140px; height: 140px; }
 .qr-card .titulo { font-weight: 700; margin-top: 8px; font-size: 13px; }
 .qr-card .sub { font-size: 11.5px; color: var(--ink-500); }

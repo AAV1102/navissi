@@ -62,12 +62,12 @@ $ingresoTexto = $emp['fecha_ingreso'] ? date('d \d\e \\M', strtotime($emp['fecha
 
     <div style="margin-top:60px;">
         <p>Atentamente,</p>
-        <div style="margin-top:60px;border-top:1px solid #333;width:280px;padding-top:6px;">
+        <div style="margin-top:60px;border-top:1px solid var(--ink-900);width:280px;padding-top:6px;">
             Recursos Humanos<br>Grupo 10Z SAS
         </div>
     </div>
 
-    <p class="small" style="margin-top:30px;color:#a12b1f;">
+    <p class="small" style="margin-top:30px;color:var(--accent-600);">
         <?php if (!$emp['fecha_ingreso'] || !$emp['salario'] || !$emp['tipo_contrato']): ?>
         ⚠ Este certificado tiene datos incompletos (fecha de ingreso, contrato o salario sin registrar). Complétalos en RRHH → editar empleado antes de entregarlo oficialmente.
         <?php endif; ?>
