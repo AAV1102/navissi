@@ -62,6 +62,66 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    $columnasLecciones = array_column($pdo->query("PRAGMA table_info(lecciones)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasLecciones = ['tipo' => "TEXT DEFAULT 'TEXTO'", 'archivo_ruta' => 'TEXT', 'archivo_nombre' => 'TEXT'];
+    foreach ($nuevasLecciones as $col => $tipo) {
+        if (!in_array($col, $columnasLecciones, true)) {
+            $pdo->exec("ALTER TABLE lecciones ADD COLUMN {$col} {$tipo}");
+        }
+    }
+    $pdo->exec("CREATE TABLE IF NOT EXISTS examenes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+        titulo TEXT NOT NULL,
+        nota_minima INTEGER DEFAULT 60,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS examen_preguntas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        examen_id INTEGER NOT NULL REFERENCES examenes(id) ON DELETE CASCADE,
+        texto TEXT NOT NULL,
+        orden INTEGER DEFAULT 0
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS examen_opciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pregunta_id INTEGER NOT NULL REFERENCES examen_preguntas(id) ON DELETE CASCADE,
+        texto TEXT NOT NULL,
+        es_correcta INTEGER DEFAULT 0
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS examen_resultados (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        examen_id INTEGER NOT NULL REFERENCES examenes(id) ON DELETE CASCADE,
+        empleado_documento TEXT NOT NULL,
+        empleado_nombre TEXT,
+        puntaje INTEGER,
+        aprobado INTEGER DEFAULT 0,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $columnasDoc = array_column($pdo->query("PRAGMA table_info(documentos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasDoc = ['empleado_documento' => 'TEXT', 'requiere_firma' => 'INTEGER DEFAULT 0', 'firmado_en' => 'TEXT', 'firmado_ip' => 'TEXT'];
+    foreach ($nuevasDoc as $col => $tipo) {
+        if (!in_array($col, $columnasDoc, true)) {
+            $pdo->exec("ALTER TABLE documentos ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
+    $columnasVac = array_column($pdo->query("PRAGMA table_info(vacaciones_permisos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('adjunto_ruta', $columnasVac, true)) {
+        $pdo->exec("ALTER TABLE vacaciones_permisos ADD COLUMN adjunto_ruta TEXT");
+    }
+    if (!in_array('adjunto_nombre', $columnasVac, true)) {
+        $pdo->exec("ALTER TABLE vacaciones_permisos ADD COLUMN adjunto_nombre TEXT");
+    }
+
+    $columnasSolic = array_column($pdo->query("PRAGMA table_info(solicitudes_aprobacion)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasSolic = ['nivel_actual' => "TEXT DEFAULT 'DIRECTOR'", 'escalado_por' => 'TEXT', 'escalado_en' => 'TEXT', 'escalado_motivo' => 'TEXT'];
+    foreach ($nuevasSolic as $col => $tipo) {
+        if (!in_array($col, $columnasSolic, true)) {
+            $pdo->exec("ALTER TABLE solicitudes_aprobacion ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
     $columnasTicketsArea = array_column($pdo->query("PRAGMA table_info(tickets)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     if (!in_array('solicitante_area', $columnasTicketsArea, true)) {
         $pdo->exec("ALTER TABLE tickets ADD COLUMN solicitante_area TEXT");

@@ -1,0 +1,7 @@
+Order deny,allow
+Deny from all
+
+<FilesMatch "\.(ps1)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>

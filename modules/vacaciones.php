@@ -60,7 +60,7 @@ layout_inicio('Vacaciones y Permisos', 'Vacaciones y Permisos', '../');
             <div><label>Documento del empleado *</label><input type="text" name="empleado_documento" required></div>
             <div><label>Tipo</label>
                 <select name="tipo">
-                    <?php foreach (['VACACIONES','PERMISO','INCAPACIDAD','LICENCIA'] as $t): ?><option><?= $t ?></option><?php endforeach; ?>
+                    <?php foreach (['VACACIONES','PERMISO','HORAS_EXTRA','INCAPACIDAD','LICENCIA'] as $t): ?><option><?= $t ?></option><?php endforeach; ?>
                 </select>
             </div>
             <div><label>Fecha inicio</label><input type="date" name="fecha_inicio"></div>
@@ -81,7 +81,7 @@ layout_inicio('Vacaciones y Permisos', 'Vacaciones y Permisos', '../');
 </form>
 
 <table>
-    <tr><th>Empleado</th><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Estado</th><th>Acciones</th></tr>
+    <tr><th>Empleado</th><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Soporte</th><th>Estado</th><th>Acciones</th></tr>
     <?php foreach ($solicitudes as $s): ?>
     <tr>
         <td><?= e($s['empleado_nombre']) ?: e($s['empleado_documento']) ?></td>
@@ -89,6 +89,7 @@ layout_inicio('Vacaciones y Permisos', 'Vacaciones y Permisos', '../');
         <td><?= e($s['fecha_inicio']) ?></td>
         <td><?= e($s['fecha_fin']) ?></td>
         <td><?= e($s['dias']) ?></td>
+        <td><?= !empty($s['adjunto_ruta']) ? '<a href="descargar_adjunto_rrhh.php?id=' . (int)$s['id'] . '" target="_blank">Ver archivo</a>' : '<span class="small">—</span>' ?></td>
         <td><span class="badge <?= $s['estado']==='APROBADO'?'badge-activo':($s['estado']==='RECHAZADO'?'badge-otro':'') ?>" style="<?= $s['estado']==='SOLICITADO' ? 'background:#fff3cd;color:#7a5c00;' : '' ?>"><?= e($s['estado']) ?></span></td>
         <td>
             <?php if ($s['estado'] === 'SOLICITADO'): ?>
@@ -101,6 +102,6 @@ layout_inicio('Vacaciones y Permisos', 'Vacaciones y Permisos', '../');
         </td>
     </tr>
     <?php endforeach; ?>
-    <?php if (!$solicitudes): ?><tr><td colspan="7" class="small">Sin solicitudes.</td></tr><?php endif; ?>
+    <?php if (!$solicitudes): ?><tr><td colspan="8" class="small">Sin solicitudes.</td></tr><?php endif; ?>
 </table>
 <?php layout_fin(); ?>

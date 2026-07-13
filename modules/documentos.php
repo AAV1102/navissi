@@ -14,10 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $destino = $dirDocs . '/' . uniqid() . '_' . $seguro;
         if (move_uploaded_file($_FILES['archivo']['tmp_name'], $destino)) {
             $sedeId = sede_id_por_nombre($pdo, $_POST['sede'] ?? null, false);
-            $pdo->prepare("INSERT INTO documentos (nombre_archivo, ruta, categoria, sede_id, descripcion, subido_por) VALUES (?,?,?,?,?,?)")
+            $empleadoDoc = limpio($_POST['empleado_documento'] ?? null);
+            $requiereFirma = !empty($_POST['requiere_firma']) && $empleadoDoc ? 1 : 0;
+            $pdo->prepare("INSERT INTO documentos (nombre_archivo, ruta, categoria, sede_id, descripcion, subido_por, empleado_documento, requiere_firma) VALUES (?,?,?,?,?,?,?,?)")
                 ->execute([$original, basename($destino), limpio($_POST['categoria'] ?? null) ?: 'OTRO', $sedeId,
-                    limpio($_POST['descripcion'] ?? null), limpio($_POST['subido_por'] ?? null)]);
-            $msg = ['ok', 'Documento subido.'];
+                    limpio($_POST['descripcion'] ?? null), limpio($_POST['subido_por'] ?? null), $empleadoDoc, $requiereFirma]);
+            $msg = ['ok', $requiereFirma ? 'Documento enviado - le llegará a la persona para firmar en "Mis Documentos".' : 'Documento subido.'];
         } else {
             $msg = ['error', 'No se pudo guardar el archivo.'];
         }
@@ -56,6 +58,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$empleadosDoc = $pdo->query("SELECT documento, nombres FROM empleados WHERE estado='ACTIVO' ORDER BY nombres")->fetchAll(PDO::FETCH_ASSOC);
 
 layout_inicio('Documentos', 'Documentos', '../');
 ?>
@@ -83,7 +86,13 @@ layout_inicio('Documentos', 'Documentos', '../');
                 </select>
             </div>
             <div><label>Subido por</label><input type="text" name="subido_por"></div>
+            <div><label>Enviar a un empleado (documento)</label><input type="text" name="empleado_documento" list="lista-empleados-doc" placeholder="Opcional - deja vacío si es general">
+                <datalist id="lista-empleados-doc"><?php foreach ($empleadosDoc as $ed): ?><option value="<?= e($ed['documento']) ?>"><?= e($ed['nombres']) ?><?php endforeach; ?></datalist>
+            </div>
         </div>
+        <label class="small" style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+            <input type="checkbox" name="requiere_firma" value="1"> Requiere firma del empleado (contrato, aprobación de permiso, etc.) - aparecerá en su "Mis Documentos" hasta que la confirme.
+        </label>
         <textarea name="descripcion" rows="2" style="width:100%;padding:8px;border:1px solid #d3dae3;border-radius:6px;font-family:inherit;margin-bottom:10px;" placeholder="Descripción breve"></textarea>
         <button type="submit">Subir</button>
     </form>

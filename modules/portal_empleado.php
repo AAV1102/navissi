@@ -66,6 +66,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
     }
 }
 
+// Autoservicio RRHH: vacaciones, permisos, horas extra, licencias, incapacidades.
+// RRHH solo revisa y aprueba/rechaza - el empleado sube su propio soporte cuando aplica.
+$msgRrhh = null;
+$tiposRequierenAdjunto = ['INCAPACIDAD', 'LICENCIA'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear_solicitud_rrhh') {
+    $tipo = limpio($_POST['tipo'] ?? null) ?: 'PERMISO';
+    $requiereAdjunto = in_array($tipo, $tiposRequierenAdjunto, true);
+    if ($requiereAdjunto && empty($_FILES['adjunto']['tmp_name'])) {
+        $msgRrhh = ['error', 'Para ' . strtolower($tipo) . ' es obligatorio adjuntar el soporte (PDF o imagen).'];
+    } elseif (!$u['documento']) {
+        $msgRrhh = ['error', 'Tu usuario no tiene documento vinculado - pide a RRHH que lo complete antes de poder solicitar esto.'];
+    } else {
+        $dias = null;
+        if (!empty($_POST['fecha_inicio']) && !empty($_POST['fecha_fin'])) {
+            $dias = (int) ((strtotime($_POST['fecha_fin']) - strtotime($_POST['fecha_inicio'])) / 86400) + 1;
+        }
+        $adjuntoRuta = null; $adjuntoNombre = null;
+        if (!empty($_FILES['adjunto']['tmp_name'])) {
+            $dirAdj = __DIR__ . '/../data/desprendibles';
+            if (!is_dir($dirAdj)) mkdir($dirAdj, 0777, true);
+            $original = basename($_FILES['adjunto']['name']);
+            $seguro = preg_replace('/[^A-Za-z0-9_.\-]/', '_', $original);
+            $adjuntoRuta = uniqid() . '_' . $seguro;
+            move_uploaded_file($_FILES['adjunto']['tmp_name'], $dirAdj . '/' . $adjuntoRuta);
+            $adjuntoNombre = $original;
+        }
+        $pdo->prepare("INSERT INTO vacaciones_permisos (empleado_documento, empleado_nombre, tipo, fecha_inicio, fecha_fin, dias, motivo, adjunto_ruta, adjunto_nombre)
+            VALUES (?,?,?,?,?,?,?,?,?)")
+            ->execute([$u['documento'], $u['nombre'], $tipo, limpio($_POST['fecha_inicio'] ?? null), limpio($_POST['fecha_fin'] ?? null),
+                $dias, limpio($_POST['motivo'] ?? null), $adjuntoRuta, $adjuntoNombre]);
+        hoja_vida_registrar($pdo, 'EMPLEADO', $u['documento'], 'SOLICITUD_RRHH_CREADA', "{$tipo} - " . ($_POST['motivo'] ?? ''), $u['nombre']);
+        $msgRrhh = ['ok', 'Solicitud enviada a Recursos Humanos.'];
+    }
+}
+$misSolicitudesRrhh = [];
+if ($u['documento']) {
+    $stmt = $pdo->prepare("SELECT * FROM vacaciones_permisos WHERE empleado_documento = ? ORDER BY creado_en DESC LIMIT 15");
+    $stmt->execute([$u['documento']]);
+    $misSolicitudesRrhh = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 $misTickets = [];
 $stmt = $pdo->prepare("SELECT * FROM tickets WHERE creado_por_documento = ? OR solicitante_contacto = ? ORDER BY creado_en DESC LIMIT 20");
 $stmt->execute([$u['documento'], $u['email']]);
@@ -106,10 +147,53 @@ if ($u['documento']) {
 <div class="panel">
     <h3><?= e($empleado['nombres']) ?></h3>
     <p class="small"><?= e($empleado['cargo']) ?> · <?= e($empleado['area']) ?></p>
-    <a class="btn" href="certificado_laboral.php?documento=<?= urlencode($empleado['documento']) ?>" target="_blank">📄 Mi certificado laboral</a>
+    <div class="toolbar" style="margin-bottom:0;">
+        <a class="btn" href="certificado_laboral.php?documento=<?= urlencode($empleado['documento']) ?>" target="_blank">📄 Certificado laboral</a>
+        <a class="btn btn-secondary" href="certificado_retiro.php?documento=<?= urlencode($empleado['documento']) ?>" target="_blank">📄 Certificado de retiro</a>
+        <a class="btn btn-secondary" href="certificado_aportes.php?documento=<?= urlencode($empleado['documento']) ?>" target="_blank">📄 Certificación de aportes</a>
+    </div>
 </div>
 <?php else: ?>
 <div class="msg-error">Tu usuario no está vinculado a un registro de RRHH (falta el número de documento). Pide a RRHH que lo complete en tu usuario para ver tu certificado y desprendibles.</div>
+<?php endif; ?>
+
+<div class="panel">
+    <h3><?= icon('briefcase') ?> Solicitar a Recursos Humanos</h3>
+    <p class="small">Vacaciones, permisos, horas extra, licencias o incapacidades - RRHH solo revisa y aprueba, aquí queda todo el trámite.</p>
+    <?php if ($msgRrhh): ?><div class="msg-<?= $msgRrhh[0] ?>"><?= e($msgRrhh[1]) ?></div><?php endif; ?>
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="accion" value="crear_solicitud_rrhh">
+        <div class="grid-form">
+            <div><label>Tipo</label>
+                <select name="tipo" onchange="document.getElementById('aviso-adjunto-obligatorio').hidden = !['INCAPACIDAD','LICENCIA'].includes(this.value); document.getElementById('campo-adjunto-rrhh').required = ['INCAPACIDAD','LICENCIA'].includes(this.value);">
+                    <?php foreach (['VACACIONES','PERMISO','HORAS_EXTRA','LICENCIA','INCAPACIDAD'] as $t): ?><option value="<?= $t ?>"><?= ucwords(strtolower(str_replace('_',' ',$t))) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div><label>Fecha inicio</label><input type="date" name="fecha_inicio"></div>
+            <div><label>Fecha fin</label><input type="date" name="fecha_fin"></div>
+            <div><label>Soporte / documento <span id="aviso-adjunto-obligatorio" hidden style="color:#b3392c;">(obligatorio)</span></label><input type="file" name="adjunto" id="campo-adjunto-rrhh"></div>
+        </div>
+        <textarea name="motivo" rows="2" style="width:100%;padding:8px;border:1px solid #d3dae3;border-radius:6px;font-family:inherit;margin:10px 0;" placeholder="Motivo / observación"></textarea>
+        <button type="submit">Enviar solicitud a RRHH</button>
+    </form>
+</div>
+
+<?php if ($misSolicitudesRrhh): ?>
+<div class="panel">
+    <h3>Mis solicitudes a RRHH</h3>
+    <table>
+        <tr><th>Tipo</th><th>Desde</th><th>Hasta</th><th>Soporte</th><th>Estado</th></tr>
+        <?php foreach ($misSolicitudesRrhh as $sr): ?>
+        <tr>
+            <td><?= e($sr['tipo']) ?></td>
+            <td><?= e($sr['fecha_inicio']) ?: '—' ?></td>
+            <td><?= e($sr['fecha_fin']) ?: '—' ?></td>
+            <td><?= $sr['adjunto_ruta'] ? '<a href="descargar_adjunto_rrhh.php?id=' . (int)$sr['id'] . '" target="_blank">Ver archivo</a>' : '—' ?></td>
+            <td><span class="badge <?= $sr['estado']==='APROBADO'?'badge-activo':($sr['estado']==='RECHAZADO'?'badge-err':'badge-otro') ?>"><?= e($sr['estado']) ?></span></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+</div>
 <?php endif; ?>
 
 <div class="panel">

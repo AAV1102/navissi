@@ -30,6 +30,8 @@ data/documentos/
 data/documentos_rrhh/
 data/desprendibles/
 data/CSV/
+!data/documentos/.htaccess
+!data/desprendibles/.htaccess
 
 # Binarios pesados de RustDesk (no van a GitHub, se descargan aparte por plataforma)
 rustdesk-server/*.exe
