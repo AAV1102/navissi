@@ -1,0 +1,19 @@
+name: Sincronizar correo Mesa de Ayuda
+
+on:
+  schedule:
+    # Cada 10 minutos. GitHub Actions no garantiza el minuto exacto (puede
+    # atrasarse unos minutos en horas de mucha carga), pero corre sola,
+    # sin depender de que FreeHosting tenga cron.
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al endpoint de sincronizacion de correo
+        run: |
+          curl -s -L "http://grupo10z.com.co/api_correo_mesadeayuda.php?token=43260f262436637e4726f3fce28922bc8e77301b95c5652253fd5e50e373a8cd" \
+            -o respuesta.json -w "HTTP %{http_code}\n"
+          cat respuesta.json
