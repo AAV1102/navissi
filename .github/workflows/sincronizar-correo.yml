@@ -11,9 +11,12 @@ on:
 jobs:
   sincronizar:
     runs-on: ubuntu-latest
+    env:
+      NAVISSI_CORREO_TOKEN: ${{ secrets.NAVISSI_CORREO_TOKEN }}
     steps:
       - name: Llamar al endpoint de sincronizacion de correo
         run: |
-          curl -s -L "http://grupo10z.com.co/api_correo_mesadeayuda.php?token=43260f262436637e4726f3fce28922bc8e77301b95c5652253fd5e50e373a8cd" \
+          test -n "$NAVISSI_CORREO_TOKEN"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 "https://grupo10z.com.co/api_correo_mesadeayuda.php?token=${NAVISSI_CORREO_TOKEN}" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json

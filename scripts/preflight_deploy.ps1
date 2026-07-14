@@ -30,7 +30,7 @@ if ($Mode -eq 'Hosting') {
 $status = @(git status --porcelain)
 if ($Mode -eq 'Hosting' -and $status.Count -gt 0) { Fail 'hay cambios locales sin commit; no se desplegará un estado incompleto' }
 if (-not (Select-String -Path (Join-Path $repo 'DEPLOY_HOSTING.ps1') -Pattern 'git ls-files' -Quiet)) { Fail 'el script de hosting no usa manifiesto versionado' }
-if (Select-String -Path (Join-Path $repo 'DEPLOY_HOSTING.ps1') -Pattern '\-k' -Quiet) { Fail 'el script de hosting aún desactiva la validación TLS' }
+if (Select-String -Path (Join-Path $repo 'DEPLOY_HOSTING.ps1') -Pattern '\-k' -Quiet) { Fail 'el script de hosting desactiva la validación TLS; renueve el certificado del proveedor antes de desplegar' }
 
 Write-Host "Pre-flight OK ($Mode): $($tracked.Count) archivos versionados; datos locales fuera del paquete." -ForegroundColor Green
 if ($Mode -eq 'DryRun') { $tracked | Select-Object -First 20 | ForEach-Object { Write-Host "  $_" } }

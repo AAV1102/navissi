@@ -1,0 +1,42 @@
+name: Seguridad y pruebas NAVISSI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rechazar secretos y endpoints inseguros versionados
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! git grep -n -E 'Danna|curl\.exe[^\n]*-k|http://grupo10z\.com\.co|token=[A-Fa-f0-9]{32,}' -- ':!*.md'
+
+      - name: Validar sintaxis PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find . -name '*.php' -not -path './data/*' -not -path './vendor/*' -print0)
+
+      - name: Ejecutar pruebas de fases
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/*_test.php; do php "$test"; done
+
+      - name: Verificar exclusiones Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq '^data/?$' .dockerignore
+          grep -Eq '^private/?$' .dockerignore
+          grep -Eq '^data/CSV/?$' .dockerignore

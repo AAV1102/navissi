@@ -39,9 +39,9 @@ try {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -CompressionLevel Optimal -Force
     $zipName = Split-Path $zipPath -Leaf
     $ftpUrl = "ftp://$FtpHost/public_html/"
-    Write-Host '2/5 Subiendo por FTPS con validación de certificado...' -ForegroundColor Cyan
-    & curl.exe --fail --silent --show-error --retry 2 --ssl-reqd -u "${FtpUser}:${FtpPass}" -T $zipPath "$ftpUrl$zipName"
-    if ($LASTEXITCODE -ne 0) { throw 'Falló la carga FTPS del paquete.' }
+    Write-Host '2/5 Subiendo por FTP (el hosting no tiene certificado SSL valido; ver nota en preflight_deploy.ps1)...' -ForegroundColor Cyan
+    & curl.exe --fail --silent --show-error --retry 2 -u "${FtpUser}:${FtpPass}" -T $zipPath "$ftpUrl$zipName"
+    if ($LASTEXITCODE -ne 0) { throw 'Falló la carga FTP del paquete.' }
 
     $token = [Guid]::NewGuid().ToString('N') + [Guid]::NewGuid().ToString('N')
     $unzipName = "_deploy_unzip_$([Guid]::NewGuid().ToString('N')).php"
@@ -56,13 +56,13 @@ if (!is_file(`$zipFile) || `$zip->open(`$zipFile) !== true) { http_response_code
 "@
     Set-Content -LiteralPath $unzipPath -Value $php -Encoding UTF8
     Write-Host '3/5 Subiendo extractor temporal autenticado...' -ForegroundColor Cyan
-    & curl.exe --fail --silent --show-error --retry 2 --ssl-reqd -u "${FtpUser}:${FtpPass}" -T $unzipPath "$ftpUrl$unzipName"
+    & curl.exe --fail --silent --show-error --retry 2 -u "${FtpUser}:${FtpPass}" -T $unzipPath "$ftpUrl$unzipName"
     if ($LASTEXITCODE -ne 0) { throw 'Falló la carga del extractor.' }
-    Write-Host '4/5 Extrayendo por HTTPS...' -ForegroundColor Cyan
-    $result = & curl.exe --fail --silent --show-error --retry 2 -X POST -d "token=$token" "https://$SiteHost/$unzipName"
+    Write-Host '4/5 Extrayendo por HTTP (el hosting no tiene HTTPS valido)...' -ForegroundColor Cyan
+    $result = & curl.exe --fail --silent --show-error --retry 2 -X POST -d "token=$token" "http://$SiteHost/$unzipName"
     if ($LASTEXITCODE -ne 0 -or $result -notmatch '^OK') { throw "Falló la extracción remota: $result" }
-    & curl.exe --fail --silent --show-error --ssl-reqd -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$zipName" $ftpUrl
-    & curl.exe --fail --silent --show-error --ssl-reqd -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$unzipName" $ftpUrl
+    & curl.exe --fail --silent --show-error -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$zipName" $ftpUrl
+    & curl.exe --fail --silent --show-error -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$unzipName" $ftpUrl
     Write-Host "5/5 Listo. Verifica https://$SiteHost" -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue

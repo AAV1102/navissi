@@ -9,9 +9,12 @@ on:
 jobs:
   enviar-resumen:
     runs-on: ubuntu-latest
+    env:
+      NAVISSI_RESUMEN_TOKEN: ${{ secrets.NAVISSI_RESUMEN_TOKEN }}
     steps:
       - name: Llamar al endpoint de resumen diario
         run: |
-          curl -s -L "http://grupo10z.com.co/api_resumen_diario.php?token=6c4de37f5cfb84d07463266dd0b24fa0e2f0bd0d1fe335b4fc0906cf04e06a08" \
+          test -n "$NAVISSI_RESUMEN_TOKEN"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 "https://grupo10z.com.co/api_resumen_diario.php?token=${NAVISSI_RESUMEN_TOKEN}" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json

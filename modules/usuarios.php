@@ -72,6 +72,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("UPDATE usuarios_sistema SET area_responsable = ? WHERE id = ?")->execute([limpio($_POST['area_responsable'] ?? null), (int) $_POST['id']]);
             $msg = ['ok', 'Área actualizada.'];
         }
+    } elseif ($accion === 'cambiar_email') {
+        $nuevoEmail = strtolower(trim((string) ($_POST['email'] ?? '')));
+        $idObjetivo = (int) ($_POST['id'] ?? 0);
+        if (!usuario_ve_todo() || !filter_var($nuevoEmail, FILTER_VALIDATE_EMAIL)) {
+            $msg = ['error', 'Correo no válido o permisos insuficientes.'];
+        } else {
+            try {
+                $stmt = $pdo->prepare('UPDATE usuarios_sistema SET email = ? WHERE id = ? AND activo = 1');
+                $stmt->execute([$nuevoEmail, $idObjetivo]);
+                $msg = ['ok', 'Correo actualizado. La próxima entrada usará el nuevo correo.'];
+            } catch (PDOException $e) {
+                $msg = ['error', 'Ese correo ya está registrado.'];
+            }
+        }
     } elseif ($accion === 'cambiar_rol_secundario') {
         $rolSec = limpio($_POST['rol_secundario'] ?? null);
         $pdo->prepare("UPDATE usuarios_sistema SET rol_secundario = ? WHERE id = ?")->execute([$rolSec ?: null, (int) $_POST['id']]);
@@ -186,7 +200,16 @@ layout_inicio('Usuarios', 'Usuarios y roles', '../');
     <?php foreach ($usuarios as $u): ?>
     <tr>
         <td><?= e($u['nombre']) ?></td>
-        <td><?= e($u['email']) ?></td>
+        <td>
+            <?= e($u['email']) ?><br>
+            <?php if (usuario_ve_todo()): ?>
+            <form method="post" class="inline" style="margin-top:4px;">
+                <input type="hidden" name="accion" value="cambiar_email"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                <input type="email" name="email" value="<?= e($u['email']) ?>" required style="width:190px;font-size:12px;">
+                <button type="submit" style="padding:4px 8px;font-size:11px;">Guardar correo</button>
+            </form>
+            <?php endif; ?>
+        </td>
         <td><span class="badge <?= $u['rol']==='SUPER_ADMIN'?'badge-activo':'badge-otro' ?>"><?= e($u['rol']) ?></span> <?php if (!empty($u['password_temporal'])): ?><span class="badge badge-warn" title="El usuario todavía no ha creado su contraseña definitiva">temporal</span><?php endif; ?></td>
         <td>
             <form method="post" class="inline">
