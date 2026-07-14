@@ -19,6 +19,10 @@ $config = file_exists($configPath) ? json_decode(file_get_contents($configPath),
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $config['nombre_sitio'] = limpio($_POST['nombre_sitio'] ?? null) ?: 'NAVISSI';
     $config['subtitulo'] = limpio($_POST['subtitulo'] ?? null) ?: 'Inventario · Grupo 10Z';
+    $colorAcento = trim((string) ($_POST['color_acento'] ?? ''));
+    $config['color_acento'] = preg_match('/^#[0-9a-fA-F]{6}$/', $colorAcento) ? $colorAcento : null;
+    $config['texto_footer'] = limpio($_POST['texto_footer'] ?? null) ?: null;
+    $config['texto_bienvenida_login'] = limpio($_POST['texto_bienvenida_login'] ?? null) ?: null;
 
     if (!empty($_FILES['logo']['tmp_name']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
         $extPermitidas = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
