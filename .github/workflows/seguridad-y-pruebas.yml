@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ! git grep -n -E 'Danna|curl\.exe[^\n]*-k|http://grupo10z\.com\.co|token=[A-Fa-f0-9]{32,}' -- ':!*.md'
+          ! git grep -n -E 'Danna|curl\.exe[^\n]*-k|http://grupo10z\.com\.co|token=[A-Fa-f0-9]{32,}' -- ':!*.md' ':!.github/workflows/seguridad-y-pruebas.yml'
 
       - name: Validar sintaxis PHP
         shell: bash
