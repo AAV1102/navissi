@@ -361,6 +361,39 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Baja formal de equipos: registro auditable (motivo, aprobacion) en vez de
+    // solo cambiar el campo estado a mano, sin dejar rastro de por que ni quien aprobo. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS inventario_bajas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipo_id INTEGER REFERENCES inventario(id) ON DELETE SET NULL,
+        equipo_serial TEXT,
+        tipo_baja TEXT DEFAULT 'OBSOLETO',
+        motivo TEXT NOT NULL,
+        valor_libros REAL,
+        estado TEXT DEFAULT 'SOLICITADA',
+        solicitado_por TEXT,
+        aprobado_por TEXT,
+        aprobado_en TEXT,
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Historial de compras por equipo: de donde vino cada equipo (proveedor,
+    // factura, fecha, valor), enlazado al inventario. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS compras_equipo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipo_id INTEGER REFERENCES inventario(id) ON DELETE SET NULL,
+        equipo_serial TEXT,
+        proveedor TEXT NOT NULL,
+        numero_factura TEXT,
+        fecha_compra TEXT,
+        valor REAL,
+        articulo TEXT,
+        observaciones TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // ---- Etiquetas de menú personalizadas (edición de textos sin tocar código) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS etiquetas_menu (
         href TEXT PRIMARY KEY,

@@ -43,6 +43,8 @@ function nav_grupos() {
                 'modules/grupos_codigos.php' => ['Códigos Agrupados', 'inventory'],
                 'modules/logistica.php' => ['Logística y Bodega', 'inventory'],
                 'modules/mermas.php' => ['Mermas e Inventario Perdido', 'inventory'],
+                'modules/bajas_equipos.php' => ['Bajas de Equipos', 'inventory'],
+                'modules/compras_equipos.php' => ['Compras de Equipos', 'dollar'],
                 'modules/gestion_parches.php' => ['Gestión de Parches', 'shield'],
                 'modules/actas_equipos.php' => ['Actas de Entrega/Devolución', 'file'],
                 'modules/network_discovery.php' => ['Network Discovery', 'cloud'],
