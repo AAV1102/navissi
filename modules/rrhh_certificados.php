@@ -63,6 +63,17 @@ if ($documentoConsultado !== '') {
     }
 }
 
+// Comprobantes de nómina generados automáticamente (PDF real desde la nómina
+// liquidada), distintos de los "desprendibles" que RRHH sube a mano arriba.
+$comprobantesNomina = [];
+if ($documentoConsultado !== '' && $empleado) {
+    $stmt = $pdo->prepare("SELECT n.id, n.neto_pagar, n.estado, p.nombre AS periodo_nombre
+        FROM nominas n JOIN periodos_nomina p ON p.id = n.periodo_id
+        WHERE n.empleado_documento = ? ORDER BY p.fecha_inicio DESC");
+    $stmt->execute([$documentoConsultado]);
+    $comprobantesNomina = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 layout_inicio('Certificados RRHH', 'Certificados RRHH', '../');
 ?>
 <h1><?= icon('dollar','icon-lg') ?> Certificados y Desprendibles - Autoservicio</h1>
@@ -90,6 +101,22 @@ layout_inicio('Certificados RRHH', 'Certificados RRHH', '../');
         <tr><th>Tipo de contrato</th><td><?= e($empleado['tipo_contrato']) ?: '—' ?></td><th>Fecha de ingreso</th><td><?= e($empleado['fecha_ingreso']) ?: '—' ?></td></tr>
     </table>
     <a class="btn" style="margin-top:12px;" href="certificado_laboral.php?documento=<?= urlencode($empleado['documento']) ?>" target="_blank">📄 Descargar / imprimir certificado laboral</a>
+</div>
+
+<div class="panel">
+    <h3>Comprobantes de pago de nómina (<?= count($comprobantesNomina) ?>)</h3>
+    <?php if (!$comprobantesNomina): ?><p class="small">Aún no hay nómina liquidada para este empleado.</p><?php endif; ?>
+    <table>
+        <tr><th>Periodo</th><th>Neto pagado</th><th>Estado</th><th></th></tr>
+        <?php foreach ($comprobantesNomina as $c): ?>
+        <tr>
+            <td><?= e($c['periodo_nombre']) ?></td>
+            <td>$<?= number_format((float)$c['neto_pagar'],0,',','.') ?></td>
+            <td><span class="badge <?= $c['estado']==='PAGADA'?'badge-activo':'badge-otro' ?>"><?= e($c['estado']) ?></span></td>
+            <td><a href="comprobante_nomina_pdf.php?id=<?= (int)$c['id'] ?>" target="_blank"><?= icon('file') ?> Descargar PDF</a></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
 </div>
 
 <div class="panel">

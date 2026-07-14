@@ -139,10 +139,22 @@ $stmt->execute([$u['documento'], $u['email']]);
 $misTickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $desprendibles = [];
+$misComprobantesNomina = [];
+$misDocumentosRrhh = [];
 if ($u['documento']) {
     $stmt = $pdo->prepare("SELECT * FROM desprendibles WHERE empleado_documento = ? ORDER BY periodo DESC");
     $stmt->execute([$u['documento']]);
     $desprendibles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $pdo->prepare("SELECT n.id, n.neto_pagar, n.estado, p.nombre AS periodo_nombre
+        FROM nominas n JOIN periodos_nomina p ON p.id = n.periodo_id
+        WHERE n.empleado_documento = ? ORDER BY p.fecha_inicio DESC LIMIT 6");
+    $stmt->execute([$u['documento']]);
+    $misComprobantesNomina = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $pdo->prepare("SELECT id, tipo, nombre_archivo, estado_firma, creado_en FROM documentos_rrhh WHERE empleado_documento = ? ORDER BY creado_en DESC");
+    $stmt->execute([$u['documento']]);
+    $misDocumentosRrhh = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 $iniciales = mb_strtoupper(mb_substr($u['nombre'] ?? '?', 0, 1));
 layout_inicio('Mi Portal de Empleado', 'Dashboard', '../');
@@ -156,6 +168,8 @@ layout_inicio('Mi Portal de Empleado', 'Dashboard', '../');
 </div>
 <p class="subtitle" style="margin-top:14px;">Solicita ayuda a TI, descarga tus certificados y consulta tus desprendibles - todo en un solo lugar.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
+
+<div class="panel employee-service-entry"><div><span class="page-kicker">NUEVO · AUTOSERVICIO INTERÁREAS</span><h3>Catálogo de Servicios NAVISSI</h3><p class="small">Solicita accesos, equipos, compras o mantenimiento y sigue cada aprobación con responsable y SLA.</p></div><a class="btn" href="catalogo_servicios.php">Abrir catálogo</a></div>
 
 <?php if ($u['documento']): ?>
 <div class="panel" style="border-left:4px solid var(--teal-500);">
@@ -305,6 +319,38 @@ layout_inicio('Mi Portal de Empleado', 'Dashboard', '../');
         <tr><td><?= e($d['periodo']) ?></td><td><a href="rrhh_certificados.php?descargar=<?= (int)$d['id'] ?>">Descargar</a></td></tr>
         <?php endforeach; ?>
         <?php if (!$desprendibles): ?><tr><td colspan="2" class="small">Aún no hay desprendibles cargados.</td></tr><?php endif; ?>
+    </table>
+</div>
+
+<div class="panel">
+    <h3>Mis comprobantes de nómina (<?= count($misComprobantesNomina) ?>)</h3>
+    <table>
+        <tr><th>Periodo</th><th>Neto pagado</th><th>Estado</th><th></th></tr>
+        <?php foreach ($misComprobantesNomina as $c): ?>
+        <tr>
+            <td><?= e($c['periodo_nombre']) ?></td>
+            <td>$<?= number_format((float)$c['neto_pagar'],0,',','.') ?></td>
+            <td><span class="badge <?= $c['estado']==='PAGADA'?'badge-activo':'badge-otro' ?>"><?= e($c['estado']) ?></span></td>
+            <td><a href="comprobante_nomina_pdf.php?id=<?= (int)$c['id'] ?>" target="_blank">Descargar PDF</a></td>
+        </tr>
+        <?php endforeach; ?>
+        <?php if (!$misComprobantesNomina): ?><tr><td colspan="4" class="small">Aún no hay nómina liquidada.</td></tr><?php endif; ?>
+    </table>
+</div>
+
+<div class="panel">
+    <h3>Mis documentos (contratos, otrosí, cotizaciones...) (<?= count($misDocumentosRrhh) ?>)</h3>
+    <table>
+        <tr><th>Tipo</th><th>Archivo</th><th>Firma</th><th></th></tr>
+        <?php foreach ($misDocumentosRrhh as $d): ?>
+        <tr>
+            <td><?= e($d['tipo']) ?></td>
+            <td><?= e($d['nombre_archivo']) ?></td>
+            <td><?= $d['estado_firma'] === 'FIRMADO' ? '<span class="badge badge-activo">FIRMADO</span>' : '<span class="badge badge-otro">Pendiente</span>' ?></td>
+            <td><a href="rrhh_documentos.php">Ver / firmar</a></td>
+        </tr>
+        <?php endforeach; ?>
+        <?php if (!$misDocumentosRrhh): ?><tr><td colspan="4" class="small">Aún no tienes documentos cargados por RRHH.</td></tr><?php endif; ?>
     </table>
 </div>
 <?php layout_fin(); ?>

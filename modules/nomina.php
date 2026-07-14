@@ -159,6 +159,7 @@ layout_inicio('Nómina', 'Nómina', '../');
                     <button type="submit" style="padding:4px 8px;font-size:11px;">Pagar</button>
                 </form>
                 <?php endif; ?>
+                <a href="comprobante_nomina_pdf.php?id=<?= (int)$n['id'] ?>" target="_blank" class="btn-secondary" style="padding:4px 8px;font-size:11px;"><?= icon('file') ?> Comprobante</a>
             </td>
         </tr>
         <?php endforeach; ?>

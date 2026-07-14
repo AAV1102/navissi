@@ -7,6 +7,32 @@ $msg = null;
 $dirLocal = __DIR__ . '/../data/documentos_rrhh';
 if (!is_dir($dirLocal)) mkdir($dirLocal, 0777, true);
 
+$puedeGestionar = tiene_rol(['ADMIN', 'GERENCIA', 'CEO', 'DIRECTOR', 'RRHH']);
+$u = usuario_actual();
+// Un empleado sin rol de gestión solo puede ver (no subir/firmar) sus PROPIOS
+// documentos - antes cualquiera podia escribir el documento de otra persona
+// en la URL/formulario y ver sus contratos.
+if (!$puedeGestionar && empty($u['documento'])) {
+    layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
+    echo '<div class="msg-error">No tienes permiso para ver documentos de RRHH.</div>';
+    layout_fin();
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'subir' && !$puedeGestionar) {
+    http_response_code(403);
+    exit('Solo RRHH puede cargar documentos.');
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'firmar' && !$puedeGestionar) {
+    // El empleado solo puede firmar SU PROPIO documento.
+    $stmtProp = $pdo->prepare("SELECT empleado_documento FROM documentos_rrhh WHERE id = ?");
+    $stmtProp->execute([(int) $_POST['id']]);
+    if ($stmtProp->fetchColumn() !== $u['documento']) {
+        http_response_code(403);
+        exit('No puedes firmar el documento de otra persona.');
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
@@ -52,9 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (isset($_GET['descargar'])) {
-    $stmt = $pdo->prepare("SELECT nombre_archivo, ruta_local FROM documentos_rrhh WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT nombre_archivo, ruta_local, empleado_documento FROM documentos_rrhh WHERE id = ?");
     $stmt->execute([(int) $_GET['descargar']]);
     $d = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($d && !$puedeGestionar && $d['empleado_documento'] !== $u['documento']) {
+        http_response_code(403);
+        exit('No puedes descargar el documento de otra persona.');
+    }
     $ruta = $d ? $dirLocal . '/' . $d['ruta_local'] : null;
     if ($d && file_exists($ruta)) {
         header('Content-Type: application/octet-stream');
@@ -64,7 +94,7 @@ if (isset($_GET['descargar'])) {
     }
 }
 
-$documentoFiltro = trim($_GET['documento'] ?? '');
+$documentoFiltro = $puedeGestionar ? trim($_GET['documento'] ?? '') : $u['documento'];
 $sql = "SELECT * FROM documentos_rrhh WHERE 1=1";
 $params = [];
 if ($documentoFiltro !== '') { $sql .= " AND empleado_documento = ?"; $params[] = $documentoFiltro; }
@@ -76,9 +106,10 @@ $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
 ?>
 <h1><?= icon('file','icon-lg') ?> Documentos y Firmas — Recursos Humanos</h1>
-<p class="subtitle">Contratos, otrosí y documentos por empleado, sincronizados a OneDrive, con firma electrónica simple (nombre + fecha/hora + IP, quedan en Auditoría).</p>
+<p class="subtitle"><?= $puedeGestionar ? 'Contratos, otrosí, cotizaciones y demás documentos por empleado, sincronizados a OneDrive, con firma electrónica simple (nombre + fecha/hora + IP, quedan en Auditoría).' : 'Tus contratos, otrosí y demás documentos laborales. Puedes firmarlos electrónicamente aquí mismo.' ?></p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
+<?php if ($puedeGestionar): ?>
 <div class="panel">
     <h3>Subir documento</h3>
     <form method="post" enctype="multipart/form-data">
@@ -87,7 +118,7 @@ layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
             <div><label>Documento del empleado *</label><input type="text" name="empleado_documento" required></div>
             <div><label>Tipo</label>
                 <select name="tipo">
-                    <?php foreach (['CONTRATO','OTROSI','HOJA DE VIDA','CERTIFICADO','INCAPACIDAD','OTRO'] as $t): ?><option><?= $t ?></option><?php endforeach; ?>
+                    <?php foreach (['CONTRATO','OTROSI','COTIZACION','HOJA DE VIDA','CERTIFICADO','INCAPACIDAD','OTRO'] as $t): ?><option><?= $t ?></option><?php endforeach; ?>
                 </select>
             </div>
             <div><label>Archivo *</label><input type="file" name="archivo" required></div>
@@ -103,6 +134,7 @@ layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
     <input type="text" name="documento" placeholder="Filtrar por documento del empleado" value="<?= e($documentoFiltro) ?>">
     <button type="submit">Filtrar</button>
 </form>
+<?php endif; ?>
 
 <table>
     <tr><th>Empleado</th><th>Tipo</th><th>Archivo</th><th>OneDrive</th><th>Firma</th><th>Fecha</th><th></th></tr>
