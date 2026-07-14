@@ -61,8 +61,9 @@ if (!is_file(`$zipFile) || `$zip->open(`$zipFile) !== true) { http_response_code
     Write-Host '4/5 Extrayendo por HTTP (el hosting no tiene HTTPS valido)...' -ForegroundColor Cyan
     $result = & curl.exe --fail --silent --show-error --retry 2 -X POST -d "token=$token" "http://$SiteHost/$unzipName"
     if ($LASTEXITCODE -ne 0 -or $result -notmatch '^OK') { throw "Falló la extracción remota: $result" }
-    & curl.exe --fail --silent --show-error -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$zipName" $ftpUrl
-    & curl.exe --fail --silent --show-error -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$unzipName" $ftpUrl
+    # El extractor remoto elimina el ZIP y su propio archivo al terminar.
+    # No se ejecutan comandos DELE adicionales: algunos servidores responden
+    # 550 cuando el archivo ya fue eliminado, aunque el deploy haya sido exitoso.
     Write-Host "5/5 Listo. Verifica https://$SiteHost" -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
