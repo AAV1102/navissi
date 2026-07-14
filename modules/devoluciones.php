@@ -20,6 +20,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = ['error', 'Producto y motivo son obligatorios.'];
         } else {
             $sedeId = sede_id_por_nombre($pdo, $_POST['sede'] ?? null, false);
+            $estado = strtoupper((string)($_POST['estado'] ?? 'SOLICITADA'));
+            $tipoSolucion = strtoupper((string)($_POST['tipo_solucion'] ?? 'CAMBIO'));
+            if (!in_array($estado, ['SOLICITADA','EN_REVISION','APROBADA','RECHAZADA','RESUELTA'], true)) {
+                $msg = ['error', 'Estado de devolución no válido.'];
+            } elseif (!in_array($tipoSolucion, ['CAMBIO','REEMBOLSO','NOTA_CREDITO','REPARACION'], true)) {
+                $msg = ['error', 'Tipo de solución no válido.'];
+            }
+            if ($msg) { /* evita escribir estados arbitrarios */ }
             $datos = [
                 'cliente_nombre' => limpio($_POST['cliente_nombre'] ?? null),
                 'sede_id' => $sedeId,
@@ -27,13 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'referencia' => limpio($_POST['referencia'] ?? null),
                 'talla' => limpio($_POST['talla'] ?? null),
                 'motivo' => $motivo,
-                'tipo_solucion' => limpio($_POST['tipo_solucion'] ?? null) ?: 'CAMBIO',
+                'tipo_solucion' => $tipoSolucion,
                 'valor' => (float) ($_POST['valor'] ?? 0) ?: null,
-                'estado' => limpio($_POST['estado'] ?? null) ?: 'SOLICITADA',
+                'estado' => $estado,
                 'observaciones' => limpio($_POST['observaciones'] ?? null),
             ];
+            if ($msg) { $datos = null; }
             $id = (int) ($_POST['id'] ?? 0);
-            if ($id > 0) {
+            if (!$datos) { /* validación ya reportada */ }
+            elseif ($id > 0) {
                 $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($datos)));
                 $datos['id'] = $id;
                 if (($datos['estado'] ?? null) === 'RESUELTA') {
@@ -65,7 +75,9 @@ if (isset($_GET['editar'])) {
 $devoluciones = $pdo->query("SELECT d.*, s.nombre AS sede_nombre FROM devoluciones_producto d LEFT JOIN sedes s ON d.sede_id = s.id ORDER BY d.creado_en DESC")->fetchAll(PDO::FETCH_ASSOC);
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 $totalPendientes = 0;
-foreach ($devoluciones as $d) { if ($d['estado'] !== 'RESUELTA') $totalPendientes++; }
+foreach ($devoluciones as $d) {
+    if (!in_array($d['estado'], ['RESUELTA', 'RECHAZADA'], true)) $totalPendientes++;
+}
 
 layout_inicio('Devoluciones', 'Devoluciones y Garantías', '../');
 ?>

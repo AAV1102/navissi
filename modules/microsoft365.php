@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 require_once __DIR__ . '/../lib/graph_client.php';
+// La credencial de aplicación y las acciones Graph modifican el tenant real.
+requiere_roles(['ADMIN', 'TI'], '../');
 set_time_limit(180); // sincronizar consulta la licencia de cada usuario uno por uno, puede tardar en tenants grandes
 $pdo = db();
 $msg = null;

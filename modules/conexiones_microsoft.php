@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 require_once __DIR__ . '/../lib/graph_client.php';
+// Estas consultas usan la credencial de aplicación configurada para el tenant.
+requiere_roles(['ADMIN', 'TI'], '../');
 $pdo = db();
 
 $sitios = null; $equipos = null; $onedrive = null;

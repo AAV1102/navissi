@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 require_once __DIR__ . '/../lib/ia_client.php';
+// Las claves de IA y el contexto operativo son de administración de TI.
+// Un empleado autenticado no debe poder consultar ni reemplazar esta configuración.
+requiere_roles(['ADMIN', 'TI'], '../');
 $pdo = db();
 $msg = null; $respuesta = null;
 
@@ -45,9 +48,13 @@ function contexto_real(PDO $pdo, string $agente): string {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
     if ($accion === 'guardar_config') {
+        $actual = ia_config();
+        $apiKey = trim((string)($_POST['api_key'] ?? ''));
         guardar_config_json(IA_CONFIG_PATH, [
             'proveedor' => $_POST['proveedor'] ?? 'anthropic',
-            'api_key' => trim($_POST['api_key'] ?? ''),
+            // Campo vacío significa conservar la clave existente; nunca se
+            // vuelve a imprimir el secreto en HTML.
+            'api_key' => $apiKey !== '' ? $apiKey : (string)($actual['api_key'] ?? ''),
         ]);
         $msg = ['ok', 'Configuración guardada.'];
     }
@@ -92,7 +99,7 @@ layout_inicio('IA Multiagente', 'IA Multiagente', '../');
                 <option value="openai" <?= $c['proveedor']==='openai'?'selected':'' ?>>OpenAI (GPT)</option>
             </select>
         </div>
-        <div style="grid-column:span 2;"><label>API Key</label><input type="password" name="api_key" value="<?= e($c['api_key']) ?>"></div>
+        <div style="grid-column:span 2;"><label>API Key</label><input type="password" name="api_key" value="" autocomplete="new-password" placeholder="Vacío para conservar la clave actual"></div>
         <div style="align-self:end;"><button type="submit">Guardar</button></div>
     </form>
 </div>

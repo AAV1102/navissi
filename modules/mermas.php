@@ -27,13 +27,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'sede_id' => $sedeId,
                 'producto' => $producto,
                 'referencia' => limpio($_POST['referencia'] ?? null),
-                'cantidad' => (float) ($_POST['cantidad'] ?? 1) ?: 1,
+                'cantidad' => (float) ($_POST['cantidad'] ?? 1),
                 'motivo' => $motivo,
                 'valor_estimado' => (float) ($_POST['valor_estimado'] ?? 0) ?: null,
                 'observaciones' => limpio($_POST['observaciones'] ?? null),
             ];
+            if ($datos['cantidad'] <= 0) {
+                $msg = ['error', 'La cantidad debe ser mayor que cero.'];
+            } elseif ($datos['valor_estimado'] !== null && $datos['valor_estimado'] < 0) {
+                $msg = ['error', 'El valor estimado no puede ser negativo.'];
+            }
             $id = (int) ($_POST['id'] ?? 0);
-            if ($id > 0) {
+            if ($msg) { /* validación ya reportada */ }
+            elseif ($id > 0) {
                 $set = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($datos)));
                 $datos['id'] = $id;
                 $pdo->prepare("UPDATE mermas_inventario SET {$set} WHERE id = :id")->execute($datos);

@@ -47,13 +47,13 @@ layout_inicio('n8n', 'n8n (flujos)', '../');
     <h3>Webhook para crear tickets desde n8n</h3>
     <p class="small">
         Cuando armes un flujo en n8n (por ejemplo "mensaje de WhatsApp entra → crear ticket"), el último paso debe hacer un
-        POST a esta URL con JSON <code>{"titulo":"...","descripcion":"...","solicitante":"...","solicitante_contacto":"..."}</code>:
+        POST a esta URL con JSON <code>{"evento_id":"id-unico-del-mensaje","titulo":"...","descripcion":"...","solicitante":"...","solicitante_contacto":"..."}</code>:
     </p>
     <p><code style="background:#f4f6f9;padding:6px 10px;border-radius:6px;display:inline-block;">
         <?php $base = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST']; ?>
         <?= e($base) ?>/api_webhook_ticket.php
     </code></p>
-    <p class="small">La solicitud debe llevar <code>X-Navissi-Signature</code> con el HMAC-SHA256 hexadecimal del cuerpo JSON exacto.</p>
+    <p class="small">La solicitud debe llevar <code>X-Navissi-Signature</code> con el HMAC-SHA256 hexadecimal del cuerpo JSON exacto y un <code>evento_id</code> estable para evitar duplicados en reintentos.</p>
     <details>
         <summary>Ver secreto de firma para configurar n8n</summary>
         <code style="word-break:break-all;"><?= e(navissi_webhook_secret()) ?></code>
