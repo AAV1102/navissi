@@ -9,6 +9,7 @@
 require_once __DIR__ . '/graph_client.php';
 require_once __DIR__ . '/imap_simple.php';
 require_once __DIR__ . '/ia_triage.php';
+require_once __DIR__ . '/mailer.php';
 
 function correo_config_general_asegurar_tabla(PDO $pdo): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS config_general (clave TEXT PRIMARY KEY, valor TEXT)");
@@ -41,26 +42,59 @@ function guardar_config_imap(PDO $pdo, array $cfg): void {
         ->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE)]);
 }
 
+/**
+ * Asigna automáticamente el técnico con menos tickets abiertos entre los roles
+ * de soporte (TI, COORDINADOR). Devuelve el nombre asignado o null si no hay
+ * ningún técnico activo disponible (el ticket queda sin asignar, como antes).
+ */
+function autoasignar_tecnico(PDO $pdo): ?string {
+    $stmt = $pdo->query("
+        SELECT u.nombre,
+               (SELECT COUNT(*) FROM tickets t WHERE t.asignado_a = u.nombre AND t.estado NOT IN ('CERRADO','RESUELTO')) AS carga
+        FROM usuarios_sistema u
+        WHERE u.activo = 1 AND u.rol IN ('TI','COORDINADOR')
+        ORDER BY carga ASC, u.nombre ASC
+        LIMIT 1
+    ");
+    $fila = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
+    return $fila['nombre'] ?? null;
+}
+
+/** Envía al remitente original la confirmación de creación del ticket, con el técnico asignado si aplica. */
+function correo_notificar_creacion(string $para, string $paraNombre, int $ticketId, string $asunto, ?string $tecnico): void {
+    if (!filter_var($para, FILTER_VALIDATE_EMAIL)) return;
+    $lineaTecnico = $tecnico
+        ? "<p>Tu caso fue asignado al técnico <strong>{$tecnico}</strong>, quien se pondrá en contacto contigo.</p>"
+        : "<p>Tu caso está en cola y será asignado a un técnico en breve.</p>";
+    $cuerpo = "<p>Hola {$paraNombre},</p><p>Recibimos tu solicitud y creamos el ticket <strong>#{$ticketId}</strong>: \"" . htmlspecialchars($asunto) . "\".</p>{$lineaTecnico}<p>Te avisaremos por este mismo correo cuando haya novedades.</p>";
+    enviar_correo($para, "Ticket #{$ticketId} creado - Mesa de Ayuda", $cuerpo, $paraNombre);
+}
+
 /** Crea el ticket + comentario + registro de trazabilidad + dispara la IA, evitando duplicados por mensaje_id. */
 function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon, string $remitente, string $remitenteNombre, string $asunto, string $cuerpo): bool {
     $stmt = $pdo->prepare("SELECT id FROM correos_a_tickets WHERE mensaje_id = ?");
     $stmt->execute([$mensajeId]);
     if ($stmt->fetchColumn()) return false;
 
+    $tecnico = autoasignar_tecnico($pdo);
     $slaLimite = gmdate('Y-m-d H:i:s', strtotime('+24 hours'));
-    $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, solicitante, solicitante_contacto, sla_limite, origen)
-        VALUES (?,?,?,?,?,?,?,?)")
-        ->execute(["[{$buzon}] {$asunto}", $cuerpo, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, $slaLimite, 'CORREO']);
+    $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, solicitante, solicitante_contacto, asignado_a, sla_limite, origen)
+        VALUES (?,?,?,?,?,?,?,?,?)")
+        ->execute(["[{$buzon}] {$asunto}", $cuerpo, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, $tecnico, $slaLimite, 'CORREO']);
     $ticketId = $pdo->lastInsertId();
 
+    $comentarioSistema = $tecnico
+        ? "Ticket creado automáticamente desde el correo {$buzon}. Asignado automáticamente a {$tecnico}."
+        : "Ticket creado automáticamente desde el correo {$buzon}. Sin técnico disponible para asignación automática.";
     $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
-        ->execute([$ticketId, 'Sistema', "Ticket creado automáticamente desde el correo {$buzon}.", 'SISTEMA']);
+        ->execute([$ticketId, 'Sistema', $comentarioSistema, 'SISTEMA']);
 
     $pdo->prepare("INSERT INTO correos_a_tickets (mensaje_id, buzon, remitente, asunto, ticket_id) VALUES (?,?,?,?,?)")
         ->execute([$mensajeId, $buzon, $remitente, $asunto, $ticketId]);
 
     hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'CREADO_DESDE_CORREO', $asunto, $remitente, $ticketId);
     ia_triage_ticket($pdo, $ticketId);
+    correo_notificar_creacion($remitente, $remitenteNombre, $ticketId, $asunto, $tecnico);
     return true;
 }
 
@@ -77,7 +111,12 @@ function sincronizar_correo_a_tickets(PDO $pdo): array {
                     $remitente = $correo['from']['emailAddress']['address'] ?? 'desconocido';
                     $remitenteNombre = $correo['from']['emailAddress']['name'] ?? $remitente;
                     $asunto = $correo['subject'] ?? '(sin asunto)';
-                    $creado = correo_crear_ticket_si_nuevo($pdo, $correo['id'], $buzon, $remitente, $remitenteNombre, $asunto, $correo['bodyPreview'] ?? '');
+                    $cuerpoGraph = $correo['body']['content'] ?? ($correo['bodyPreview'] ?? '');
+                    // Graph puede devolver HTML o texto según la preferencia
+                    // del buzón; guardamos texto limpio para evitar markup en
+                    // la descripción y en los prompts de IA.
+                    $cuerpoGraph = trim(html_entity_decode(strip_tags((string) $cuerpoGraph), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    $creado = correo_crear_ticket_si_nuevo($pdo, $correo['id'], $buzon, $remitente, $remitenteNombre, $asunto, $cuerpoGraph);
                     if ($creado) { $creados++; $gc->marcarCorreoLeido($buzon, $correo['id']); }
                     else $yaExistian++;
                 }

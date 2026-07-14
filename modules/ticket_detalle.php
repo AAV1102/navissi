@@ -72,6 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
             ->execute([$id, 'Sistema', "Asignado a {$asignado}.", 'SISTEMA']);
         $msg = ['ok', 'Ticket asignado.'];
+
+        if ($asignado) {
+            $stmtT = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
+            $stmtT->execute([$id]);
+            $t = $stmtT->fetch(PDO::FETCH_ASSOC);
+            if ($t && $t['solicitante_contacto'] && filter_var($t['solicitante_contacto'], FILTER_VALIDATE_EMAIL)) {
+                $html = plantilla_correo_html("Tu ticket #{$id} fue asignado",
+                    "<p>Hola " . e($t['solicitante']) . ",</p><p>Tu ticket <strong>#{$id}</strong> — \"" . e($t['titulo']) . "\" — fue asignado al técnico <strong>" . e($asignado) . "</strong>, quien se pondrá en contacto contigo.</p>");
+                enviar_correo($t['solicitante_contacto'], "Ticket #{$id} asignado a {$asignado}", $html, $t['solicitante']);
+            }
+        }
     }
 
     if ($accion === 'guardar_campos') {
