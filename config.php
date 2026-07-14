@@ -2491,7 +2491,7 @@ function ms365_configurado(): bool {
 // Las acciones autenticadas deben provenir de una página que emitió el token.
 // Los webhooks públicos declaran CSRF_EXEMPT y aplican su propia firma HMAC.
 $scriptActual = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-if (PHP_SAPI !== 'cli' && str_contains($scriptActual, '/modules/')) {
+if (PHP_SAPI !== 'cli' && str_contains($scriptActual, '/modules/') && !defined('LOGIN_EXEMPT')) {
     requiere_login('../');
 }
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !defined('CSRF_EXEMPT')) {

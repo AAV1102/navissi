@@ -1,4 +1,7 @@
 <?php
+// Página pública: quien llena el formulario no tiene cuenta en NAVISSI, el
+// acceso se controla por el token del link, no por sesión.
+define('LOGIN_EXEMPT', true);
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/icons.php';
 $pdo = db();
