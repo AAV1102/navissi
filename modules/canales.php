@@ -113,20 +113,22 @@ layout_inicio('Canales', 'Canales', '../');
     <h3><?= icon('folder') ?> Tus accesos (<?= count($misEnlaces) ?>)</h3>
     <div class="apps-grid">
         <?php foreach ($misEnlaces as $en): ?>
-        <a class="app-card" href="<?= e($en['url']) ?>" target="_blank" rel="noopener">
-            <div class="app-card-top">
-                <span class="app-icon" style="background:<?= $en['tipo']==='SITIO' ? '#0078d4' : '#5b5fc7' ?>"><?= icon($en['tipo']==='SITIO' ? 'folder' : 'chat') ?></span>
-            </div>
-            <span class="app-categoria"><?= e($en['tipo']) ?></span>
-            <h3><?= e($en['nombre']) ?></h3>
-            <p class="small"><?= $en['area'] ? 'Área: ' . e($en['area']) : ($en['empleado_documento'] ? 'Asignación personal' : 'General - todos') ?></p>
+        <div class="app-card">
+            <a href="<?= e($en['url']) ?>" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block;">
+                <div class="app-card-top">
+                    <span class="app-icon" style="background:<?= $en['tipo']==='SITIO' ? '#0078d4' : '#5b5fc7' ?>"><?= icon($en['tipo']==='SITIO' ? 'folder' : 'chat') ?></span>
+                </div>
+                <span class="app-categoria"><?= e($en['tipo']) ?></span>
+                <h3><?= e($en['nombre']) ?></h3>
+                <p class="small"><?= $en['area'] ? 'Área: ' . e($en['area']) : ($en['empleado_documento'] ? 'Asignación personal' : 'General - todos') ?></p>
+            </a>
             <?php if ($puedeAsignar): ?>
-            <form method="post" onclick="event.stopPropagation();" onsubmit="return confirm('¿Quitar este enlace?');">
+            <form method="post" onsubmit="return confirm('¿Quitar este enlace?');">
                 <input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= (int)$en['id'] ?>">
                 <button type="submit" class="btn-danger" style="margin-top:8px;font-size:11px;padding:4px 10px;">Quitar</button>
             </form>
             <?php endif; ?>
-        </a>
+        </div>
         <?php endforeach; ?>
         <?php if (!$misEnlaces): ?><p class="small">Todavía no tienes canales o sitios asignados. Pide a TI que te asigne los de tu área.</p><?php endif; ?>
     </div>

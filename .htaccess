@@ -8,6 +8,10 @@ RewriteRule (^|/)\.(?!well-known/) - [F,L]
     Require all denied
 </FilesMatch>
 
+# Cualquier .php inexistente da 404 real, en vez de caer silenciosamente al
+# dashboard (como hacia el catch-all anterior) - un enlace roto o un archivo
+# que no llego bien en un deploy debe notarse de inmediato, no parecer que
+# "abre otro modulo".
+RewriteCond %{REQUEST_URI} \.php$
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php [QSA,L]
+RewriteRule ^ - [R=404,L]
