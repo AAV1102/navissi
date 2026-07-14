@@ -249,4 +249,18 @@
             if (e.target.checked) { alert('Activado. Recarga la página para ver los controles de arrastre.'); }
         });
     }
+
+    // Mostrar/ocultar contraseña: delegado en document para que funcione en
+    // cualquier formulario (login, cambiar contraseña, crear usuario...) sin
+    // tener que repetir el listener en cada página.
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.btn-mostrar-clave');
+        if (!btn) return;
+        var campo = document.getElementById(btn.dataset.target);
+        if (!campo) return;
+        var mostrando = campo.type === 'text';
+        campo.type = mostrando ? 'password' : 'text';
+        btn.setAttribute('aria-label', mostrando ? 'Mostrar contraseña' : 'Ocultar contraseña');
+        btn.classList.toggle('activo', !mostrando);
+    });
 })();

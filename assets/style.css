@@ -374,6 +374,17 @@ form.inline { display:inline; }
 .auth-form label { font-size:12.5px; font-weight:600; color:var(--ink-700); margin-top:10px; }
 .auth-form input { width:100%; padding:11px 13px; font-size:14px; }
 .auth-code-input { text-align:center; font-size:22px; letter-spacing:6px; font-weight:700; }
+.campo-password { position:relative; display:flex; }
+.campo-password input { padding-right:42px !important; }
+.btn-mostrar-clave {
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    display:flex; align-items:center; justify-content:center;
+    width:32px; height:32px; padding:0; border:0; background:transparent;
+    color:var(--ink-500); cursor:pointer; border-radius:6px;
+}
+.btn-mostrar-clave:hover { background:var(--bg); color:var(--ink-900); }
+.btn-mostrar-clave.activo { color:var(--accent-600); }
+.btn-mostrar-clave .icon { width:18px; height:18px; }
 .btn-primary-lg {
     margin-top:20px; width:100%; justify-content:center; background:var(--accent-600); padding:12px; font-size:14.5px;
 }

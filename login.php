@@ -150,7 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
                     <label>Correo</label>
                     <input type="email" name="email" required autofocus placeholder="tu.correo@grupo10z.com">
                     <label>Contraseña</label>
-                    <input type="password" name="password" required placeholder="••••••••">
+                    <div class="campo-password">
+                        <input type="password" name="password" id="campo-clave-login" required placeholder="••••••••">
+                        <button type="button" class="btn-mostrar-clave" data-target="campo-clave-login" aria-label="Mostrar contraseña"><?= icon('eye') ?></button>
+                    </div>
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Ingresar</button>
                 </form>
                 <p class="auth-foot"><a href="recuperar_password.php"><?= icon('key') ?> ¿Olvidaste tu contraseña?</a></p>
@@ -159,5 +162,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.btn-mostrar-clave');
+    if (!btn) return;
+    var campo = document.getElementById(btn.dataset.target);
+    if (!campo) return;
+    var mostrando = campo.type === 'text';
+    campo.type = mostrando ? 'password' : 'text';
+    btn.setAttribute('aria-label', mostrando ? 'Mostrar contraseña' : 'Ocultar contraseña');
+    btn.classList.toggle('activo', !mostrando);
+});
+</script>
 </body>
 </html>
