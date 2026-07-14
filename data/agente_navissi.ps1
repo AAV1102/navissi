@@ -12,12 +12,16 @@
 param(
     [string]$Servidor = "http://127.0.0.1:8099",
     [string]$Sede = "",
+    [string]$TokenFile = "$env:ProgramData\NAVISSI\agent.token",
     [switch]$InstalarRustDesk,
     [string]$RustDeskServidor = "",
     [string]$RustDeskClave = "",
     [string]$RustDeskInstaladorLocal = "",
     [switch]$EscanearRed
 )
+$agentToken = if (Test-Path $TokenFile) { (Get-Content $TokenFile -Raw).Trim() } else { "" }
+if (-not $agentToken) { Write-Output "ERROR: falta la credencial del agente. Descarga un instalador nuevo desde NAVISSI."; exit 1 }
+$headersAgente = @{ Authorization = "Bearer $agentToken" }
 
 $cs = Get-CimInstance -ClassName Win32_ComputerSystem
 $bios = Get-CimInstance -ClassName Win32_BIOS
@@ -131,9 +135,11 @@ $payload = @{
     parches            = $parches
 } | ConvertTo-Json -Depth 4
 
+$reporteExitoso = $false
 try {
-    $resp = Invoke-RestMethod -Uri "$Servidor/api_agente.php" -Method Post -Body $payload -ContentType "application/json; charset=utf-8"
+    $resp = Invoke-RestMethod -Uri "$Servidor/api_agente.php" -Method Post -Headers $headersAgente -Body $payload -ContentType "application/json; charset=utf-8"
     Write-Output "OK: $($resp.accion) - id $($resp.id) - RustDesk ID: $rustdeskId - Parches reportados: $($parches.Count)"
+    $reporteExitoso = $true
 } catch {
     Write-Output "ERROR enviando el reporte: $($_.Exception.Message)"
 }
@@ -163,7 +169,7 @@ if ($EscanearRed -and $ipLocal) {
     if ($dispositivos.Count -gt 0) {
         $payloadRed = @{ sede = $Sede; dispositivos = $dispositivos } | ConvertTo-Json -Depth 4
         try {
-            $respRed = Invoke-RestMethod -Uri "$Servidor/api_network_discovery.php" -Method Post -Body $payloadRed -ContentType "application/json; charset=utf-8"
+            $respRed = Invoke-RestMethod -Uri "$Servidor/api_network_discovery.php" -Method Post -Headers $headersAgente -Body $payloadRed -ContentType "application/json; charset=utf-8"
             Write-Output "Network Discovery: $($dispositivos.Count) dispositivos encontrados, $($respRed.nuevos) nuevos."
         } catch {
             Write-Output "ERROR enviando el escaneo de red: $($_.Exception.Message)"
@@ -172,3 +178,6 @@ if ($EscanearRed -and $ipLocal) {
         Write-Output "Network Discovery: no se encontraron dispositivos (revisa permisos de firewall para ping)."
     }
 }
+
+if (-not $reporteExitoso) { exit 1 }
+exit 0

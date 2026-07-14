@@ -1,82 +1,71 @@
-<#
-    Despliega NAVISSI-INVENTARIO al hosting real (FreeHosting / grupo10z.com.co).
-    Empaqueta el proyecto (sin IMAGENES, rustdesk-server, Dockerfile, logs), lo sube por FTP
-    y lo descomprime en el servidor con un script PHP temporal que se autoelimina.
-
-    Uso:  clic derecho > Ejecutar con PowerShell   (o)   powershell -ExecutionPolicy Bypass -File DEPLOY_HOSTING.ps1
-#>
-
+<# Despliegue seguro al hosting. Requiere .env.deploy.local (ignorado por Git). #>
+param([switch]$DryRun)
 $ErrorActionPreference = 'Stop'
-
-$FtpHost  = 'panel.freehosting.com'
-$FtpUser  = 'aav@grupo10z.com.co'
-$FtpPass  = 'Danna0827**'
-$SiteHost = 'grupo10z.com.co'
-$SiteIp   = '195.201.179.80'   # usado solo para verificar el resultado tras subir
-
-$src   = $PSScriptRoot
-$stage = "$env:TEMP\navissi_stage_$(Get-Random)"
-$zipPath = "$env:TEMP\navissi_deploy_$(Get-Random).zip"
-
-Write-Host "1/5 Empaquetando archivos..." -ForegroundColor Cyan
-New-Item -ItemType Directory -Path $stage | Out-Null
-$excludeDirs  = @('IMAGENES', 'rustdesk-server', '.git')
-$excludeFiles = @('Dockerfile', 'docker-compose.yml')
-Get-ChildItem -Path $src -Force | Where-Object {
-    $excludeDirs -notcontains $_.Name -and $excludeFiles -notcontains $_.Name -and $_.Name -ne 'DEPLOY_HOSTING.ps1'
-} | ForEach-Object {
-    Copy-Item -Path $_.FullName -Destination (Join-Path $stage $_.Name) -Recurse -Force
+$src = $PSScriptRoot
+if (-not $DryRun) {
+    & (Join-Path $src 'scripts\preflight_deploy.ps1') -Mode Hosting
+    if ($LASTEXITCODE -ne 0) { throw 'Pre-flight rechazó el despliegue.' }
 }
-# No subir la base de datos local ni logs: el hosting tiene su propia BD viva, no la pisamos
-Remove-Item -Path (Join-Path $stage 'data\navissi.sqlite') -ErrorAction SilentlyContinue
-Remove-Item -Path (Join-Path $stage 'data\n8n_err.log') -ErrorAction SilentlyContinue
-Remove-Item -Path (Join-Path $stage 'data\n8n_out.log') -ErrorAction SilentlyContinue
-Get-ChildItem -Path (Join-Path $stage 'data') -Filter '~$*' -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-Write-Host "2/5 Comprimiendo..." -ForegroundColor Cyan
-Compress-Archive -Path "$stage\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
+function Read-DeployConfig([string]$Path) {
+    $values = @{}
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        if ($line -match '^\s*([A-Z0-9_]+)=(.*)$') { $values[$Matches[1]] = $Matches[2].Trim() }
+    }
+    return $values
+}
+$cfgPath = Join-Path $src '.env.deploy.local'
+if (-not $DryRun -and -not (Test-Path $cfgPath)) { throw 'Falta .env.deploy.local. No se usan credenciales dentro del código.' }
+$cfg = if (Test-Path $cfgPath) { Read-DeployConfig $cfgPath } else { @{} }
+$required = @('NAVISSI_FTP_HOST','NAVISSI_FTP_USER','NAVISSI_FTP_PASS','NAVISSI_SITE_HOST')
+foreach ($key in $required) { if (-not $DryRun -and [string]::IsNullOrWhiteSpace($cfg[$key])) { throw "Falta $key en .env.deploy.local" } }
+$FtpHost = $cfg['NAVISSI_FTP_HOST']; $FtpUser = $cfg['NAVISSI_FTP_USER']; $FtpPass = $cfg['NAVISSI_FTP_PASS']; $SiteHost = $cfg['NAVISSI_SITE_HOST']
 
-Write-Host "3/5 Subiendo por FTP (esto puede tardar 1-2 min)..." -ForegroundColor Cyan
-$zipName = Split-Path $zipPath -Leaf
-$prevEap = $ErrorActionPreference
-$ErrorActionPreference = 'Continue'
-& curl.exe -s --ssl-reqd -k -u "${FtpUser}:${FtpPass}" -T "$zipPath" "ftp://$FtpHost/public_html/$zipName" *>$null
-$ErrorActionPreference = $prevEap
+$stage = Join-Path $env:TEMP "navissi_stage_$(Get-Random)"
+$zipPath = Join-Path $env:TEMP "navissi_deploy_$(Get-Random).zip"
+try {
+    New-Item -ItemType Directory -Path $stage | Out-Null
+    Write-Host '1/5 Empaquetando solo archivos versionados...' -ForegroundColor Cyan
+    $files = @(git ls-files)
+    foreach ($relative in $files) {
+        if ($relative -in @('DEPLOY_HOSTING.ps1','DEPLOY_TODO.bat','.env.deploy.example')) { continue }
+        $source = Join-Path $src $relative
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+        $destination = Join-Path $stage $relative
+        New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
+        Copy-Item -LiteralPath $source -Destination $destination -Force
+    }
+    if ($DryRun) { Write-Host "DryRun OK: $($files.Count) entradas versionadas evaluadas." -ForegroundColor Green; return }
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -CompressionLevel Optimal -Force
+    $zipName = Split-Path $zipPath -Leaf
+    $ftpUrl = "ftp://$FtpHost/public_html/"
+    Write-Host '2/5 Subiendo por FTPS con validación de certificado...' -ForegroundColor Cyan
+    & curl.exe --fail --silent --show-error --retry 2 --ssl-reqd -u "${FtpUser}:${FtpPass}" -T $zipPath "$ftpUrl$zipName"
+    if ($LASTEXITCODE -ne 0) { throw 'Falló la carga FTPS del paquete.' }
 
-$unzipScript = @"
+    $token = [Guid]::NewGuid().ToString('N') + [Guid]::NewGuid().ToString('N')
+    $unzipName = "_deploy_unzip_$([Guid]::NewGuid().ToString('N')).php"
+    $unzipPath = Join-Path $env:TEMP $unzipName
+    $php = @"
 <?php
-header('Content-Type: text/plain; charset=utf-8');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !hash_equals('$token', $_POST['token'] ?? '')) { http_response_code(404); exit; }
 `$zipFile = __DIR__ . '/$zipName';
-if (!file_exists(`$zipFile)) { die('ERROR: no se encontro el zip'); }
 `$zip = new ZipArchive();
-if (`$zip->open(`$zipFile) !== true) { die('ERROR abriendo zip'); }
-`$zip->extractTo(__DIR__);
-`$zip->close();
-unlink(`$zipFile);
-unlink(__FILE__);
-echo 'OK: desplegado correctamente.';
+if (!is_file(`$zipFile) || `$zip->open(`$zipFile) !== true) { http_response_code(500); exit('ERROR'); }
+`$zip->extractTo(__DIR__); `$zip->close(); @unlink(`$zipFile); @unlink(__FILE__); echo 'OK';
 "@
-$unzipPath = "$env:TEMP\_deploy_unzip_$(Get-Random).php"
-Set-Content -Path $unzipPath -Value $unzipScript -Encoding UTF8
-$unzipName = Split-Path $unzipPath -Leaf
-
-Write-Host "4/5 Extrayendo en el servidor..." -ForegroundColor Cyan
-$prevEap = $ErrorActionPreference
-$ErrorActionPreference = 'Continue'
-& curl.exe -s --ssl-reqd -k -u "${FtpUser}:${FtpPass}" -T "$unzipPath" "ftp://$FtpHost/public_html/$unzipName" *>$null
-$resultado = & curl.exe -s -H "Host: $SiteHost" "http://$SiteIp/$unzipName"
-Write-Host $resultado
-
-# Red de seguridad: si por lo que sea el auto-borrado del zip/script en el servidor
-# fallo, lo forzamos por FTP para no dejar basura ni el zip completo publicamente accesible.
-& curl.exe -s --ssl-reqd -k -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$zipName" "ftp://$FtpHost/public_html/" *>$null
-& curl.exe -s --ssl-reqd -k -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$unzipName" "ftp://$FtpHost/public_html/" *>$null
-$ErrorActionPreference = $prevEap
-
-Write-Host "5/5 Limpiando temporales locales..." -ForegroundColor Cyan
-Remove-Item -Path $stage -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $unzipPath -Force -ErrorAction SilentlyContinue
-
-Write-Host ""
-Write-Host "Listo. Verifica en https://$SiteHost" -ForegroundColor Green
+    Set-Content -LiteralPath $unzipPath -Value $php -Encoding UTF8
+    Write-Host '3/5 Subiendo extractor temporal autenticado...' -ForegroundColor Cyan
+    & curl.exe --fail --silent --show-error --retry 2 --ssl-reqd -u "${FtpUser}:${FtpPass}" -T $unzipPath "$ftpUrl$unzipName"
+    if ($LASTEXITCODE -ne 0) { throw 'Falló la carga del extractor.' }
+    Write-Host '4/5 Extrayendo por HTTPS...' -ForegroundColor Cyan
+    $result = & curl.exe --fail --silent --show-error --retry 2 -X POST -d "token=$token" "https://$SiteHost/$unzipName"
+    if ($LASTEXITCODE -ne 0 -or $result -notmatch '^OK') { throw "Falló la extracción remota: $result" }
+    & curl.exe --fail --silent --show-error --ssl-reqd -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$zipName" $ftpUrl
+    & curl.exe --fail --silent --show-error --ssl-reqd -u "${FtpUser}:${FtpPass}" -Q "DELE public_html/$unzipName" $ftpUrl
+    Write-Host "5/5 Listo. Verifica https://$SiteHost" -ForegroundColor Green
+} finally {
+    Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+    if ($unzipPath) { Remove-Item -LiteralPath $unzipPath -Force -ErrorAction SilentlyContinue }
+}

@@ -23,6 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'subir
     http_response_code(403);
     exit('Solo RRHH puede cargar documentos.');
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'agregar_tipo' && $puedeGestionar) {
+    $nuevoTipo = mb_strtoupper(trim(limpio($_POST['nuevo_tipo'] ?? '')));
+    if ($nuevoTipo !== '') {
+        $pdo->prepare("INSERT OR IGNORE INTO tipos_documento_rrhh (nombre, creado_por) VALUES (?,?)")->execute([$nuevoTipo, $u['nombre'] ?? null]);
+        $msg = ['ok', "Tipo de documento \"{$nuevoTipo}\" agregado. Ya aparece en el desplegable."];
+    }
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'firmar' && !$puedeGestionar) {
     // El empleado solo puede firmar SU PROPIO documento.
     $stmtProp = $pdo->prepare("SELECT empleado_documento FROM documentos_rrhh WHERE id = ?");
@@ -103,10 +110,12 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$tiposDocumento = $pdo->query("SELECT nombre FROM tipos_documento_rrhh ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);
+
 layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
 ?>
 <h1><?= icon('file','icon-lg') ?> Documentos y Firmas — Recursos Humanos</h1>
-<p class="subtitle"><?= $puedeGestionar ? 'Contratos, otrosí, cotizaciones y demás documentos por empleado, sincronizados a OneDrive, con firma electrónica simple (nombre + fecha/hora + IP, quedan en Auditoría).' : 'Tus contratos, otrosí y demás documentos laborales. Puedes firmarlos electrónicamente aquí mismo.' ?></p>
+<p class="subtitle"><?= $puedeGestionar ? 'Contratos, otrosí y demás documentos por empleado, sincronizados a OneDrive, con firma electrónica simple (nombre + fecha/hora + IP, quedan en Auditoría). Los tipos de documento se pueden ampliar sin tocar código.' : 'Tus contratos, otrosí y demás documentos laborales. Puedes firmarlos electrónicamente aquí mismo.' ?></p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <?php if ($puedeGestionar): ?>
@@ -118,7 +127,7 @@ layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
             <div><label>Documento del empleado *</label><input type="text" name="empleado_documento" required></div>
             <div><label>Tipo</label>
                 <select name="tipo">
-                    <?php foreach (['CONTRATO','OTROSI','COTIZACION','HOJA DE VIDA','CERTIFICADO','INCAPACIDAD','OTRO'] as $t): ?><option><?= $t ?></option><?php endforeach; ?>
+                    <?php foreach ($tiposDocumento as $t): ?><option><?= e($t) ?></option><?php endforeach; ?>
                 </select>
             </div>
             <div><label>Archivo *</label><input type="file" name="archivo" required></div>
@@ -128,6 +137,16 @@ layout_inicio('Documentos RRHH', 'Documentos y firmas (OneDrive)', '../');
         <button type="submit">Subir</button>
     </form>
     <p class="small" style="margin-top:8px;">Si dejas el correo de OneDrive en blanco, el archivo queda guardado localmente en el software igual (sin perder nada), solo no se sincroniza a la nube.</p>
+</div>
+
+<div class="panel">
+    <h3><?= icon('plus') ?> Agregar un nuevo tipo/formato de documento</h3>
+    <p class="small">¿Necesitas subir un formato que no está en la lista (cotización de un proveedor, póliza, etc.)? Agrégalo aquí una sola vez y queda disponible para siempre, sin tocar código.</p>
+    <form method="post" class="toolbar">
+        <input type="hidden" name="accion" value="agregar_tipo">
+        <input type="text" name="nuevo_tipo" placeholder="Ej. COTIZACION PROVEEDOR, POLIZA DE SEGURO..." required style="min-width:280px;">
+        <button type="submit">Agregar tipo</button>
+    </form>
 </div>
 
 <form class="toolbar" method="get">

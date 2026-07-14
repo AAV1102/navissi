@@ -1,103 +1,11 @@
 <?php
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../lib/layout.php';
-$pdo = db();
-
-$alertas = [];
-
-// 1. Licencias M365 agotadas o casi agotadas
-$stmt = $pdo->query("SELECT nombre, compradas, consumidas FROM ms365_licencias WHERE compradas > 0 AND compradas < 100000");
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $l) {
-    $libres = $l['compradas'] - $l['consumidas'];
-    if ($libres <= 0) {
-        $alertas[] = ['critica', "Licencia \"{$l['nombre']}\" agotada: {$l['consumidas']}/{$l['compradas']} en uso.", 'microsoft365.php'];
-    } elseif ($libres <= 2) {
-        $alertas[] = ['advertencia', "Licencia \"{$l['nombre']}\" casi agotada: solo {$libres} disponible(s).", 'microsoft365.php'];
-    }
-}
-
-// 2. Cuentas Microsoft 365 bloqueadas
-$bloqueadas = (int) $pdo->query("SELECT COUNT(*) FROM ms365_usuarios WHERE cuenta_activa = 0")->fetchColumn();
-if ($bloqueadas > 0) {
-    $alertas[] = ['info', "{$bloqueadas} cuenta(s) de Microsoft 365 bloqueada(s) - revisa si corresponde a retiros pendientes de desactivar en otros sistemas.", 'microsoft365.php'];
-}
-
-// 3. Tickets urgentes sin asignar
-$stmt = $pdo->query("SELECT COUNT(*) FROM tickets WHERE prioridad = 'URGENTE' AND (asignado_a IS NULL OR asignado_a = '') AND estado != 'CERRADO'");
-$n = (int) $stmt->fetchColumn();
-if ($n > 0) $alertas[] = ['critica', "{$n} ticket(s) URGENTE sin asignar.", 'mesa_ayuda.php?prioridad=URGENTE'];
-
-// 4. Tickets abiertos hace más de 3 días sin actividad
-$stmt = $pdo->query("SELECT COUNT(*) FROM tickets WHERE estado != 'CERRADO' AND datetime(actualizado_en) < datetime('now', '-3 days')");
-$n = (int) $stmt->fetchColumn();
-if ($n > 0) $alertas[] = ['advertencia', "{$n} ticket(s) sin actividad hace más de 3 días.", 'mesa_ayuda.php'];
-
-// 5. Equipos en reparación hace más de 30 días
-$stmt = $pdo->query("SELECT COUNT(*) FROM inventario WHERE estado = 'EN REPARACION' AND datetime(actualizado_en) < datetime('now', '-30 days')");
-$n = (int) $stmt->fetchColumn();
-if ($n > 0) $alertas[] = ['advertencia', "{$n} equipo(s) llevan más de 30 días \"en reparación\" - revisar si siguen así de verdad.", 'inventario.php'];
-
-// 6. Sedes sin ninguna credencial registrada (wifi/siesa/correo)
-$stmt = $pdo->query("SELECT COUNT(*) FROM sedes s WHERE s.estado='ACTIVO' AND NOT EXISTS (SELECT 1 FROM credenciales c WHERE c.sede_id = s.id)");
-$n = (int) $stmt->fetchColumn();
-if ($n > 0) $alertas[] = ['info', "{$n} sede(s) activa(s) sin ninguna credencial registrada (wifi, Siesa, etc).", 'sedes.php'];
-
-// 7. Sedes sin equipos registrados
-$stmt = $pdo->query("SELECT COUNT(*) FROM sedes s WHERE s.estado='ACTIVO' AND NOT EXISTS (SELECT 1 FROM inventario i WHERE i.sede_id = s.id)");
-$n = (int) $stmt->fetchColumn();
-if ($n > 0) $alertas[] = ['info', "{$n} sede(s) activa(s) sin ningún equipo registrado en el inventario.", 'inventario.php'];
-
-// 8. Solicitudes de actualización de tienda pendientes de revisar
-$stmt = $pdo->query("SELECT COUNT(*) FROM solicitudes_actualizacion WHERE estado = 'PENDIENTE'");
-$n = (int) $stmt->fetchColumn();
-if ($n > 0) $alertas[] = ['advertencia', "{$n} solicitud(es) de actualización enviadas por tiendas esperando revisión.", 'solicitudes.php'];
-
-// 9. Secreto de Microsoft configurado (recordatorio de rotación, no hay fecha de expiración real disponible aquí)
-if (ms365_configurado()) {
-    $alertas[] = ['info', "Conexión Microsoft 365 activa. Recuerda rotar el Client Secret en Azure antes de que expire.", 'microsoft365.php'];
-}
-
-usort($alertas, fn($a, $b) => array_search($a[0], ['critica','advertencia','info']) <=> array_search($b[0], ['critica','advertencia','info']));
-
-$conteo = ['critica' => 0, 'advertencia' => 0, 'info' => 0];
-foreach ($alertas as $a) $conteo[$a[0]]++;
-
-layout_inicio('Automatizaciones', 'Automatizaciones', '../');
-?>
-<h1>Automatizaciones y Alertas</h1>
-<p class="subtitle">Reglas que se evalúan en vivo cada vez que abres esta página, sobre tus datos reales - sin necesidad de configurar nada.</p>
-
-<div class="cards">
-    <div class="card" style="border-left-color:#a12b1f;"><div class="num"><?= $conteo['critica'] ?></div><div class="label">Críticas</div></div>
-    <div class="card" style="border-left-color:#c99a1f;"><div class="num"><?= $conteo['advertencia'] ?></div><div class="label">Advertencias</div></div>
-    <div class="card"><div class="num"><?= $conteo['info'] ?></div><div class="label">Informativas</div></div>
-</div>
-
-<div class="panel">
-    <?php if (!$alertas): ?>
-        <p class="small">✅ No hay alertas activas en este momento. Todo dentro de lo esperado.</p>
-    <?php else: foreach ($alertas as [$nivel, $texto, $link]): ?>
-        <div class="msg-<?= $nivel === 'critica' ? 'error' : ($nivel === 'advertencia' ? 'error' : 'ok') ?>" style="<?= $nivel==='advertencia' ? 'background:#fff3cd;color:#7a5c00;' : ($nivel==='info' ? 'background:#e7f1fb;color:#1f4e78;' : '') ?>">
-            <?= e($texto) ?> <a href="<?= e($link) ?>" style="margin-left:8px;font-weight:600;">Ver →</a>
-        </div>
-    <?php endforeach; endif; ?>
-</div>
-
-<div class="panel">
-    <h3>Reglas activas (se evalúan automáticamente, sin configuración)</h3>
-    <table>
-        <tr><th>Regla</th><th>Qué hace</th></tr>
-        <tr><td>Licencias M365 agotándose</td><td>Avisa cuando quedan ≤2 licencias libres de un tipo, o ya están en 0.</td></tr>
-        <tr><td>Cuentas M365 bloqueadas</td><td>Cuenta cuántas cuentas están desactivadas en Microsoft.</td></tr>
-        <tr><td>Tickets urgentes sin asignar</td><td>Avisa si hay tickets prioridad URGENTE sin técnico asignado.</td></tr>
-        <tr><td>Tickets estancados</td><td>Avisa de tickets abiertos sin ninguna actividad en 3+ días.</td></tr>
-        <tr><td>Equipos "en reparación" por mucho tiempo</td><td>Avisa de equipos marcados así hace 30+ días - probable dato desactualizado.</td></tr>
-        <tr><td>Sedes sin credenciales / sin equipos</td><td>Detecta huecos de información por sede.</td></tr>
-        <tr><td>Solicitudes de tiendas pendientes</td><td>Avisa cuando una tienda reportó una actualización que TI aún no revisó.</td></tr>
-    </table>
-    <p class="small" style="margin-top:10px;">
-        ¿Necesitas que alguna de estas alertas también llegue por correo o WhatsApp automáticamente (no solo al abrir esta pantalla)?
-        Eso requiere un disparador externo (tarea programada de Windows + SMTP o API de WhatsApp) - dime cuál priorizamos y lo conectamos.
-    </p>
-</div>
-<?php layout_fin(); ?>
+require_once __DIR__.'/../config.php';require_once __DIR__.'/../lib/layout.php';require_once __DIR__.'/../lib/automatizacion_operativa.php';requiere_roles(['ADMIN','TI','GERENCIA','CEO','DIRECTOR'],'../');$pdo=db();$msg=null;
+if($_SERVER['REQUEST_METHOD']==='POST'){if(($_POST['accion']??'')==='ejecutar'){try{$r=automatizacion_operativa_ejecutar($pdo,'MANUAL','manual-'.gmdate('YmdHis').'-'.bin2hex(random_bytes(3)));$msg=!empty($r['ocupada'])?['error','Ya existe un ciclo en ejecución. Intenta nuevamente en unos minutos.']:['ok','Ciclo completado: '.$r['resumen'].'.'];}catch(Throwable $e){$msg=['error','El ciclo no pudo completarse.'];}}elseif(($_POST['accion']??'')==='guardar_config'&&tiene_rol(['ADMIN','TI'])){$s=$pdo->prepare("INSERT INTO config_general(clave,valor)VALUES(?,?) ON CONFLICT(clave)DO UPDATE SET valor=excluded.valor");$s->execute(['AUTOMATIZACION_GRACIA_MINUTOS',(string)min(180,max(0,(int)$_POST['gracia']))]);$s->execute(['AUTOMATIZACION_SLA_NIVEL2_HORAS',(string)min(72,max(1,(int)$_POST['nivel2']))]);$msg=['ok','Reglas actualizadas.'];}}
+$runs=$pdo->query("SELECT * FROM automatizacion_ejecuciones ORDER BY id DESC LIMIT 15")->fetchAll(PDO::FETCH_ASSOC);$last=$runs[0]??null;$open=(int)$pdo->query("SELECT COUNT(*) FROM alertas_sistema WHERE estado='ACTIVA' AND clave_unica LIKE 'APERTURA_PENDIENTE_%'")->fetchColumn();$close=(int)$pdo->query("SELECT COUNT(*) FROM alertas_sistema WHERE estado='ACTIVA' AND clave_unica LIKE 'CIERRE_PENDIENTE_%'")->fetchColumn();$sla=(int)$pdo->query("SELECT COUNT(*) FROM alertas_sistema WHERE estado='ACTIVA' AND clave_unica LIKE 'SLA_ESCALADO_%'")->fetchColumn();$esc=$pdo->query("SELECT e.*,t.titulo,t.estado,t.prioridad FROM tickets_escalamientos e JOIN tickets t ON t.id=e.ticket_id ORDER BY e.id DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);$gr=automatizacion_config($pdo,'AUTOMATIZACION_GRACIA_MINUTOS',20);$n2=automatizacion_config($pdo,'AUTOMATIZACION_SLA_NIVEL2_HORAS',4);$cfgGeneral=$pdo->query("SELECT clave,valor FROM config_general WHERE clave IN('AUTOMATIZACION_TAREA_ULTIMO_HEARTBEAT','AUTOMATIZACION_TAREA_ULTIMO_ESTADO')")->fetchAll(PDO::FETCH_KEY_PAIR);$heartbeat=$cfgGeneral['AUTOMATIZACION_TAREA_ULTIMO_HEARTBEAT']??null;$heartbeatFecha=$heartbeat?DateTimeImmutable::createFromFormat('Y-m-d H:i:s',$heartbeat,new DateTimeZone('UTC')):false;$tareaActiva=$heartbeatFecha&&$heartbeatFecha->getTimestamp()>=(time()-30*60)&&($cfgGeneral['AUTOMATIZACION_TAREA_ULTIMO_ESTADO']??'')!=='ERROR';
+layout_inicio('Automatizaciones','Automatizaciones y alertas','../');?>
+<div class="page-kicker">AUTOMATIZACIÓN · OPERACIÓN RETAIL</div><h1><?=icon('zap','icon-lg')?> Centro de automatizaciones</h1><p class="subtitle">Aperturas, cierres y SLA con historial e idempotencia para n8n.</p><?php if($msg):?><div class="msg-<?=e($msg[0])?>"><?=e($msg[1])?></div><?php endif;?>
+<div class="automation-hero"><div><span class="page-kicker">ÚLTIMO CICLO</span><strong><?=e($last['estado']??'SIN EJECUCIONES')?></strong><p><?=e($last['resumen']??'Ejecuta el primer ciclo.')?></p></div><form method="post"><input type="hidden" name="accion" value="ejecutar"><button><?=icon('zap')?> Ejecutar ahora</button></form></div>
+<div class="cards"><a class="card card-link <?=$open?'card-err':'card-ok'?>" href="salud_tiendas.php"><div class="num"><?=$open?></div><div class="label">Aperturas pendientes</div></a><a class="card card-link <?=$close?'card-warn':'card-ok'?>" href="salud_tiendas.php"><div class="num"><?=$close?></div><div class="label">Cierres pendientes</div></a><a class="card card-link <?=$sla?'card-err':'card-ok'?>" href="mesa_ayuda.php"><div class="num"><?=$sla?></div><div class="label">SLA activos</div></a><a class="card card-link" href="notificaciones.php"><div class="num"><?=(int)$pdo->query("SELECT COUNT(*) FROM notificaciones_cola WHERE estado IN('PENDIENTE','ERROR')")->fetchColumn()?></div><div class="label">Notificaciones en cola</div></a><a class="card card-link" href="inteligencia_operativa.php"><div class="num"><?=(int)$pdo->query("SELECT COUNT(*) FROM inteligencia_hallazgos WHERE estado='ACTIVO'")->fetchColumn()?></div><div class="label">Hallazgos de inteligencia</div></a></div>
+<div class="panel"><h3><?=icon('clock')?> Ejecución automática</h3><div class="delivery-status"><span class="status-dot <?=$tareaActiva?'ok':'off'?>"></span><strong><?=$tareaActiva?'Tarea activa cada 15 minutos':'Tarea sin heartbeat reciente'?></strong><small><?=e($heartbeat?'Última señal UTC: '.$heartbeat:'Instala la tarea de Fase 3 en el servidor')?></small></div><p class="small">El servidor ejecuta aperturas, cierres, SLA y entrega de notificaciones sin depender de que un usuario tenga abierta la página.</p></div>
+<div class="panel-grid-2"><div class="panel"><h3>Escalamientos recientes</h3><table class="tabla-tickets"><thead><tr><th>Ticket</th><th>Nivel</th><th>Destino</th></tr></thead><tbody><?php foreach($esc as $e):?><tr onclick="location.href='ticket_detalle.php?id=<?=$e['ticket_id']?>'" style="cursor:pointer"><td>#<?=$e['ticket_id']?> · <?=e($e['titulo'])?></td><td><span class="badge <?=$e['nivel']==2?'badge-err':'badge-warn'?>">NIVEL <?=$e['nivel']?></span></td><td><?=e($e['destinatario'])?></td></tr><?php endforeach;?></tbody></table></div><div class="panel"><h3>Reglas</h3><form method="post"><input type="hidden" name="accion" value="guardar_config"><label>Gracia apertura/cierre (minutos)</label><input type="number" name="gracia" value="<?=$gr?>"><label>Escalar a nivel 2 después de (horas)</label><input type="number" name="nivel2" value="<?=$n2?>"><button>Guardar reglas</button></form></div></div>
+<div class="panel"><h3><?=icon('log')?> Historial</h3><table class="tabla-tickets"><thead><tr><th>Inicio</th><th>Disparador</th><th>Estado</th><th>Resultado</th></tr></thead><tbody><?php foreach($runs as $r):?><tr><td><?=e($r['iniciado_en'])?></td><td><?=e($r['disparador'])?></td><td><span class="badge <?=$r['estado']==='COMPLETADA'?'badge-activo':'badge-err'?>"><?=e($r['estado'])?></span></td><td><?=e($r['resumen'])?></td></tr><?php endforeach;?></tbody></table></div><?php layout_fin();?>

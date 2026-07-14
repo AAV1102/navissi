@@ -8,6 +8,7 @@ if (es_solo_empleado()) {
     exit;
 }
 require_once __DIR__ . '/lib/layout.php';
+require_once __DIR__ . '/lib/salud_tiendas.php';
 $pdo = db();
 
 // Alcance por área: si el usuario logueado tiene un área asignada, el dashboard
@@ -44,11 +45,13 @@ if (!empty($uActual['nombre'])) {
 }
 
 $solicitudesPendientes = (int) $pdo->query("SELECT COUNT(*) FROM solicitudes_aprobacion WHERE estado='PENDIENTE'{$condSolicitudArea}")->fetchColumn();
+$solicitudesVencidas = (int) $pdo->query("SELECT COUNT(*) FROM solicitudes_aprobacion WHERE estado='PENDIENTE' AND fecha_limite IS NOT NULL AND fecha_limite<datetime('now'){$condSolicitudArea}")->fetchColumn();
 $proximosEventos = $pdo->query("SELECT e.*, s.nombre AS sede_nombre FROM calendario_eventos e LEFT JOIN sedes s ON e.sede_id = s.id
     WHERE fecha_inicio >= datetime('now') ORDER BY fecha_inicio ASC LIMIT 6")->fetchAll(PDO::FETCH_ASSOC);
 $contratosPorVencer = $pdo->query("SELECT proveedor_nombre, tipo, fecha_fin, julianday(fecha_fin) - julianday('now') AS dias
     FROM contratos WHERE estado='VIGENTE' AND fecha_fin IS NOT NULL AND julianday(fecha_fin) - julianday('now') BETWEEN 0 AND 30
     ORDER BY fecha_fin ASC")->fetchAll(PDO::FETCH_ASSOC);
+$saludTiendasDash=salud_tiendas_resumen($pdo);$tiendasAtencion=count(array_filter($saludTiendasDash,fn($t)=>$t['nivel']!=='ESTABLE'));
 
 if ($vistaTecnica) {
     $totalEquipos = $pdo->query("SELECT COUNT(*) FROM inventario{$condEquipo}")->fetchColumn();
@@ -123,6 +126,7 @@ layout_inicio('Pulso operativo', 'Dashboard');
 <div class="cards">
     <a class="card card-link" href="modules/inventario.php"><div class="num"><?= (int)$totalEquipos ?></div><div class="label">Equipos en inventario</div><?= badge_tendencia($tendenciaEquipos) ?></a>
     <a class="card card-link" href="modules/sedes.php"><div class="num"><?= $mostrarGlobalesSinArea ? (int)$totalSedes : '—' ?></div><div class="label">Sedes registradas</div></a>
+    <a class="card card-link <?= $tiendasAtencion?'card-warn':'card-ok' ?>" href="modules/salud_tiendas.php"><div class="num"><?=$tiendasAtencion?></div><div class="label">Tiendas que requieren atención</div></a>
     <a class="card card-link" href="modules/credenciales.php"><div class="num"><?= $mostrarGlobalesSinArea ? (int)$totalCred : '—' ?></div><div class="label">Credenciales (Siesa, Wifi, Correos)</div><?= $mostrarGlobalesSinArea ? badge_tendencia($tendenciaCred) : '' ?></a>
     <a class="card card-link" href="modules/licencias.php"><div class="num"><?= $mostrarGlobalesSinArea ? (int)$totalLicencias : '—' ?></div><div class="label">Licencias activas</div></a>
     <a class="card card-link" style="border-left-color:#c98a1f" href="modules/mesa_ayuda.php"><div class="num"><?= $ticketsAbiertos ?></div><div class="label">Tickets abiertos</div><?= badge_tendencia($tendenciaTickets) ?></a>
@@ -262,10 +266,12 @@ layout_inicio('Pulso operativo', 'Dashboard');
 </div>
 <div class="cards">
     <div class="card"><div class="num"><?= (int)$totalEquipos ?></div><div class="label">Equipos en inventario</div></div>
+    <a class="card card-link <?= $tiendasAtencion?'card-warn':'card-ok' ?>" href="modules/salud_tiendas.php"><div class="num"><?=$tiendasAtencion?></div><div class="label">Tiendas que requieren atención</div></a>
     <div class="card"><div class="num"><?= (int)$totalEmpleados ?></div><div class="label">Empleados</div></div>
     <div class="card" style="border-left-color:#c98a1f"><div class="num"><?= $ticketsAbiertos ?></div><div class="label"><a href="modules/mesa_ayuda.php">Tickets abiertos</a></div></div>
     <div class="card"><div class="num">$<?= number_format($valorContratosVigentes, 0, ',', '.') ?></div><div class="label">Valor en contratos vigentes</div></div>
     <div class="card" style="border-left-color:#c98a1f"><div class="num"><?= $solicitudesPendientes ?></div><div class="label"><a href="modules/aprobaciones.php">Solicitudes por aprobar</a></div></div>
+    <a class="card card-link <?= $solicitudesVencidas?'card-err':'card-ok' ?>" href="modules/gobierno_operativo.php"><div class="num"><?= $solicitudesVencidas ?></div><div class="label">Decisiones fuera de SLA</div></a>
     <div class="card" style="border-left-color:#c98a1f"><div class="num"><?= count($contratosPorVencer) ?></div><div class="label"><a href="modules/contratos.php">Contratos por vencer (30 días)</a></div></div>
 </div>
 

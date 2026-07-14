@@ -58,6 +58,20 @@ docker-compose*.yml
 .env
 .env.local
 .env.*.local
+.env.production
+
+# Datos operativos y secretos: se montan como volumen en runtime
+private/
+data/
+*.sqlite
+*.sqlite-*
+*.db
+data/CSV/
+data/documentos/
+data/documentos_rrhh/
+data/desprendibles/
+data/gestion_documental/
+data/tickets_adjuntos/
 
 # Backups
 *.sql

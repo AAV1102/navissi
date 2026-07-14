@@ -1,0 +1,3 @@
+<?php
+require_once __DIR__.'/../config.php';requiere_roles(['ADMIN','TI'],'../');
+$f=__DIR__.'/../n8n/workflows/navissi-operacion-retail.json';$c=(string)file_get_contents($f);$https=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')||($_SERVER['HTTP_X_FORWARDED_PROTO']??'')==='https';$host=preg_replace('/[^A-Za-z0-9.\-:\[\]]/','',(string)($_SERVER['HTTP_HOST']??'localhost'));$c=str_replace('REEMPLAZAR_URL_NAVISSI',($https?'https':'http').'://'.$host,$c);header('Content-Type: application/json');header('Content-Disposition: attachment; filename="navissi-operacion-retail-n8n.json"');header('X-Content-Type-Options: nosniff');echo $c;

@@ -25,7 +25,7 @@ if /i not "%CONTINUAR%"=="SI" (
 
 echo.
 echo ============================================
-echo   2/3 - Commit y push a GitHub...
+echo   2/4 - Commit y push a GitHub...
 echo ============================================
 git add -A
 for /f "tokens=1-3 delims=/ " %%a in ("%date%") do set FECHA=%%a-%%b-%%c
@@ -33,6 +33,13 @@ set HORA=%time:~0,5%
 git commit -m "Deploy automatico %FECHA% %HORA%"
 if errorlevel 1 (
     echo No habia cambios nuevos para commitear, sigo con el deploy igual.
+)
+echo Validando paquete antes del push...
+powershell -ExecutionPolicy Bypass -File "%~dp0scripts\preflight_deploy.ps1" -Mode Source
+if errorlevel 1 (
+    echo ERROR: el pre-flight rechazo la publicacion.
+    pause
+    exit /b 1
 )
 git push origin main
 if errorlevel 1 (
@@ -44,7 +51,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================
-echo   3/3 - Desplegando en grupo10z.com.co...
+echo   3/4 - Desplegando en grupo10z.com.co...
 echo ============================================
 powershell -ExecutionPolicy Bypass -File "%~dp0DEPLOY_HOSTING.ps1"
 

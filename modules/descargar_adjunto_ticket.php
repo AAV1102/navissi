@@ -21,8 +21,6 @@ if ($personal === null && alcance_area() !== null && $ticket['solicitante_area']
     exit('No autorizado.');
 }
 
-$ruta = __DIR__ . '/../data/tickets_adjuntos/' . $a['ruta'];
-if (!file_exists($ruta)) { http_response_code(404); exit('Archivo no encontrado.'); }
+$dir=tickets_adjuntos_dir();$ruta=$dir.DIRECTORY_SEPARATOR.basename((string)$a['ruta']);$real=realpath($ruta);if(!$real||!str_starts_with($real,realpath($dir).DIRECTORY_SEPARATOR)||!is_file($real)){http_response_code(404);exit('Archivo no encontrado.');}
 header('Content-Type: ' . ($a['tipo_mime'] ?: 'application/octet-stream'));
-header('Content-Disposition: inline; filename="' . $a['nombre_archivo'] . '"');
-readfile($ruta);
+header('X-Content-Type-Options: nosniff');$nombre=preg_replace('/[\r\n"\\]/','_',(string)$a['nombre_archivo']);header("Content-Disposition: attachment; filename=\"{$nombre}\"; filename*=UTF-8''".rawurlencode((string)$a['nombre_archivo']));header('Content-Length: '.filesize($real));readfile($real);

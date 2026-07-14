@@ -1,10 +1,12 @@
 <?php
+define('CSRF_EXEMPT', true);
 /**
  * Endpoint que recibe el reporte del agente de inventario (agente_navissi.ps1)
- * que corre en cada equipo. Sin autenticación de por medio porque es para uso
- * en red local; si se expone a internet, agregar una clave compartida.
+ * que corre en cada equipo. Cada instalación usa una credencial individual,
+ * limitada a una sede y vinculada al primer serial que la presenta.
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/agente_auth.php';
 header('Content-Type: application/json; charset=utf-8');
 $pdo = db();
 
@@ -16,10 +18,12 @@ if (!$data || empty($data['serial'])) {
     exit;
 }
 
-$sedeId = !empty($data['sede']) ? sede_id_por_nombre($pdo, $data['sede'], false) : null;
+$serialSeguro = limpio($data['serial']);
+$agenteAutorizado = agente_autenticar($pdo, $serialSeguro, true);
+$sedeId = !empty($agenteAutorizado['sede_id']) ? (int)$agenteAutorizado['sede_id'] : (!empty($data['sede']) ? sede_id_por_nombre($pdo, $data['sede'], false) : null);
 
 $stmt = $pdo->prepare("SELECT id FROM inventario WHERE serial = ?");
-$stmt->execute([limpio($data['serial'])]);
+$stmt->execute([$serialSeguro]);
 $existente = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // IMPORTANTE: en una actualizacion solo se tocan los campos que de verdad
@@ -50,7 +54,7 @@ if ($existente) {
     $accion = 'actualizado';
 } else {
     // Un equipo nuevo si necesita todos los campos, aunque vengan vacios.
-    $campos['serial'] = limpio($data['serial']);
+    $campos['serial'] = $serialSeguro;
     $campos['tipo'] = $campos['tipo'] ?? 'ESCRITORIO';
     $campos['estado'] = 'ACTIVO';
     $campos['fuente'] = 'Agente automático';

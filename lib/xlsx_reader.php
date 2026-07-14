@@ -32,8 +32,8 @@ function xlsx_read_all_sheets($path) {
     $sharedStrings = [];
     $ssXml = $zip->getFromName('xl/sharedStrings.xml');
     if ($ssXml !== false) {
-        $ss = simplexml_load_string($ssXml);
-        foreach ($ss->si as $si) {
+        $ss = @simplexml_load_string($ssXml);
+        foreach ($ss && isset($ss->si) ? $ss->si : [] as $si) {
             if (isset($si->t)) {
                 $sharedStrings[] = (string) $si->t;
             } else {
@@ -49,7 +49,11 @@ function xlsx_read_all_sheets($path) {
 
     // 2. Mapeo nombre de hoja -> r:id
     $wbXml = $zip->getFromName('xl/workbook.xml');
-    $wb = simplexml_load_string($wbXml);
+    $wb = $wbXml !== false ? @simplexml_load_string($wbXml) : false;
+    if (!$wb || !isset($wb->sheets->sheet)) {
+        $zip->close();
+        throw new Exception('El libro no contiene una estructura XLSX legible.');
+    }
     $wb->registerXPathNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
     $sheetNameToRid = [];
     foreach ($wb->sheets->sheet as $sheet) {
@@ -61,7 +65,11 @@ function xlsx_read_all_sheets($path) {
 
     // 3. Mapeo r:id -> archivo físico dentro del zip
     $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
-    $rels = simplexml_load_string($relsXml);
+    $rels = $relsXml !== false ? @simplexml_load_string($relsXml) : false;
+    if (!$rels) {
+        $zip->close();
+        throw new Exception('El libro no contiene relaciones XLSX legibles.');
+    }
     $ridToTarget = [];
     foreach ($rels->Relationship as $rel) {
         $ridToTarget[(string) $rel['Id']] = (string) $rel['Target'];
@@ -81,7 +89,8 @@ function xlsx_read_all_sheets($path) {
         if ($sheetXml === false) continue;
 
         $rowsOut = [];
-        $sx = simplexml_load_string($sheetXml);
+        $sx = @simplexml_load_string($sheetXml);
+        if (!$sx) continue;
         if (!isset($sx->sheetData->row)) {
             $result[$name] = [];
             continue;

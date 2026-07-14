@@ -34,6 +34,25 @@ function private_path(string $name): string {
     return navissi_private_dir() . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $name);
 }
 
+function tickets_adjuntos_dir(): string {
+    $destino = private_path('uploads/tickets');
+    if (!is_dir($destino) && !mkdir($destino, 0700, true) && !is_dir($destino)) throw new RuntimeException('No se pudo crear el directorio privado de adjuntos.');
+    @chmod($destino, 0700);
+    $origen = BASE_DIR . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'tickets_adjuntos';
+    if (is_dir($origen)) {
+        foreach (glob($origen . DIRECTORY_SEPARATOR . '*') ?: [] as $archivo) {
+            if (!is_file($archivo)) continue;
+            $final = $destino . DIRECTORY_SEPARATOR . basename($archivo);
+            if (!file_exists($final) && (!@rename($archivo, $final))) {
+                if (@copy($archivo, $final) && filesize($archivo) === filesize($final)) @unlink($archivo);
+            }
+            if (file_exists($final)) @chmod($final, 0600);
+        }
+        @rmdir($origen);
+    }
+    return $destino;
+}
+
 function migrar_archivo_privado(string $name, ?string $destinoPrivado = null): string {
     $destino = private_path($destinoPrivado ?? $name);
     $origen = BASE_DIR . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . $name;
@@ -52,7 +71,7 @@ function migrar_archivo_privado(string $name, ?string $destinoPrivado = null): s
 }
 
 if (getenv('NAVISSI_SKIP_FILE_MIGRATION') !== '1') {
-    foreach (['navissi.sqlite', 'ia_config.json', 'ms365_config.json', 'smtp_config.json',
+    foreach (['navissi.sqlite', 'ia_config.json', 'ms365_config.json', 'smtp_config.json', 'siesa_integracion.json',
               'whatsapp_config.json', 'importador_config.json', 'smtp_correo.log', 'n8n_err.log', 'n8n_out.log',
               'ultima_sincronizacion_correo.txt'] as $archivoPrivado) {
         migrar_archivo_privado($archivoPrivado);
@@ -101,12 +120,172 @@ function db(): PDO {
         $pdo->exec('PRAGMA foreign_keys = ON');
         if ($isNew) {
             crear_esquema($pdo);
+            migrar_esquema($pdo);
+            migrar_esquema($pdo);
         } else {
             migrar_esquema($pdo);
         }
+        migrar_fases_operativas($pdo);
         aplicar_migraciones_seguridad($pdo);
     }
     return $pdo;
+}
+
+function migrar_fases_operativas(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS salud_tiendas_registros (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, sede_id INTEGER NOT NULL REFERENCES sedes(id) ON DELETE CASCADE,
+        momento TEXT NOT NULL DEFAULT 'VALIDACION', estado TEXT NOT NULL DEFAULT 'OK', internet_ok INTEGER DEFAULT 0,
+        pos_ok INTEGER DEFAULT 0, impresora_ok INTEGER DEFAULT 0, datafono_ok INTEGER DEFAULT 0, observaciones TEXT,
+        responsable TEXT, ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL, creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS config_general (clave TEXT PRIMARY KEY, valor TEXT)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS automatizacion_ejecuciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, correlacion TEXT NOT NULL UNIQUE, disparador TEXT NOT NULL DEFAULT 'MANUAL',
+        estado TEXT NOT NULL DEFAULT 'EJECUTANDO', resumen TEXT, detalles_json TEXT, iniciado_en TEXT DEFAULT CURRENT_TIMESTAMP, finalizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tickets_escalamientos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        nivel INTEGER NOT NULL DEFAULT 1, motivo TEXT NOT NULL, destinatario TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(ticket_id,nivel)
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS notificaciones_cola (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, clave_unica TEXT NOT NULL UNIQUE, canal TEXT NOT NULL, destinatario TEXT NOT NULL,
+        asunto TEXT, contenido TEXT NOT NULL, metadatos_json TEXT, estado TEXT NOT NULL DEFAULT 'PENDIENTE', intentos INTEGER NOT NULL DEFAULT 0,
+        proximo_intento_en TEXT, ultimo_error TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, enviado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS agentes_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, token_prefijo TEXT NOT NULL,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL, serial_vinculado TEXT, activo INTEGER DEFAULT 1,
+        ultimo_uso_en TEXT, ultima_ip TEXT, expira_en TEXT, creado_por TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS catalogo_servicios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, codigo TEXT NOT NULL UNIQUE, nombre TEXT NOT NULL, descripcion TEXT,
+        categoria TEXT NOT NULL DEFAULT 'OPERACION', area_responsable TEXT NOT NULL, nivel_aprobacion TEXT NOT NULL DEFAULT 'DIRECTOR',
+        requiere_monto INTEGER NOT NULL DEFAULT 0, monto_escalamiento REAL, sla_horas INTEGER NOT NULL DEFAULT 24,
+        crea_ticket INTEGER NOT NULL DEFAULT 0, categoria_ticket TEXT, prioridad_ticket TEXT DEFAULT 'MEDIA',
+        activo INTEGER NOT NULL DEFAULT 1, orden INTEGER NOT NULL DEFAULT 0, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS solicitudes_aprobacion_eventos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, solicitud_id INTEGER NOT NULL REFERENCES solicitudes_aprobacion(id) ON DELETE CASCADE,
+        accion TEXT NOT NULL, estado_anterior TEXT, estado_nuevo TEXT, nivel TEXT, actor TEXT, comentario TEXT,
+        metadatos_json TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ciclos_identidad (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, codigo TEXT UNIQUE, tipo TEXT NOT NULL, empleado_documento TEXT,
+        empleado_nombre TEXT NOT NULL, correo_corporativo TEXT, area_origen TEXT, area_destino TEXT, cargo TEXT,
+        fecha_efectiva TEXT, solicitud_id INTEGER UNIQUE REFERENCES solicitudes_aprobacion(id) ON DELETE SET NULL,
+        estado TEXT NOT NULL DEFAULT 'PENDIENTE', progreso INTEGER NOT NULL DEFAULT 0, creado_por TEXT,
+        aprobado_por TEXT, aprobado_en TEXT, completado_en TEXT, observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ciclos_identidad_tareas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ciclo_id INTEGER NOT NULL REFERENCES ciclos_identidad(id) ON DELETE CASCADE,
+        codigo TEXT NOT NULL, titulo TEXT NOT NULL, sistema TEXT, area_responsable TEXT, modo TEXT NOT NULL DEFAULT 'MANUAL',
+        orden INTEGER NOT NULL DEFAULT 0, obligatoria INTEGER NOT NULL DEFAULT 1, estado TEXT NOT NULL DEFAULT 'PENDIENTE',
+        evidencia TEXT, ultimo_error TEXT, ejecutado_por TEXT, ejecutado_en TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(ciclo_id,codigo)
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS inteligencia_ejecuciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, correlacion TEXT NOT NULL UNIQUE, disparador TEXT NOT NULL DEFAULT 'MANUAL',
+        estado TEXT NOT NULL DEFAULT 'EJECUTANDO', agentes_json TEXT, hallazgos_generados INTEGER NOT NULL DEFAULT 0,
+        resumen TEXT, iniciado_en TEXT DEFAULT CURRENT_TIMESTAMP, finalizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS inteligencia_hallazgos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, clave_unica TEXT NOT NULL UNIQUE, dominio TEXT NOT NULL, agente TEXT NOT NULL,
+        severidad TEXT NOT NULL DEFAULT 'MEDIA', titulo TEXT NOT NULL, resumen TEXT NOT NULL, evidencia_json TEXT,
+        accion_url TEXT, estado TEXT NOT NULL DEFAULT 'ACTIVO', ultima_ejecucion_id INTEGER REFERENCES inteligencia_ejecuciones(id) ON DELETE SET NULL,
+        ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL, gestionado_por TEXT, gestionado_en TEXT,
+        detectado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP, resuelto_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS retail_importaciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, checksum TEXT NOT NULL UNIQUE, archivo TEXT NOT NULL, tipo TEXT NOT NULL,
+        estado TEXT NOT NULL DEFAULT 'PROCESANDO', filas_leidas INTEGER NOT NULL DEFAULT 0, filas_importadas INTEGER NOT NULL DEFAULT 0,
+        filas_error INTEGER NOT NULL DEFAULT 0, detalle TEXT, importado_por TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, finalizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS retail_importacion_errores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, importacion_id INTEGER NOT NULL REFERENCES retail_importaciones(id) ON DELETE CASCADE,
+        dataset TEXT, hoja TEXT, fila INTEGER, motivo TEXT NOT NULL, datos_json TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS retail_productos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, sku TEXT NOT NULL UNIQUE, referencia TEXT, descripcion TEXT, categoria TEXT,
+        color TEXT, talla TEXT, costo REAL, precio REAL, activo INTEGER NOT NULL DEFAULT 1,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS retail_existencias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT NOT NULL, sku TEXT NOT NULL REFERENCES retail_productos(sku) ON UPDATE CASCADE,
+        sede_codigo TEXT NOT NULL, sede_nombre TEXT, unidades REAL NOT NULL DEFAULT 0, costo_unitario REAL,
+        importacion_id INTEGER REFERENCES retail_importaciones(id) ON DELETE SET NULL, fuente TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(fecha,sku,sede_codigo)
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS retail_ventas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT NOT NULL, documento TEXT NOT NULL, linea TEXT NOT NULL DEFAULT '1',
+        sku TEXT NOT NULL REFERENCES retail_productos(sku) ON UPDATE CASCADE, sede_codigo TEXT NOT NULL, sede_nombre TEXT,
+        unidades REAL NOT NULL DEFAULT 0, valor_neto REAL NOT NULL DEFAULT 0, costo REAL, canal TEXT,
+        importacion_id INTEGER REFERENCES retail_importaciones(id) ON DELETE SET NULL, fuente TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(documento,linea,sku,sede_codigo)
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS siesa_integracion_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, correlacion TEXT UNIQUE, accion TEXT NOT NULL, modo TEXT NOT NULL,
+        estado TEXT NOT NULL DEFAULT 'EJECUTANDO', codigo_http INTEGER, resumen TEXT, detalle_json TEXT,
+        iniciado_por TEXT, iniciado_en TEXT DEFAULT CURRENT_TIMESTAMP, finalizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS secretos_escaneos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, correlacion TEXT NOT NULL UNIQUE, origen TEXT NOT NULL DEFAULT 'MANUAL',
+        estado TEXT NOT NULL DEFAULT 'EJECUTANDO', raices_revisadas INTEGER NOT NULL DEFAULT 0,
+        archivos_revisados INTEGER NOT NULL DEFAULT 0, archivos_omitidos INTEGER NOT NULL DEFAULT 0,
+        hallazgos INTEGER NOT NULL DEFAULT 0, resumen TEXT, iniciado_por TEXT,
+        iniciado_en TEXT DEFAULT CURRENT_TIMESTAMP, finalizado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS secretos_hallazgos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, clave_unica TEXT NOT NULL UNIQUE,
+        archivo_hash TEXT NOT NULL, archivo_nombre TEXT NOT NULL, fuente TEXT NOT NULL,
+        archivo_modificado_en TEXT, hoja TEXT NOT NULL, tipo TEXT NOT NULL DEFAULT 'CREDENCIAL',
+        severidad TEXT NOT NULL DEFAULT 'ALTA', columnas_json TEXT NOT NULL DEFAULT '[]',
+        registros_estimados INTEGER NOT NULL DEFAULT 0, estado TEXT NOT NULL DEFAULT 'ACTIVO',
+        responsable TEXT, fecha_objetivo TEXT, evidencia TEXT, gestionado_por TEXT, gestionado_en TEXT,
+        ultimo_escaneo_id INTEGER REFERENCES secretos_escaneos(id) ON DELETE SET NULL,
+        detectado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP, resuelto_en TEXT
+    )");
+    $columnasSolicitud = array_column($pdo->query("PRAGMA table_info(solicitudes_aprobacion)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach ([
+        'codigo' => 'TEXT', 'catalogo_id' => 'INTEGER', 'sede_id' => 'INTEGER', 'fecha_limite' => 'TEXT',
+        'ticket_id' => 'INTEGER', 'datos_json' => 'TEXT', 'actualizado_en' => 'TEXT'
+    ] as $columna => $tipo) {
+        if (!in_array($columna, $columnasSolicitud, true)) $pdo->exec("ALTER TABLE solicitudes_aprobacion ADD COLUMN {$columna} {$tipo}");
+    }
+    $serviciosIniciales = [
+        ['ACC-SIS','Acceso o licencia de sistema','Altas de acceso, permisos, licencias y cambios de perfil.','IDENTIDADES','Direccion de Tecnologia','DIRECTOR',0,null,24,1,'ACCESOS','ALTA',10],
+        ['USR-ALTA-BAJA','Alta, traslado o retiro de usuario','Creación, traslado o baja coordinada de cuentas y accesos.','IDENTIDADES','Direccion de Tecnologia','DIRECTOR',0,null,16,1,'ACCESOS','ALTA',20],
+        ['EQ-CAMBIO','Cambio o asignación de equipo','Compra, reposición, traslado o asignación de un activo tecnológico.','ACTIVOS','Direccion de Tecnologia','DIRECTOR',1,3000000,48,1,'EQUIPOS','ALTA',30],
+        ['TIENDA-MTO','Mantenimiento de tienda','Intervención de infraestructura, mobiliario o servicios de una tienda.','TIENDAS','Direccion Infraestructura','DIRECTOR',1,2000000,48,1,'INFRAESTRUCTURA','ALTA',40],
+        ['COMPRA-OP','Compra operativa','Solicitud de compra para operación, logística o abastecimiento.','COMPRAS','Direccion de Logistica','DIRECTOR',1,1000000,48,0,null,'MEDIA',50],
+        ['CAMPANA','Campaña comercial o colección','Aprobación de campaña, activación, colección o iniciativa comercial.','COMERCIAL','Direccion Marketing','GERENCIA',1,null,72,0,null,'MEDIA',60],
+        ['CONTRATO','Contrato o proveedor','Alta, renovación o cambio contractual con un proveedor.','LEGAL','Gerencia','GERENCIA',1,null,72,0,null,'MEDIA',70],
+        ['RRHH-SOL','Solicitud interáreas de Talento Humano','Trámite que requiere coordinación o aprobación de Recursos Humanos.','PERSONAS','Direccion Recursos Humanos','DIRECTOR',0,null,48,0,null,'MEDIA',80],
+        ['OTRO','Otra solicitud interáreas','Solicitud operativa que no corresponde a los servicios anteriores.','OPERACION','Direccion de Operaciones','DIRECTOR',0,null,48,0,null,'MEDIA',99]
+    ];
+    $insertarServicio = $pdo->prepare("INSERT OR IGNORE INTO catalogo_servicios(codigo,nombre,descripcion,categoria,area_responsable,nivel_aprobacion,requiere_monto,monto_escalamiento,sla_horas,crea_ticket,categoria_ticket,prioridad_ticket,orden) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)");
+    foreach ($serviciosIniciales as $servicio) $insertarServicio->execute($servicio);
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_salud_tienda_sede_fecha ON salud_tiendas_registros(sede_id,creado_en DESC)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_automatizacion_fecha ON automatizacion_ejecuciones(iniciado_en DESC)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_notificaciones_estado ON notificaciones_cola(estado,proximo_intento_en,creado_en)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_agentes_token_activo ON agentes_tokens(token_hash,activo)");
+    $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_solicitud_codigo ON solicitudes_aprobacion(codigo) WHERE codigo IS NOT NULL");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_solicitud_area_estado ON solicitudes_aprobacion(area_responsable,estado,fecha_limite)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_solicitud_eventos_fecha ON solicitudes_aprobacion_eventos(solicitud_id,creado_en)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ciclos_identidad_estado ON ciclos_identidad(estado,fecha_efectiva)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ciclos_identidad_documento ON ciclos_identidad(empleado_documento,creado_en)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ciclo_tareas_estado ON ciclos_identidad_tareas(ciclo_id,estado,orden)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_inteligencia_estado ON inteligencia_hallazgos(estado,severidad,actualizado_en DESC)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_inteligencia_dominio ON inteligencia_hallazgos(dominio,estado)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_inteligencia_ejecucion ON inteligencia_hallazgos(ultima_ejecucion_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_retail_existencias_fecha ON retail_existencias(fecha DESC,sku,sede_codigo)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_retail_ventas_fecha ON retail_ventas(fecha DESC,sku,sede_codigo)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_retail_productos_ref ON retail_productos(referencia,categoria,talla)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_retail_errores_importacion ON retail_importacion_errores(importacion_id,fila)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_siesa_integracion_fecha ON siesa_integracion_log(iniciado_en DESC,estado)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_secretos_estado ON secretos_hallazgos(estado,severidad,fecha_objetivo)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_secretos_archivo ON secretos_hallazgos(archivo_hash,hoja)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_secretos_escaneo_fecha ON secretos_escaneos(iniciado_en DESC,estado)");
 }
 
 function migrar_esquema(PDO $pdo) {
@@ -229,9 +408,13 @@ function migrar_esquema(PDO $pdo) {
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS categorias_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL UNIQUE, descripcion TEXT, area_responsable TEXT,
+        color TEXT DEFAULT '#e31c6c', activa INTEGER DEFAULT 1, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, tecnico_default TEXT
+    )");
     $columnasCategoriasTk = array_column($pdo->query("PRAGMA table_info(categorias_tickets)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    if (!in_array('tecnico_default', $columnasCategoriasTk, true)) {
-        $pdo->exec("ALTER TABLE categorias_tickets ADD COLUMN tecnico_default TEXT");
+    foreach (['area_responsable'=>'TEXT','color'=>"TEXT DEFAULT '#e31c6c'",'activa'=>'INTEGER DEFAULT 1','creado_en'=>'TEXT','tecnico_default'=>'TEXT'] as $col=>$tipo) {
+        if (!in_array($col, $columnasCategoriasTk, true)) $pdo->exec("ALTER TABLE categorias_tickets ADD COLUMN {$col} {$tipo}");
     }
 
     // ---- Mesa de Ayuda: adjuntos y respuestas al cliente ----
@@ -358,6 +541,21 @@ function migrar_esquema(PDO $pdo) {
     foreach (['latitud' => 'REAL', 'longitud' => 'REAL'] as $col => $tipo) {
         if (!in_array($col, $columnasSedesMapa, true)) {
             $pdo->exec("ALTER TABLE sedes ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
+    // ---- Tipos de documento de RRHH configurables (sin tocar codigo): Admin/RRHH
+    // pueden agregar nuevos formatos (ej. "Cotizacion de proveedor de dotacion",
+    // "Poliza de seguro") en vez de quedar atados a una lista fija. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS tipos_documento_rrhh (
+        nombre TEXT PRIMARY KEY,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    if ((int) $pdo->query("SELECT COUNT(*) FROM tipos_documento_rrhh")->fetchColumn() === 0) {
+        $stmtTipo = $pdo->prepare("INSERT OR IGNORE INTO tipos_documento_rrhh (nombre) VALUES (?)");
+        foreach (['CONTRATO', 'OTROSI', 'HOJA DE VIDA', 'CERTIFICADO', 'INCAPACIDAD', 'OTRO'] as $t) {
+            $stmtTipo->execute([$t]);
         }
     }
 
@@ -655,17 +853,17 @@ function migrar_esquema(PDO $pdo) {
     }
 
     $columnasVac = array_column($pdo->query("PRAGMA table_info(vacaciones_permisos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    if (!in_array('adjunto_ruta', $columnasVac, true)) {
+    if ($columnasVac && !in_array('adjunto_ruta', $columnasVac, true)) {
         $pdo->exec("ALTER TABLE vacaciones_permisos ADD COLUMN adjunto_ruta TEXT");
     }
-    if (!in_array('adjunto_nombre', $columnasVac, true)) {
+    if ($columnasVac && !in_array('adjunto_nombre', $columnasVac, true)) {
         $pdo->exec("ALTER TABLE vacaciones_permisos ADD COLUMN adjunto_nombre TEXT");
     }
 
     $columnasSolic = array_column($pdo->query("PRAGMA table_info(solicitudes_aprobacion)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     $nuevasSolic = ['nivel_actual' => "TEXT DEFAULT 'DIRECTOR'", 'escalado_por' => 'TEXT', 'escalado_en' => 'TEXT', 'escalado_motivo' => 'TEXT'];
     foreach ($nuevasSolic as $col => $tipo) {
-        if (!in_array($col, $columnasSolic, true)) {
+        if ($columnasSolic && !in_array($col, $columnasSolic, true)) {
             $pdo->exec("ALTER TABLE solicitudes_aprobacion ADD COLUMN {$col} {$tipo}");
         }
     }
@@ -676,7 +874,7 @@ function migrar_esquema(PDO $pdo) {
     }
 
     $columnasCargos = array_column($pdo->query("PRAGMA table_info(cargos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    if (!in_array('rol_sugerido', $columnasCargos, true)) {
+    if ($columnasCargos && !in_array('rol_sugerido', $columnasCargos, true)) {
         $pdo->exec("ALTER TABLE cargos ADD COLUMN rol_sugerido TEXT");
     }
     $columnasEmp2 = array_column($pdo->query("PRAGMA table_info(empleados)")->fetchAll(PDO::FETCH_ASSOC), 'name');

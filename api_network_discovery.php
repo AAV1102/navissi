@@ -1,10 +1,12 @@
 <?php
+define('CSRF_EXEMPT', true);
 /**
  * Recibe el resultado del barrido de red (ping sweep + ARP) que hace
  * agente_navissi.ps1 -EscanearRed. Guarda cada dispositivo visto, con MAC
  * como identificador estable (una IP puede rotar por DHCP, la MAC no).
  */
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/agente_auth.php';
 header('Content-Type: application/json; charset=utf-8');
 $pdo = db();
 
@@ -16,7 +18,8 @@ if (!$data || empty($data['dispositivos']) || !is_array($data['dispositivos'])) 
     exit;
 }
 
-$sedeId = !empty($data['sede']) ? sede_id_por_nombre($pdo, $data['sede'], false) : null;
+$agenteAutorizado = agente_autenticar($pdo);
+$sedeId = !empty($agenteAutorizado['sede_id']) ? (int)$agenteAutorizado['sede_id'] : (!empty($data['sede']) ? sede_id_por_nombre($pdo, $data['sede'], false) : null);
 $nuevos = 0;
 $actualizados = 0;
 

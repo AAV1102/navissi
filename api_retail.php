@@ -1,0 +1,6 @@
+<?php
+define('CSRF_EXEMPT',true);require_once __DIR__.'/config.php';require_once __DIR__.'/lib/retail_analytics.php';header('Content-Type: application/json; charset=utf-8');
+if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){http_response_code(405);echo json_encode(['ok'=>false]);exit;}$raw=(string)file_get_contents('php://input');if(strlen($raw)>5*1024*1024){http_response_code(413);echo json_encode(['ok'=>false,'error'=>'Lote demasiado grande.']);exit;}
+if(!firma_hmac_valida($raw,$_SERVER['HTTP_X_NAVISSI_SIGNATURE']??null,navissi_webhook_secret())){http_response_code(401);echo json_encode(['ok'=>false,'error'=>'Firma inválida.']);exit;}$d=json_decode($raw,true);if(!is_array($d)||empty($d['source_id'])){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'source_id es obligatorio.']);exit;}
+$total=0;foreach(['productos','existencias','ventas'] as $k)$total+=is_array($d[$k]??null)?count($d[$k]):0;if($total<1||$total>20000){http_response_code(400);echo json_encode(['ok'=>false,'error'=>'El lote debe contener entre 1 y 20.000 filas.']);exit;}
+try{$r=retail_importar_lote(db(),substr((string)$d['source_id'],0,180),$d,['nombre'=>'n8n / Siesa']);echo json_encode(['ok'=>true]+$r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);}catch(Throwable $e){http_response_code(500);echo json_encode(['ok'=>false,'error'=>'No se pudo importar el lote.']);}

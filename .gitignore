@@ -4,6 +4,7 @@
 .env
 .env.local
 .env.production
+.env.deploy.local
 /private/
 data/ia_config.json
 data/ms365_config.json

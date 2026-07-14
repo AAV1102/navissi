@@ -89,6 +89,18 @@ class GraphClient {
         return true;
     }
 
+    private function postJson($path, array $body = []) {
+        $token = $this->obtenerToken();
+        $resp = $this->curl("https://graph.microsoft.com/v1.0{$path}", 'POST', json_encode($body),
+            ["Authorization: Bearer {$token}", 'Content-Type: application/json']);
+        if ($resp['code'] >= 300) {
+            $data = json_decode($resp['body'], true);
+            $err = $data['error']['message'] ?? $resp['body'];
+            throw new GraphClientException("Graph API [{$resp['code']}]: {$err}");
+        }
+        return json_decode($resp['body'], true) ?: true;
+    }
+
     /** Prueba de conexión simple. */
     public function probarConexion() {
         $this->obtenerToken();
@@ -132,6 +144,18 @@ class GraphClient {
                 'forceChangePasswordNextSignIn' => $forzarCambio,
             ],
         ]);
+    }
+
+    /** Habilita o bloquea una cuenta. Solo debe invocarse desde un ciclo aprobado. */
+    public function cambiarEstadoCuenta($userId, bool $activa) {
+        $id = rawurlencode((string)$userId);
+        return $this->patch("/users/{$id}", ['accountEnabled' => $activa]);
+    }
+
+    /** Revoca sesiones y tokens de actualización de una cuenta. */
+    public function revocarSesiones($userId) {
+        $id = rawurlencode((string)$userId);
+        return $this->postJson("/users/{$id}/revokeSignInSessions");
     }
 
     // ---------------- SharePoint / OneDrive ----------------

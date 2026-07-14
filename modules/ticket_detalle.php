@@ -5,8 +5,7 @@ require_once __DIR__ . '/../lib/mailer.php';
 $pdo = db();
 $id = (int) ($_GET['id'] ?? 0);
 $msg = null;
-$dirAdjuntos = __DIR__ . '/../data/tickets_adjuntos';
-if (!is_dir($dirAdjuntos)) mkdir($dirAdjuntos, 0777, true);
+$dirAdjuntos = tickets_adjuntos_dir();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
@@ -28,11 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($_FILES['adjuntos']['tmp_name'] as $i => $tmp) {
                     if (!$tmp) continue;
                     $original = basename($_FILES['adjuntos']['name'][$i]);
-                    $seguro = preg_replace('/[^A-Za-z0-9_.\-]/', '_', $original);
-                    $rutaGuardada = uniqid() . '_' . $seguro;
+                    $tamano=(int)($_FILES['adjuntos']['size'][$i]??0);if($tamano<=0||$tamano>10*1024*1024)continue;$mime=(new finfo(FILEINFO_MIME_TYPE))->file($tmp)?:'application/octet-stream';$permitidos=['application/pdf'=>'pdf','image/jpeg'=>'jpg','image/png'=>'png','text/plain'=>'txt','text/csv'=>'csv','application/vnd.openxmlformats-officedocument.wordprocessingml.document'=>'docx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'=>'xlsx'];if(!isset($permitidos[$mime]))continue;$rutaGuardada=bin2hex(random_bytes(18)).'.'.$permitidos[$mime];
                     if (move_uploaded_file($tmp, $dirAdjuntos . '/' . $rutaGuardada)) {
                         $pdo->prepare("INSERT INTO tickets_adjuntos (ticket_id, comentario_id, nombre_archivo, ruta, tipo_mime, tamano, subido_por) VALUES (?,?,?,?,?,?,?)")
-                            ->execute([$id, $comentarioId, $original, $rutaGuardada, $_FILES['adjuntos']['type'][$i] ?? null, $_FILES['adjuntos']['size'][$i] ?? null, $autor]);
+                            ->execute([$id, $comentarioId, $original, $rutaGuardada, $mime, $tamano, $autor]);
                     }
                 }
             }

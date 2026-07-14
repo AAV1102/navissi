@@ -17,6 +17,7 @@ function nav_grupos() {
                 'modules/buscador_universal.php' => ['Buscador Universal', 'search'],
                 'modules/base_conocimiento.php' => ['Base de Conocimiento', 'book'],
                 'modules/respuestas_rapidas.php' => ['Respuestas Rápidas', 'zap'],
+                'modules/catalogo_servicios.php' => ['Catálogo de Servicios', 'inventory'],
                 'modules/aprobaciones.php' => ['Solicitudes y Aprobaciones', 'check'],
                 'modules/categorias_tickets.php' => ['Categorías de Tickets', 'ticket'],
                 'modules/alertas.php' => ['Alertas', 'bell'],
@@ -70,6 +71,9 @@ function nav_grupos() {
         'Automatización e IA' => [
             'icon' => 'robot', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
             'items' => [
+                'modules/inteligencia_operativa.php' => ['Inteligencia Operativa', 'dashboard'],
+                'modules/retail_inteligencia.php' => ['Inventario Retail', 'inventory'],
+                'modules/gobierno_secretos.php' => ['Gobierno de Secretos', 'shield'],
                 'modules/automatizaciones.php' => ['Automatizaciones y alertas', 'bell'],
                 'modules/notificaciones.php' => ['Centro de Notificaciones', 'send'],
                 'modules/whatsapp.php' => ['WhatsApp Business', 'chat'],
@@ -91,11 +95,13 @@ function nav_grupos() {
         'Canales y Microsoft 365' => [
             'icon' => 'cloud', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
             'items' => [
+                'modules/identidades.php' => ['Gobierno de Identidades', 'users'],
                 'modules/microsoft365.php' => ['Microsoft 365', 'cloud'],
                 'modules/conexiones_microsoft.php' => ['OneDrive / SharePoint / Teams', 'folder'],
                 'modules/correo_tickets.php' => ['Correo → Tickets', 'ticket'],
                 'modules/credenciales.php' => ['Credenciales', 'key'],
                 'modules/siesa.php' => ['Siesa', 'key'],
+                'modules/siesa_integracion.php' => ['Conector Siesa', 'cloud'],
                 'modules/licencias.php' => ['Licencias', 'shield'],
                 'modules/noticias.php' => ['Noticias', 'megaphone'],
             ],

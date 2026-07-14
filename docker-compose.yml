@@ -5,14 +5,14 @@
 # USO:
 #   1. Copia toda esta carpeta (NAVISSI-INVENTARIO) al NAS/VPS
 #   2. docker compose up -d --build
-#   3. Entra a http://IP-DEL-NAS:8099
+#   3. Publica el puerto detrás de un proxy HTTPS o accede por VPN.
 
 services:
   navissi:
     build: .
     container_name: navissi-inventario
     ports:
-      - "8099:80"
+      - "${NAVISSI_BIND_ADDRESS:-127.0.0.1}:8099:80"
     volumes:
       - ./data:/var/www/html/data
       - ./private:/var/lib/navissi

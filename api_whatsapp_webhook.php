@@ -5,8 +5,7 @@ require_once __DIR__ . '/lib/whatsapp_client.php';
 require_once __DIR__ . '/lib/ia_triage.php';
 $pdo = db();
 
-$configPath = WHATSAPP_CONFIG_PATH;
-$c = file_exists($configPath) ? json_decode(file_get_contents($configPath), true) : [];
+$c = leer_config_json(WHATSAPP_CONFIG_PATH) ?: [];
 
 // Verificación inicial que pide Meta al registrar el webhook (GET).
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
