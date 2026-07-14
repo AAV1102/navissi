@@ -5,7 +5,7 @@
 #
 # USO: powershell -ExecutionPolicy Bypass -File reportar_problema.ps1 -Servidor "http://IP-DEL-SERVIDOR:8099"
 
-param([string]$Servidor = "http://127.0.0.1:8099")
+param([string]$Servidor = "http://127.0.0.1:8099", [string]$TokenFile = "$env:ProgramData\NAVISSI\agent.token")
 
 Add-Type -AssemblyName Microsoft.VisualBasic
 Add-Type -AssemblyName System.Windows.Forms
@@ -29,7 +29,9 @@ $payload = @{
 } | ConvertTo-Json
 
 try {
-    $resp = Invoke-RestMethod -Uri "$Servidor/api_reportar_problema.php" -Method Post -Body $payload -ContentType "application/json; charset=utf-8"
+    $token = if (Test-Path $TokenFile) { (Get-Content $TokenFile -Raw).Trim() } else { "" }
+    if (-not $token) { throw "Falta la credencial del agente en $TokenFile" }
+    $resp = Invoke-RestMethod -Uri "$Servidor/api_reportar_problema.php" -Method Post -Body $payload -Headers @{Authorization="Bearer $token"} -ContentType "application/json; charset=utf-8"
     if ($resp.resuelto) {
         [System.Windows.Forms.MessageBox]::Show($resp.mensaje, "Listo, ya tenemos la solucion", "OK", "Information") | Out-Null
     } else {

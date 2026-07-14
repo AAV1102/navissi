@@ -15,6 +15,8 @@ jobs:
       - name: Llamar al endpoint de resumen diario
         run: |
           test -n "$NAVISSI_RESUMEN_TOKEN"
-          curl --fail --silent --show-error --proto '=https' --tlsv1.2 "https://grupo10z.com.co/api_resumen_diario.php?token=${NAVISSI_RESUMEN_TOKEN}" \
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
+            -H "X-Navissi-Resumen-Token: ${NAVISSI_RESUMEN_TOKEN}" \
+            "https://grupo10z.com.co/api_resumen_diario.php" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json

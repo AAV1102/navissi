@@ -1,16 +1,19 @@
 <?php
 /**
  * Envía el "Pulso operativo" del día por correo a Gerencia/CEO, para que no
- * tengan que entrar a mirar el dashboard. Protegido igual que la sincronización
- * de correo: token derivado del propio dominio, pensado para GitHub Actions.
+ * tengan que entrar a mirar el dashboard. Protegido con un token aleatorio
+ * configurado por entorno o en la carpeta privada.
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/mailer.php';
 header('Content-Type: application/json; charset=utf-8');
 @set_time_limit(60);
 
-$tokenEsperado = hash('sha256', 'navissi-resumen-' . ($_SERVER['HTTP_HOST'] ?? ''));
-if (($_GET['token'] ?? '') !== $tokenEsperado) {
+$tokenEsperado = getenv('NAVISSI_RESUMEN_TOKEN') ?: trim((string) @file_get_contents(private_path('resumen_cron_token.txt')));
+$tokenRecibido = trim((string) ($_SERVER['HTTP_X_NAVISSI_RESUMEN_TOKEN'] ?? ''));
+if ($tokenRecibido === '' && preg_match('/^Bearer\s+(.+)$/i', (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? ''), $m)) $tokenRecibido = trim($m[1]);
+if ($tokenRecibido === '') $tokenRecibido = (string) ($_GET['token'] ?? '');
+if ($tokenEsperado === '' || $tokenRecibido === '' || !hash_equals($tokenEsperado, $tokenRecibido)) {
     http_response_code(403);
     echo json_encode(['error' => 'Token inválido.']);
     exit;

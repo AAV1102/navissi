@@ -66,8 +66,23 @@ function correo_notificar_creacion(string $para, string $paraNombre, int $ticket
     $lineaTecnico = $tecnico
         ? "<p>Tu caso fue asignado al técnico <strong>{$tecnico}</strong>, quien se pondrá en contacto contigo.</p>"
         : "<p>Tu caso está en cola y será asignado a un técnico en breve.</p>";
-    $cuerpo = "<p>Hola {$paraNombre},</p><p>Recibimos tu solicitud y creamos el ticket <strong>#{$ticketId}</strong>: \"" . htmlspecialchars($asunto) . "\".</p>{$lineaTecnico}<p>Te avisaremos por este mismo correo cuando haya novedades.</p>";
+    $cuerpo = "<p>Hola " . e($paraNombre) . ",</p><p>Recibimos tu solicitud y creamos el ticket <strong>#{$ticketId}</strong>: \"" . e($asunto) . "\".</p>{$lineaTecnico}<p>Te avisaremos por este mismo correo cuando haya novedades.</p>";
     enviar_correo($para, "Ticket #{$ticketId} creado - Mesa de Ayuda", $cuerpo, $paraNombre);
+}
+
+function correo_notificar_tecnico_respaldo(PDO $pdo, int $ticketId, ?string $tecnico, string $asunto): void {
+    if (!$tecnico) return;
+    $stmtEstado = $pdo->prepare("SELECT 1 FROM tickets_comentarios WHERE ticket_id = ? AND comentario LIKE 'Notificación de asignación:%' LIMIT 1");
+    $stmtEstado->execute([$ticketId]);
+    if ($stmtEstado->fetchColumn()) return; // ia_triage_ticket ya notificó al técnico.
+    $stmt = $pdo->prepare('SELECT email, nombre FROM usuarios_sistema WHERE activo = 1 AND (nombre = ? OR email = ?) LIMIT 1');
+    $stmt->execute([$tecnico, $tecnico]);
+    $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$fila || !filter_var($fila['email'] ?? '', FILTER_VALIDATE_EMAIL)) return;
+    $html = plantilla_correo_html("Nuevo ticket asignado #{$ticketId}", '<p>Se te asignó el ticket <strong>#' . (int) $ticketId . ' — ' . e($asunto) . '</strong>.</p><p>La IA no está configurada o no está disponible; revisa el caso en NAVISSI.</p>');
+    $ok = enviar_correo($fila['email'], "Nuevo ticket #{$ticketId} asignado", $html, $fila['nombre']);
+    $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo, visible_cliente, enviado_correo) VALUES (?,?,?,?,?,?)")
+        ->execute([$ticketId, 'Sistema', 'Notificación de respaldo al técnico: ' . ($ok ? 'enviada' : 'no enviada') . '.', 'SISTEMA', 0, $ok ? 1 : 0]);
 }
 
 /** Crea el ticket + comentario + registro de trazabilidad + dispara la IA, evitando duplicados por mensaje_id. */
@@ -95,6 +110,7 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
     hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'CREADO_DESDE_CORREO', $asunto, $remitente, $ticketId);
     ia_triage_ticket($pdo, $ticketId);
     correo_notificar_creacion($remitente, $remitenteNombre, $ticketId, $asunto, $tecnico);
+    correo_notificar_tecnico_respaldo($pdo, (int) $ticketId, $tecnico, $asunto);
     return true;
 }
 

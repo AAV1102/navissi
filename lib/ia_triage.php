@@ -122,8 +122,23 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
                     . "<p class=\"small\">Puedes hacer seguimiento con el número de ticket #{$ticketId}.</p>");
                 $enviadoAsignacion = enviar_correo($ticket['solicitante_contacto'], "Tu ticket #{$ticketId} fue asignado a {$tecnicoDefault}", $htmlAsig, $ticket['solicitante']);
             }
+            // Notifica también al técnico real (si está registrado en NAVISSI).
+            // El campo tecnico_default es texto histórico, por eso se resuelve
+            // por nombre y nunca se intenta adivinar un dominio de correo.
+            $stmtTecnico = $pdo->prepare("SELECT email, nombre FROM usuarios_sistema WHERE activo = 1 AND (nombre = ? OR email = ?) LIMIT 1");
+            $stmtTecnico->execute([$tecnicoDefault, $tecnicoDefault]);
+            $tecnico = $stmtTecnico->fetch(PDO::FETCH_ASSOC) ?: null;
+            $enviadoTecnico = false;
+            if ($tecnico && filter_var($tecnico['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+                $htmlTecnico = plantilla_correo_html("Nuevo ticket asignado #{$ticketId}",
+                    "<p>Hola " . e($tecnico['nombre']) . ",</p>"
+                    . "<p>Se te asignó el ticket <strong>#{$ticketId} — " . e($ticket['titulo']) . "</strong>.</p>"
+                    . "<p>Categoría: <strong>" . e($categoriaDetectada) . "</strong>. Prioridad: <strong>" . e($ticket['prioridad']) . "</strong>.</p>"
+                    . "<p class=\"small\">Ingresa a NAVISSI para atenderlo y dejar trazabilidad.</p>");
+                $enviadoTecnico = enviar_correo($tecnico['email'], "Nuevo ticket #{$ticketId} asignado", $htmlTecnico, $tecnico['nombre']);
+            }
             $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo, visible_cliente, enviado_correo) VALUES (?,?,?,?,?,?)")
-                ->execute([$ticketId, 'Sistema', "Correo de confirmación de asignación enviado al cliente (ticket #{$ticketId}, técnico {$tecnicoDefault}).", 'SISTEMA', 1, $enviadoAsignacion ? 1 : 0]);
+                ->execute([$ticketId, 'Sistema', "Notificación de asignación: cliente " . ($enviadoAsignacion ? 'enviado' : 'no enviado') . "; técnico " . ($enviadoTecnico ? 'enviado' : 'no enviado') . ".", 'SISTEMA', 1, ($enviadoAsignacion || $enviadoTecnico) ? 1 : 0]);
         } else {
             $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
                 ->execute([$ticketId, 'Sistema', "Clasificado como {$categoriaDetectada} - sin técnico por defecto configurado para esa categoría todavía.", 'SISTEMA']);

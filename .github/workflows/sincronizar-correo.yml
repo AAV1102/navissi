@@ -17,6 +17,8 @@ jobs:
       - name: Llamar al endpoint de sincronizacion de correo
         run: |
           test -n "$NAVISSI_CORREO_TOKEN"
-          curl --fail --silent --show-error --proto '=https' --tlsv1.2 "https://grupo10z.com.co/api_correo_mesadeayuda.php?token=${NAVISSI_CORREO_TOKEN}" \
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
+            -H "X-Navissi-Correo-Token: ${NAVISSI_CORREO_TOKEN}" \
+            "https://grupo10z.com.co/api_correo_mesadeayuda.php" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json

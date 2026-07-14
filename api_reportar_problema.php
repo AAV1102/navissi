@@ -9,13 +9,29 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/ia_triage.php';
+require_once __DIR__ . '/lib/agente_auth.php';
 header('Content-Type: application/json; charset=utf-8');
 $pdo = db();
 
+// Solo usuarios autenticados o agentes de inventario con token HMAC/Bearer
+// pueden crear tickets. Antes este endpoint era público y permitía spam.
+iniciar_sesion_segura();
+$sesionValida = !empty($_SESSION['usuario']);
+
 $data = json_decode(file_get_contents('php://input'), true) ?: [];
 $serial = limpio($data['serial'] ?? null);
+$tokenAgente = agente_token_header();
+if (!$sesionValida && !$tokenAgente) {
+    http_response_code(401);
+    echo json_encode(['ok' => false, 'error' => 'Sesión o credencial de agente requerida.']);
+    exit;
+}
+if (!$sesionValida) {
+    agente_autenticar($pdo, $serial, true);
+}
 $descripcion = limpio($data['descripcion'] ?? null);
 $usuarioWindows = limpio($data['usuario_windows'] ?? null);
+$correoSolicitante = filter_var($data['correo'] ?? $data['reporter_email'] ?? null, FILTER_VALIDATE_EMAIL) ?: null;
 
 if (!$descripcion) {
     http_response_code(400);
@@ -33,7 +49,16 @@ if ($serial) {
 $descripcionCompleta = $descripcion;
 $titulo = mb_substr($descripcion, 0, 80);
 $sedeId = null;
-$solicitante = $usuarioWindows ?: 'Empleado (agente local)';
+$solicitante = $usuarioWindows ?: limpio($data['reporter_name'] ?? null) ?: 'Empleado (agente local)';
+
+// El agente local normalmente no pide el correo al empleado; lo resolvemos
+// contra la identidad NAVISSI para que la respuesta automática llegue a la
+// persona y no se pierda en la cola.
+if (!$correoSolicitante && $solicitante !== 'Empleado (agente local)') {
+    $stmtCorreo = $pdo->prepare('SELECT email FROM usuarios_sistema WHERE lower(nombre) = lower(?) AND activo = 1 LIMIT 1');
+    $stmtCorreo->execute([$solicitante]);
+    $correoSolicitante = filter_var($stmtCorreo->fetchColumn(), FILTER_VALIDATE_EMAIL) ?: null;
+}
 
 if ($eq) {
     $sedeId = $eq['sede_id'];
@@ -48,7 +73,7 @@ if ($eq) {
 $slaLimite = gmdate('Y-m-d H:i:s', strtotime('+24 hours'));
 $stmt = $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, sla_limite, origen, equipo_serial)
     VALUES (?,?,?,?,?,?,?,?,?,?)");
-$stmt->execute([$titulo, $descripcionCompleta, 'SOPORTE', 'MEDIA', $sedeId, $solicitante, $usuarioWindows, $slaLimite, 'AGENTE_LOCAL', $serial]);
+$stmt->execute([$titulo, $descripcionCompleta, 'SOPORTE', 'MEDIA', $sedeId, $solicitante, $correoSolicitante, $slaLimite, 'AGENTE_LOCAL', $serial]);
 $ticketId = $pdo->lastInsertId();
 
 hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'CREADO_DESDE_AGENTE_LOCAL', $titulo, $solicitante, $ticketId);
@@ -64,9 +89,16 @@ $stmt = $pdo->prepare("SELECT comentario FROM tickets_comentarios WHERE ticket_i
 $stmt->execute([$ticketId]);
 $respuestaIa = $stmt->fetchColumn();
 
+$stmt = $pdo->prepare("SELECT categoria, asignado_a, estado FROM tickets WHERE id = ?");
+$stmt->execute([$ticketId]);
+$resultadoTicket = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
 echo json_encode([
     'ok' => true,
     'ticket_id' => $ticketId,
     'resuelto' => $estado === 'RESUELTO POR IA',
+    'categoria' => $resultadoTicket['categoria'] ?? null,
+    'asignado_a' => $resultadoTicket['asignado_a'] ?? null,
+    'estado' => $resultadoTicket['estado'] ?? $estado,
     'mensaje' => $respuestaIa ?: 'Tu reporte quedó registrado como ticket #' . $ticketId . '. Un técnico de TI lo revisará pronto.',
 ], JSON_UNESCAPED_UNICODE);

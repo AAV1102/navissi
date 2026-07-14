@@ -19,6 +19,13 @@ function smtp_log(string $linea): void {
  * (un fallo de correo no debe tumbar el flujo de creación/activación de usuarios).
  */
 function enviar_correo(string $para, string $asunto, string $cuerpoHtml, ?string $paraNombre = null): bool {
+    // Evita inyección de cabeceras cuando el destinatario/asunto proviene de
+    // un ticket o de datos importados.
+    if (!filter_var($para, FILTER_VALIDATE_EMAIL)
+        || preg_match('/[\r\n]/', $para . $asunto . (string) $paraNombre)) {
+        smtp_log("ERROR datos de cabecera inválidos para {$para}");
+        return false;
+    }
     $cfg = smtp_config();
     if (!$cfg || empty($cfg['host']) || empty($cfg['usuario']) || empty($cfg['password'])) {
         smtp_log("SIN CONFIGURAR - no se envió a {$para}: {$asunto}");

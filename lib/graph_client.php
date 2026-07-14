@@ -213,7 +213,9 @@ class GraphClient {
     /** Lee los mensajes no leídos de la bandeja de entrada de un buzón (correo o id de usuario). */
     public function leerCorreosNoLeidos($buzon, $top = 25) {
         $filtro = rawurlencode('isRead eq false');
-        $data = $this->get("/users/{$buzon}/mailFolders/inbox/messages?\$filter={$filtro}&\$top={$top}&\$select=id,subject,from,receivedDateTime,bodyPreview");
+        // Traemos el cuerpo completo (bodyPreview se limita a un fragmento y
+        // hacía que los tickets perdieran pasos, seriales y datos del usuario).
+        $data = $this->get("/users/{$buzon}/mailFolders/inbox/messages?\$filter={$filtro}&\$top={$top}&\$select=id,subject,from,receivedDateTime,body,bodyPreview");
         return $data['value'] ?? [];
     }
 

@@ -12,7 +12,9 @@ class HelpdeskAI {
     }
 
     init() {
-        this.apiBase = '/api/ai-automation/';
+        // Los endpoints reales viven en la raíz del proyecto; este script también
+        // se carga desde /modules, por eso resolvemos la ruta según la página.
+        this.apiBase = window.location.pathname.includes('/modules/') ? '../' : './';
         this.uploadedFiles = [];
         this.currentTicketId = null;
         this.analysisInProgress = false;
@@ -156,16 +158,29 @@ class HelpdeskAI {
             this.showAnalysisPanel();
 
             // Enviar datos
-            const response = await fetch(`${this.apiBase}helpdesk-submit.php`, {
+            const response = await fetch(`${this.apiBase}api_reportar_problema.php`, {
                 method: 'POST',
-                body: formData
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    reporter_name: document.getElementById('reporter-name')?.value || '',
+                    reporter_email: document.getElementById('reporter-email')?.value || '',
+                    descripcion: document.getElementById('problem-description')?.value || '',
+                    prioridad: document.getElementById('priority')?.value || 'MEDIA',
+                    usuario_windows: document.getElementById('reporter-name')?.value || ''
+                })
             });
 
             const result = await response.json();
 
-            if (result.success) {
+            if (result.ok) {
                 this.currentTicketId = result.ticket_id;
-                this.processAIAnalysis(result);
+                this.displayResults({
+                    ticket_id: result.ticket_id,
+                    diagnosis: {category: result.categoria || 'SOPORTE', problem_type: result.estado || 'ABIERTO', confidence: result.resuelto ? 100 : 0, severity: 'MEDIA'},
+                    solution: {steps: result.mensaje ? [{title: 'Resultado', description: result.mensaje, estimated_time: ''}] : [], estimated_total_time: '', difficulty: ''},
+                    assigned_technician: result.asignado_a || 'Mesa de Ayuda (pendiente de asignación)'
+                });
+                this.showResults();
             } else {
                 throw new Error(result.error || 'Error procesando ticket');
             }
@@ -194,87 +209,18 @@ class HelpdeskAI {
     }
 
     startAnalysisAnimation() {
-        const steps = [
-            { id: 'step-content', delay: 0 },
-            { id: 'step-image', delay: 2000 },
-            { id: 'step-video', delay: 4000 },
-            { id: 'step-knowledge', delay: 1000 },
-            { id: 'step-similar', delay: 3000 },
-            { id: 'step-solution', delay: 5000 }
-        ];
-
         const progressBar = document.getElementById('analysis-progress');
-        let progress = 0;
-
-        steps.forEach((step, index) => {
-            setTimeout(() => {
-                const element = document.getElementById(step.id);
-                if (element) {
-                    element.style.display = 'block';
-
-                    // Actualizar progreso
-                    progress = ((index + 1) / steps.length) * 100;
-                    progressBar.style.width = progress + '%';
-
-                    // Marcar como completado después de un momento
-                    setTimeout(() => {
-                        element.classList.add('completed');
-                        element.innerHTML = element.innerHTML.replace('fa-spinner fa-spin', 'fa-check');
-                    }, 1500);
-                }
-            }, step.delay);
-        });
-
-        // Mostrar resultados después de completar análisis
-        setTimeout(() => {
-            this.showResults();
-        }, 7000);
+        if (progressBar) progressBar.style.width = '100%';
+        const status = document.getElementById('ai-analysis-status');
+        if (status) status.textContent = 'Procesando en NAVISSI…';
     }
 
     async processAIAnalysis(ticketData) {
         try {
-            // Simular análisis de IA
-            await this.delay(6000);
-
-            // Generar resultados simulados
-            const analysisResult = {
-                diagnosis: {
-                    category: 'Hardware',
-                    problem_type: 'Problema de conectividad',
-                    confidence: 94,
-                    severity: 'Media'
-                },
-                solution: {
-                    steps: [
-                        {
-                            title: 'Verificar conexiones físicas',
-                            description: 'Revisar que todos los cables estén correctamente conectados',
-                            estimated_time: '2 minutos'
-                        },
-                        {
-                            title: 'Reiniciar dispositivos de red',
-                            description: 'Desconectar y volver a conectar router/modem por 30 segundos',
-                            estimated_time: '3 minutos'
-                        },
-                        {
-                            title: 'Verificar configuración IP',
-                            description: 'Ejecutar ipconfig /release e ipconfig /renew en CMD',
-                            estimated_time: '2 minutos'
-                        },
-                        {
-                            title: 'Probar conectividad',
-                            description: 'Hacer ping a 8.8.8.8 para verificar conexión',
-                            estimated_time: '1 minuto'
-                        }
-                    ],
-                    estimated_total_time: '8 minutos',
-                    difficulty: 'Básico'
-                },
-                assigned_technician: 'Juan Pérez',
-                ticket_id: ticketData.ticket_id || 'T' + Date.now()
-            };
-
-            this.displayResults(analysisResult);
+            // El análisis real lo ejecuta api_reportar_problema.php mediante
+            // ia_triage_ticket(). No se generan diagnósticos ficticios en el cliente.
+            if (!ticketData || !ticketData.ok) throw new Error('Respuesta inválida del servidor');
+            return;
 
         } catch (error) {
             console.error('Error en análisis IA:', error);
@@ -340,7 +286,7 @@ class HelpdeskAI {
         if (!this.currentTicketId) return;
 
         try {
-            const response = await fetch(`${this.apiBase}helpdesk-resolve.php`, {
+            const response = await fetch(`${this.apiBase}modules/ticket_detalle.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -370,7 +316,7 @@ class HelpdeskAI {
         if (!this.currentTicketId) return;
 
         try {
-            const response = await fetch(`${this.apiBase}helpdesk-escalate.php`, {
+            const response = await fetch(`${this.apiBase}modules/ticket_detalle.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -400,7 +346,9 @@ class HelpdeskAI {
         if (!this.currentTicketId) return;
 
         try {
-            const response = await fetch(`${this.apiBase}knowledge-add.php`, {
+            this.showNotification('La base de conocimiento se administra desde el detalle del ticket.', 'info');
+            return;
+            /*const response = await fetch(`${this.apiBase}knowledge-add.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -409,7 +357,7 @@ class HelpdeskAI {
                     ticket_id: this.currentTicketId,
                     add_to_knowledge: true
                 })
-            });
+            });*/
 
             const result = await response.json();
 
@@ -426,7 +374,8 @@ class HelpdeskAI {
 
     async loadRecentTickets() {
         try {
-            const response = await fetch(`${this.apiBase}helpdesk-tickets.php`);
+            // Este panel es opcional; el listado oficial está en Mesa de Ayuda.
+            const response = await fetch(`${this.apiBase}modules/mesa_ayuda.php`, {headers: {'Accept': 'application/json'}});
             const result = await response.json();
 
             if (result.success) {
