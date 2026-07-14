@@ -106,6 +106,12 @@ function nav_grupos() {
                 'modules/noticias.php' => ['Noticias', 'megaphone'],
             ],
         ],
+        'Formularios y constructor' => [
+            'icon' => 'file', 'roles' => ['ADMIN', 'DIRECTOR', 'RRHH', 'GERENCIA', 'CEO', 'SUPER_ADMIN'],
+            'items' => [
+                'modules/constructor_formularios.php' => ['Constructor de Formularios', 'file'],
+            ],
+        ],
         'Seguridad y gobierno' => [
             'icon' => 'shield', 'roles' => ['ADMIN'],
             'items' => [

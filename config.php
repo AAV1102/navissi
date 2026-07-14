@@ -574,6 +574,38 @@ function migrar_esquema(PDO $pdo) {
     )");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_dispositivos_usuario ON dispositivos_confianza (usuario_id)");
 
+    // ---- Constructor de formularios sin codigo: Admin/Director/RRHH arman un
+    // formulario (titulo + campos dinamicos), se comparte un link publico, y las
+    // respuestas quedan guardadas para revisar/exportar. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS formularios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        area TEXT,
+        token_publico TEXT UNIQUE,
+        activo INTEGER DEFAULT 1,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS formularios_campos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        formulario_id INTEGER NOT NULL REFERENCES formularios(id) ON DELETE CASCADE,
+        etiqueta TEXT NOT NULL,
+        tipo TEXT NOT NULL DEFAULT 'texto',
+        opciones TEXT,
+        requerido INTEGER DEFAULT 0,
+        orden INTEGER DEFAULT 0
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS formularios_respuestas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        formulario_id INTEGER NOT NULL REFERENCES formularios(id) ON DELETE CASCADE,
+        respuestas_json TEXT NOT NULL,
+        enviado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_formularios_campos_form ON formularios_campos (formulario_id)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_formularios_respuestas_form ON formularios_respuestas (formulario_id)");
+
     // ---- Baja formal de equipos: registro auditable (motivo, aprobacion) en vez de
     // solo cambiar el campo estado a mano, sin dejar rastro de por que ni quien aprobo. ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS inventario_bajas (
