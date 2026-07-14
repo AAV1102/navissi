@@ -1,62 +1,101 @@
 @echo off
-REM ============================================================
-REM  DEPLOY_TODO.bat - Un clic: sube TODO lo que tengas en esta
-REM  carpeta a GitHub y lo despliega en grupo10z.com.co.
-REM
-REM  Sube TODO lo que este pendiente en el proyecto, sin
-REM  distincion - revisa antes de correrlo si no quieres subir
-REM  algo que no hayas terminado de probar.
-REM ============================================================
+setlocal EnableExtensions EnableDelayedExpansion
+
+REM NAVISSI - despliegue completo a GitHub y hosting.
+REM Credenciales: .env.deploy.local (nunca se versiona).
+REM El paquete del hosting se construye exclusivamente con git ls-files.
 
 cd /d "%~dp0"
+set "ROOT=%~dp0"
+set "PREFLIGHT=%ROOT%scripts\preflight_deploy.ps1"
+set "HOSTING=%ROOT%DEPLOY_HOSTING.ps1"
 
-echo ============================================
-echo   1/3 - Revisando cambios pendientes...
-echo ============================================
-git status --short
+echo ============================================================
+echo   NAVISSI - DEPLOY COMPLETO (GitHub + hosting)
+echo ============================================================
+echo Ruta: %CD%
 echo.
 
-set /p CONTINUAR="Vas a subir TODO lo anterior a GitHub y al hosting. Escribe SI para continuar: "
-if /i not "%CONTINUAR%"=="SI" (
-    echo Cancelado. No se subio nada.
-    pause
-    exit /b 0
-)
+where git >nul 2>&1
+if errorlevel 1 goto :fail_git
+where powershell >nul 2>&1
+if errorlevel 1 goto :fail_powershell
+if not exist "%PREFLIGHT%" goto :fail_preflight_file
+if not exist "%HOSTING%" goto :fail_hosting_file
 
+echo [1/5] Estado actual del repositorio
+git status -sb
+if errorlevel 1 goto :fail_git_status
 echo.
-echo ============================================
-echo   2/4 - Commit y push a GitHub...
-echo ============================================
+
+echo [2/5] Validando paquete y archivos sensibles
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PREFLIGHT%" -Mode Source
+if errorlevel 1 goto :fail_preflight
+echo.
+
+echo [3/5] Guardando cambios en GitHub
 git add -A
-for /f "tokens=1-3 delims=/ " %%a in ("%date%") do set FECHA=%%a-%%b-%%c
-set HORA=%time:~0,5%
-git commit -m "Deploy automatico %FECHA% %HORA%"
+if errorlevel 1 goto :fail_git_add
+
+git diff --cached --quiet
 if errorlevel 1 (
-    echo No habia cambios nuevos para commitear, sigo con el deploy igual.
+    for /f "usebackq delims=" %%D in (`powershell.exe -NoLogo -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd HH:mm:ss'"`) do set "DEPLOY_DATE=%%D"
+    git commit -m "Deploy NAVISSI !DEPLOY_DATE!"
+    if errorlevel 1 goto :fail_git_commit
+) else (
+    echo No hay cambios nuevos; se sincronizara igualmente el commit actual.
 )
-echo Validando paquete antes del push...
-powershell -ExecutionPolicy Bypass -File "%~dp0scripts\preflight_deploy.ps1" -Mode Source
-if errorlevel 1 (
-    echo ERROR: el pre-flight rechazo la publicacion.
-    pause
-    exit /b 1
-)
+
 git push origin main
-if errorlevel 1 (
-    echo.
-    echo ERROR: el push a GitHub fallo. Revisa tu conexion o credenciales.
-    pause
-    exit /b 1
-)
-
+if errorlevel 1 goto :fail_git_push
+echo GitHub actualizado correctamente.
 echo.
-echo ============================================
-echo   3/4 - Desplegando en grupo10z.com.co...
-echo ============================================
-powershell -ExecutionPolicy Bypass -File "%~dp0DEPLOY_HOSTING.ps1"
 
+echo [4/5] Publicando en hosting
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%HOSTING%"
+if errorlevel 1 goto :fail_hosting
 echo.
-echo ============================================
-echo   Listo. Verifica en https://grupo10z.com.co
-echo ============================================
-pause
+
+echo [5/5] Deploy terminado
+echo GitHub: https://github.com/AAV1102/navissi
+echo Hosting: revisar NAVISSI_SITE_HOST en .env.deploy.local
+echo El paquete incluyo todos los archivos versionados y excluyo secretos/datos locales.
+echo.
+echo RESULTADO: OK
+exit /b 0
+
+:fail_git
+echo ERROR: Git no esta instalado o no esta en PATH.
+goto :fail
+:fail_powershell
+echo ERROR: PowerShell no esta disponible.
+goto :fail
+:fail_preflight_file
+echo ERROR: falta scripts\preflight_deploy.ps1.
+goto :fail
+:fail_hosting_file
+echo ERROR: falta DEPLOY_HOSTING.ps1.
+goto :fail
+:fail_git_status
+echo ERROR: no se pudo leer el estado del repositorio.
+goto :fail
+:fail_preflight
+echo ERROR: el pre-flight bloqueo la publicacion. No se hizo commit ni deploy.
+goto :fail
+:fail_git_add
+echo ERROR: no se pudieron preparar los cambios.
+goto :fail
+:fail_git_commit
+echo ERROR: fallo el commit de GitHub.
+goto :fail
+:fail_git_push
+echo ERROR: fallo el push a GitHub. El hosting no se ejecuto.
+goto :fail
+:fail_hosting
+echo ERROR: fallo el deploy al hosting. GitHub puede haber quedado actualizado.
+goto :fail
+
+:fail
+echo.
+echo RESULTADO: ERROR
+exit /b 1
