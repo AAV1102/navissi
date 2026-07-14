@@ -264,6 +264,103 @@ function migrar_esquema(PDO $pdo) {
         actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // ---- Devoluciones y garantías de producto vendido (distinto de actas de equipos TI) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS devoluciones_producto (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente_id INTEGER REFERENCES clientes(id) ON DELETE SET NULL,
+        cliente_nombre TEXT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        producto TEXT NOT NULL,
+        referencia TEXT,
+        talla TEXT,
+        motivo TEXT NOT NULL,
+        tipo_solucion TEXT DEFAULT 'CAMBIO',
+        valor REAL,
+        estado TEXT DEFAULT 'SOLICITADA',
+        observaciones TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        resuelto_en TEXT
+    )");
+
+    // ---- Mermas e inventario perdido (justificación de diferencias de stock) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS mermas_inventario (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        producto TEXT NOT NULL,
+        referencia TEXT,
+        cantidad REAL DEFAULT 1,
+        motivo TEXT NOT NULL,
+        valor_estimado REAL,
+        estado TEXT DEFAULT 'REPORTADA',
+        aprobado_por TEXT,
+        aprobado_en TEXT,
+        observaciones TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Comisiones de venta por asesor/tienda (calculadas sobre oportunidades GANADA) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS comisiones_venta (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        oportunidad_id INTEGER REFERENCES oportunidades(id) ON DELETE CASCADE,
+        vendedor_documento TEXT,
+        vendedor_nombre TEXT NOT NULL,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        valor_venta REAL NOT NULL,
+        porcentaje REAL DEFAULT 0,
+        valor_comision REAL DEFAULT 0,
+        periodo TEXT,
+        estado TEXT DEFAULT 'PENDIENTE',
+        pagado_en TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Calendario de colecciones/campañas (moda, diseño gráfico, comercial) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS campanas_coleccion (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        temporada TEXT,
+        area_responsable TEXT,
+        fecha_inicio TEXT,
+        fecha_lanzamiento TEXT,
+        fecha_fin TEXT,
+        estado TEXT DEFAULT 'PLANEACION',
+        descripcion TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Portal de proveedores (autogestión vía enlace con token, sin login completo) ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS proveedores_portal_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        contrato_id INTEGER REFERENCES contratos(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        expira_en TEXT,
+        usado_en TEXT
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS proveedores_actualizaciones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        contrato_id INTEGER REFERENCES contratos(id) ON DELETE CASCADE,
+        tipo TEXT DEFAULT 'FACTURA',
+        descripcion TEXT,
+        archivo_ruta TEXT,
+        archivo_nombre TEXT,
+        estado TEXT DEFAULT 'PENDIENTE_REVISION',
+        revisado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Mapa de tiendas: coordenadas para la vista geográfica ----
+    $columnasSedesMapa = array_column($pdo->query("PRAGMA table_info(sedes)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach (['latitud' => 'REAL', 'longitud' => 'REAL'] as $col => $tipo) {
+        if (!in_array($col, $columnasSedesMapa, true)) {
+            $pdo->exec("ALTER TABLE sedes ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
     // ---- Etiquetas de menú personalizadas (edición de textos sin tocar código) ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS etiquetas_menu (
         href TEXT PRIMARY KEY,

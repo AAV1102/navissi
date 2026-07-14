@@ -50,16 +50,71 @@ $sinUbicacion = (int) $pdo->query("SELECT COUNT(*) FROM inventario WHERE ubicaci
 layout_inicio('Logística y Bodega', 'Logística y Bodega', '../');
 ?>
 <h1><?= icon('inventory','icon-lg') ?> Logística y Bodega</h1>
-<p class="subtitle">Escanea con un lector físico de código de barras/QR (funciona como teclado) o escribe el serial/código manualmente.</p>
+<p class="subtitle">Escanea con un lector físico de código de barras/QR (funciona como teclado), con la cámara del celular, o escribe el serial/código manualmente.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <div class="panel" style="border-left:4px solid var(--accent-600);">
     <h3><?= icon('search') ?> Escanear / buscar equipo</h3>
-    <form method="get" class="toolbar">
-        <input type="text" name="q" value="<?= e($busqueda) ?>" placeholder="Escanea el código o escribe el serial/placa" autofocus style="min-width:320px;font-size:16px;">
+    <form method="get" class="toolbar" id="form-buscar-equipo">
+        <input type="text" name="q" id="campo-busqueda-equipo" value="<?= e($busqueda) ?>" placeholder="Escanea el código o escribe el serial/placa" autofocus style="min-width:320px;font-size:16px;">
         <button type="submit"><?= icon('search') ?> Buscar</button>
+        <button type="button" id="btn-camara-equipo" class="btn-secondary"><?= icon('zap') ?> Usar cámara</button>
     </form>
+    <div id="camara-equipo-wrap" style="display:none;margin-top:12px;">
+        <video id="camara-equipo-video" style="width:100%;max-width:420px;border-radius:8px;border:1px solid var(--line);" playsinline muted></video>
+        <p class="small" id="camara-equipo-estado">Apunta la cámara al código de barras o QR del equipo.</p>
+    </div>
 </div>
+
+<script>
+(function () {
+    var btn = document.getElementById('btn-camara-equipo');
+    var wrap = document.getElementById('camara-equipo-wrap');
+    var video = document.getElementById('camara-equipo-video');
+    var estado = document.getElementById('camara-equipo-estado');
+    var campo = document.getElementById('campo-busqueda-equipo');
+    var form = document.getElementById('form-buscar-equipo');
+    var stream = null;
+
+    if (!('BarcodeDetector' in window)) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    btn.addEventListener('click', async function () {
+        if (wrap.style.display === 'none') {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                await video.play();
+                wrap.style.display = 'block';
+                btn.textContent = 'Detener cámara';
+                var detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'code_39', 'upc_a'] });
+                var intervalo = setInterval(async function () {
+                    if (!stream) { clearInterval(intervalo); return; }
+                    try {
+                        var codigos = await detector.detect(video);
+                        if (codigos.length > 0) {
+                            campo.value = codigos[0].rawValue;
+                            estado.textContent = 'Código detectado: ' + codigos[0].rawValue;
+                            clearInterval(intervalo);
+                            stream.getTracks().forEach(function (t) { t.stop(); });
+                            stream = null;
+                            form.requestSubmit();
+                        }
+                    } catch (e) { /* frame sin lectura valida, se reintenta */ }
+                }, 400);
+            } catch (e) {
+                estado.textContent = 'No se pudo acceder a la cámara: ' + e.message;
+            }
+        } else {
+            if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+            wrap.style.display = 'none';
+            btn.textContent = 'Usar cámara';
+        }
+    });
+})();
+</script>
 
 <?php if ($busqueda && !$equipoEncontrado): ?>
 <div class="msg-error">No se encontró ningún equipo con el serial/código "<?= e($busqueda) ?>".</div>

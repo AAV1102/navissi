@@ -42,6 +42,7 @@ function nav_grupos() {
                 'modules/qr_equipos.php' => ['Códigos QR de Equipos', 'inventory'],
                 'modules/grupos_codigos.php' => ['Códigos Agrupados', 'inventory'],
                 'modules/logistica.php' => ['Logística y Bodega', 'inventory'],
+                'modules/mermas.php' => ['Mermas e Inventario Perdido', 'inventory'],
                 'modules/gestion_parches.php' => ['Gestión de Parches', 'shield'],
                 'modules/actas_equipos.php' => ['Actas de Entrega/Devolución', 'file'],
                 'modules/network_discovery.php' => ['Network Discovery', 'cloud'],
@@ -52,19 +53,23 @@ function nav_grupos() {
             ],
         ],
         'Tiendas e infraestructura' => [
-            'icon' => 'store', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR'],
+            'icon' => 'store', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR', 'DIRECTOR'],
             'items' => [
+                'modules/salud_tiendas.php' => ['Salud de Tiendas', 'store'],
+                'modules/mapa_tiendas.php' => ['Mapa de Tiendas', 'store'],
                 'modules/sedes.php' => ['Sedes', 'building'],
                 'modules/formulario_tienda.php' => ['Formulario para tiendas', 'file'],
                 'modules/contratos.php' => ['Contratos y Proveedores', 'file'],
                 'modules/horario_laboral.php' => ['Horario Laboral', 'briefcase'],
                 'modules/calendario.php' => ['Calendario', 'dashboard'],
+                'modules/campanas.php' => ['Calendario de Colecciones', 'dashboard'],
             ],
         ],
         'Automatización e IA' => [
             'icon' => 'robot', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
             'items' => [
                 'modules/automatizaciones.php' => ['Automatizaciones y alertas', 'bell'],
+                'modules/notificaciones.php' => ['Centro de Notificaciones', 'send'],
                 'modules/whatsapp.php' => ['WhatsApp Business', 'chat'],
                 'modules/n8n.php' => ['n8n (flujos)', 'zap'],
                 'modules/ia_multiagente.php' => ['IA Multiagente', 'robot'],
@@ -76,6 +81,8 @@ function nav_grupos() {
             'items' => [
                 'modules/crm.php' => ['Clientes y proveedores', 'users'],
                 'modules/oportunidades.php' => ['Pipeline de Ventas', 'dollar'],
+                'modules/comisiones.php' => ['Comisiones de Venta', 'dollar'],
+                'modules/devoluciones.php' => ['Devoluciones y Garantías', 'inventory'],
                 'modules/servicio_cliente.php' => ['Servicio al Cliente (PQRS)', 'chat'],
             ],
         ],
@@ -591,7 +598,7 @@ function layout_fin() {
 })();
 </script>
 
-<button id="ia-chat-launcher" title="Asistente IA" onclick="document.getElementById('ia-chat-panel').classList.toggle('open')"><?= icon('robot', 'icon icon-lg') ?></button>
+<button id="ia-chat-launcher" title="Asistente NAVISSI" onclick="document.getElementById('ia-chat-panel').classList.toggle('open')"><?= icon('chat', 'icon icon-lg') ?></button>
 <div id="ia-chat-panel">
     <div class="ia-chat-head">
         <div><strong>Asistente NAVISSI</strong><br><span class="small">Pregúntame sobre cualquier módulo</span></div>

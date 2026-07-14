@@ -1,0 +1,17 @@
+name: Resumen operativo diario a Gerencia
+
+on:
+  schedule:
+    # 13:00 UTC = 8:00 a.m. hora Colombia (UTC-5), de lunes a viernes.
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  enviar-resumen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al endpoint de resumen diario
+        run: |
+          curl -s -L "http://grupo10z.com.co/api_resumen_diario.php?token=6c4de37f5cfb84d07463266dd0b24fa0e2f0bd0d1fe335b4fc0906cf04e06a08" \
+            -o respuesta.json -w "HTTP %{http_code}\n"
+          cat respuesta.json

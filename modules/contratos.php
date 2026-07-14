@@ -39,6 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM contratos WHERE id = ?")->execute([(int) $_POST['id']]);
         $msg = ['ok', 'Eliminado.'];
+    } elseif ($accion === 'generar_enlace_proveedor') {
+        $contratoId = (int) $_POST['id'];
+        $token = bin2hex(random_bytes(20));
+        $pdo->prepare("INSERT INTO proveedores_portal_tokens (contrato_id, token, creado_por, expira_en) VALUES (?,?,?,?)")
+            ->execute([$contratoId, $token, usuario_actual()['nombre'] ?? null, date('Y-m-d H:i:s', strtotime('+30 days'))]);
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME'] ?? '', 1) . '/../';
+        $msg = ['ok', 'Enlace generado, válido 30 días: ' . $baseUrl . 'portal_proveedor.php?token=' . $token];
     }
 }
 
@@ -149,6 +156,11 @@ layout_inicio('Contratos y Proveedores', 'Contratos', '../');
         <td><span class="badge <?= $c['estado']==='VIGENTE'?'badge-activo':($c['estado']==='VENCIDO'?'badge-err':'badge-otro') ?>"><?= e($c['estado']) ?></span></td>
         <td>
             <a href="?editar=<?= (int)$c['id'] ?>">Editar</a>
+            <form class="inline" method="post">
+                <input type="hidden" name="accion" value="generar_enlace_proveedor">
+                <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
+                <button type="submit" class="btn-secondary" style="padding:4px 10px;font-size:12px;" title="Genera un enlace para que el proveedor suba facturas/actualice datos sin necesitar cuenta">Enlace proveedor</button>
+            </form>
             <form class="inline" method="post" onsubmit="return confirm('¿Eliminar?');">
                 <input type="hidden" name="accion" value="eliminar">
                 <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
@@ -159,4 +171,32 @@ layout_inicio('Contratos y Proveedores', 'Contratos', '../');
     <?php endforeach; ?>
     <?php if (!$contratos): ?><tr><td colspan="8" class="small">Sin contratos registrados.</td></tr><?php endif; ?>
 </table>
+
+<?php
+$actualizacionesProveedor = $pdo->query("SELECT a.*, c.proveedor_nombre FROM proveedores_actualizaciones a
+    LEFT JOIN contratos c ON a.contrato_id = c.id WHERE a.estado = 'PENDIENTE_REVISION' ORDER BY a.creado_en DESC")->fetchAll(PDO::FETCH_ASSOC);
+if ($actualizacionesProveedor):
+?>
+<div class="panel" style="margin-top:20px;">
+    <h3><?= icon('upload') ?> Actualizaciones de proveedores pendientes de revisión (<?= count($actualizacionesProveedor) ?>)</h3>
+    <table>
+        <tr><th>Proveedor</th><th>Tipo</th><th>Descripción</th><th>Archivo</th><th>Fecha</th><th></th></tr>
+        <?php foreach ($actualizacionesProveedor as $a): ?>
+        <tr>
+            <td><?= e($a['proveedor_nombre']) ?: '—' ?></td>
+            <td><?= e($a['tipo']) ?></td>
+            <td class="small"><?= e($a['descripcion']) ?: '—' ?></td>
+            <td><?php if ($a['archivo_ruta']): ?><a href="../archivo_proveedor.php?id=<?= (int)$a['id'] ?>" target="_blank">Descargar</a><?php else: ?>—<?php endif; ?></td>
+            <td class="small"><?= e($a['creado_en']) ?></td>
+            <td>
+                <form class="inline" method="post" action="proveedor_marcar.php">
+                    <input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
+                    <button type="submit" style="padding:4px 10px;font-size:12px;">Marcar revisada</button>
+                </form>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+</div>
+<?php endif; ?>
 <?php layout_fin(); ?>
