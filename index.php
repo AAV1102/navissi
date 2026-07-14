@@ -19,6 +19,11 @@ $condEmpleado = $area !== null ? " WHERE area = " . $pdo->quote($area) : '';
 // antes el dashboard los contaba globales aunque el usuario tuviera alcance limitado.
 $condTicketArea = $area !== null ? " AND solicitante_area = " . $pdo->quote($area) : '';
 $condSolicitudArea = $area !== null ? " AND area_responsable = " . $pdo->quote($area) : '';
+// credenciales, licencias y sedes no tienen columna de área (solo sede física,
+// otra dimensión) - no se pueden filtrar por área de forma correcta, así que
+// si el usuario está limitado a un área no se le muestra el total GLOBAL como
+// si fuera el suyo (fuga de información de otras áreas).
+$mostrarGlobalesSinArea = $area === null;
 
 // El panel NO es el mismo para todos: cada familia de roles ve los widgets
 // que le sirven a su trabajo, no una lista genérica de conteos.
@@ -109,7 +114,7 @@ layout_inicio('Pulso operativo', 'Dashboard');
     </div>
     <div class="dash-hero-side">
         <div class="dash-hero-mini"><span class="n"><?= (int)$totalEquipos ?></span><span class="l">Equipos</span></div>
-        <div class="dash-hero-mini"><span class="n"><?= (int)$totalCred ?></span><span class="l">Credenciales</span></div>
+        <div class="dash-hero-mini"><span class="n"><?= $mostrarGlobalesSinArea ? (int)$totalCred : '—' ?></span><span class="l">Credenciales</span></div>
     </div>
 </div>
 <?php endif; ?>
@@ -117,9 +122,9 @@ layout_inicio('Pulso operativo', 'Dashboard');
 <?php if ($vistaTecnica): ?>
 <div class="cards">
     <a class="card card-link" href="modules/inventario.php"><div class="num"><?= (int)$totalEquipos ?></div><div class="label">Equipos en inventario</div><?= badge_tendencia($tendenciaEquipos) ?></a>
-    <a class="card card-link" href="modules/sedes.php"><div class="num"><?= (int)$totalSedes ?></div><div class="label">Sedes registradas</div></a>
-    <a class="card card-link" href="modules/credenciales.php"><div class="num"><?= (int)$totalCred ?></div><div class="label">Credenciales (Siesa, Wifi, Correos)</div><?= badge_tendencia($tendenciaCred) ?></a>
-    <a class="card card-link" href="modules/licencias.php"><div class="num"><?= (int)$totalLicencias ?></div><div class="label">Licencias activas</div></a>
+    <a class="card card-link" href="modules/sedes.php"><div class="num"><?= $mostrarGlobalesSinArea ? (int)$totalSedes : '—' ?></div><div class="label">Sedes registradas</div></a>
+    <a class="card card-link" href="modules/credenciales.php"><div class="num"><?= $mostrarGlobalesSinArea ? (int)$totalCred : '—' ?></div><div class="label">Credenciales (Siesa, Wifi, Correos)</div><?= $mostrarGlobalesSinArea ? badge_tendencia($tendenciaCred) : '' ?></a>
+    <a class="card card-link" href="modules/licencias.php"><div class="num"><?= $mostrarGlobalesSinArea ? (int)$totalLicencias : '—' ?></div><div class="label">Licencias activas</div></a>
     <a class="card card-link" style="border-left-color:#c98a1f" href="modules/mesa_ayuda.php"><div class="num"><?= $ticketsAbiertos ?></div><div class="label">Tickets abiertos</div><?= badge_tendencia($tendenciaTickets) ?></a>
     <a class="card card-link" style="border-left-color:#b3392c" href="modules/mesa_ayuda.php"><div class="num"><?= $slaVencidos ?></div><div class="label">Tickets con SLA vencido</div></a>
     <a class="card card-link" style="border-left-color:#c98a1f" href="modules/aprobaciones.php"><div class="num"><?= $solicitudesPendientes ?></div><div class="label">Solicitudes por aprobar</div></a>

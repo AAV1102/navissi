@@ -1993,10 +1993,11 @@ function modulos_extra_usuario(): array {
 
 /** SUPER_ADMIN (real, sin estar "viendo como" otro rol) ve y gestiona todo. */
 function usuario_ve_todo(): bool {
-    // Gerencia y CEO tienen perfil tipo Admin: ven todos los módulos y todos los datos
-    // sin restricción de área, igual que SUPER_ADMIN pero sin las capacidades de
-    // administración de cuentas/seguridad (eso lo sigue decidiendo tiene_rol(['ADMIN']) puntual).
-    return in_array(rol_efectivo(), ['SUPER_ADMIN', 'GERENCIA', 'CEO'], true);
+    // Director, Gerencia y CEO tienen perfil tipo Admin: ven todos los módulos y todos
+    // los datos sin restricción de área (incluso si tienen un area_responsable asignada
+    // para efectos de organigrama/nómina), igual que SUPER_ADMIN pero sin las capacidades
+    // de administración de cuentas/seguridad (eso lo sigue decidiendo tiene_rol(['ADMIN'])).
+    return in_array(rol_efectivo(), ['SUPER_ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO'], true);
 }
 
 /** Area a la que esta limitado el usuario actual (NULL = sin restriccion de area). */
