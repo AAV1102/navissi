@@ -136,22 +136,23 @@ layout_inicio('Nómina', 'Nómina', '../');
         <tr>
             <td><?= e($n['empleado_nombre']) ?></td>
             <td>$<?= number_format($n['salario_base'],0,',','.') ?></td>
+            <?php $formRecalc = 'recalc-' . (int)$n['id']; ?>
             <td>
-                <form method="post" class="inline">
+                <form method="post" class="inline" id="<?= $formRecalc ?>">
                     <input type="hidden" name="accion" value="recalcular"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>">
-                    <input type="number" name="dias_trabajados" value="<?= e($n['dias_trabajados']) ?>" style="width:55px;" step="0.5">
+                    <input type="number" name="dias_trabajados" value="<?= e($n['dias_trabajados']) ?>" style="width:55px;" step="0.5" form="<?= $formRecalc ?>">
+                </form>
             </td>
             <td>$<?= number_format($n['salario_devengado'],0,',','.') ?></td>
             <td>$<?= number_format($n['auxilio_transporte'],0,',','.') ?></td>
-            <td><input type="number" name="otras_bonificaciones" value="<?= e($n['otras_bonificaciones']) ?>" style="width:80px;"></td>
+            <td><input type="number" name="otras_bonificaciones" value="<?= e($n['otras_bonificaciones']) ?>" style="width:80px;" form="<?= $formRecalc ?>"></td>
             <td>$<?= number_format($n['salud'],0,',','.') ?></td>
             <td>$<?= number_format($n['pension'],0,',','.') ?></td>
-            <td><input type="number" name="otras_deducciones" value="<?= e($n['otras_deducciones']) ?>" style="width:80px;"></td>
+            <td><input type="number" name="otras_deducciones" value="<?= e($n['otras_deducciones']) ?>" style="width:80px;" form="<?= $formRecalc ?>"></td>
             <td><strong>$<?= number_format($n['neto_pagar'],0,',','.') ?></strong></td>
             <td><span class="badge <?= $n['estado']==='PAGADA'?'badge-activo':'badge-otro' ?>"><?= e($n['estado']) ?></span></td>
             <td>
-                    <button type="submit" style="padding:4px 8px;font-size:11px;">Recalcular</button>
-                </form>
+                    <button type="submit" form="<?= $formRecalc ?>" style="padding:4px 8px;font-size:11px;">Recalcular</button>
                 <?php if ($n['estado'] !== 'PAGADA'): ?>
                 <form method="post" class="inline">
                     <input type="hidden" name="accion" value="marcar_pagada"><input type="hidden" name="id" value="<?= (int)$n['id'] ?>">
