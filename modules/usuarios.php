@@ -99,8 +99,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM usuarios_sistema WHERE id = ? AND email != 'admin@navissi.com'")->execute([(int) $_POST['id']]);
         $msg = ['ok', 'Eliminado.'];
+    } elseif ($accion === 'sincronizar_areas' && usuario_ve_todo()) {
+        // Rellena el área de los usuarios que tienen documento (vinculados a un
+        // empleado real de RRHH) pero se quedaron sin área asignada - toma el
+        // área real del empleado en vez de dejarlo "sin límite" por descuido.
+        $stmt = $pdo->query("SELECT u.id, e.area FROM usuarios_sistema u
+            JOIN empleados e ON e.documento = u.documento
+            WHERE (u.area_responsable IS NULL OR u.area_responsable = '') AND e.area IS NOT NULL AND e.area != '' AND u.rol != 'SUPER_ADMIN'");
+        $actualizados = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+            $pdo->prepare("UPDATE usuarios_sistema SET area_responsable = ? WHERE id = ?")->execute([$fila['area'], $fila['id']]);
+            $actualizados++;
+        }
+        $msg = ['ok', "{$actualizados} usuario(s) actualizados con el área de su registro de RRHH."];
     }
 }
+
+$departamentosDisponibles = $pdo->query("SELECT nombre FROM departamentos ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);
+$sinAreaConDocumento = (int) $pdo->query("SELECT COUNT(*) FROM usuarios_sistema u
+    JOIN empleados e ON e.documento = u.documento
+    WHERE (u.area_responsable IS NULL OR u.area_responsable = '') AND e.area IS NOT NULL AND e.area != '' AND u.rol != 'SUPER_ADMIN'")->fetchColumn();
 
 $usuarios = $pdo->query("SELECT u.*, s.nombre AS sede_nombre FROM usuarios_sistema u LEFT JOIN sedes s ON u.sede_id = s.id ORDER BY u.rol, u.nombre")->fetchAll(PDO::FETCH_ASSOC);
 $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
@@ -108,8 +126,14 @@ $sedes = $pdo->query("SELECT * FROM sedes ORDER BY nombre")->fetchAll(PDO::FETCH
 layout_inicio('Usuarios', 'Usuarios y roles', '../');
 ?>
 <h1><?= icon('users','icon-lg') ?> Usuarios y Roles</h1>
-<p class="subtitle">Controla quién entra al software y qué puede ver. <strong>SUPER_ADMIN</strong> ve todo sin excepción. Los demás roles, si tienen un <strong>área</strong> asignada, quedan limitados a esa área; sin área, ven todo dentro de lo que su rol permite.</p>
+<p class="subtitle">Controla quién entra al software y qué puede ver. <strong>SUPER_ADMIN, DIRECTOR, GERENCIA y CEO</strong> ven todo sin excepción. Los demás roles, si tienen un <strong>área</strong> asignada, quedan limitados a esa área; sin área, ven todo dentro de lo que su rol permite.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
+<?php if ($sinAreaConDocumento > 0 && usuario_ve_todo()): ?>
+<div class="msg-error" style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span><?= icon('bell') ?> <?= $sinAreaConDocumento ?> usuario(s) vinculados a un empleado de RRHH no tienen área asignada — quedan viendo más de lo que deberían.</span>
+    <form method="post"><input type="hidden" name="accion" value="sincronizar_areas"><button type="submit"><?= icon('check') ?> Sincronizar desde RRHH</button></form>
+</div>
+<?php endif; ?>
 
 <div class="panel">
     <h3>Nuevo usuario</h3>
@@ -136,7 +160,12 @@ layout_inicio('Usuarios', 'Usuarios y roles', '../');
                 </select>
                 <p class="small">Ej: un usuario con rol principal ADMIN puede además tener el perfil EMPLEADO, y ve los módulos de ambos.</p>
             </div>
-            <div><label>Área de alcance (opcional)</label><input type="text" name="area_responsable" placeholder="Ej. Logística, Tiendas Bogotá..."></div>
+            <div><label>Área de alcance (opcional)</label>
+                <select name="area_responsable">
+                    <option value="">-- sin límite (ve todo lo que su rol permite) --</option>
+                    <?php foreach ($departamentosDisponibles as $dep): ?><option><?= e($dep) ?></option><?php endforeach; ?>
+                </select>
+            </div>
             <div><label>Sede</label>
                 <select name="sede">
                     <option value="">-- ninguna --</option>
@@ -174,8 +203,10 @@ layout_inicio('Usuarios', 'Usuarios y roles', '../');
             <?php if (usuario_ve_todo() && $u['rol'] !== 'SUPER_ADMIN'): ?>
             <form method="post" class="inline">
                 <input type="hidden" name="accion" value="cambiar_area"><input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
-                <input type="text" name="area_responsable" value="<?= e($u['area_responsable'] ?? '') ?>" placeholder="Sin límite" style="width:120px;font-size:12px;">
-                <button type="submit" style="padding:4px 8px;font-size:11px;">Guardar</button>
+                <select name="area_responsable" onchange="this.form.requestSubmit()" style="font-size:12px;">
+                    <option value="">-- sin límite --</option>
+                    <?php foreach ($departamentosDisponibles as $dep): ?><option <?= ($u['area_responsable'] ?? '') === $dep ? 'selected' : '' ?>><?= e($dep) ?></option><?php endforeach; ?>
+                </select>
             </form>
             <?php else: ?>
                 <?= e($u['area_responsable']) ?: '<span class="small">Sin límite</span>' ?>
