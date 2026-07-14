@@ -48,7 +48,7 @@ try {
     $unzipPath = Join-Path $env:TEMP $unzipName
     $php = @"
 <?php
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !hash_equals('$token', $_POST['token'] ?? '')) { http_response_code(404); exit; }
+if ((`$_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !hash_equals('$token', `$_POST['token'] ?? '')) { http_response_code(404); exit; }
 `$zipFile = __DIR__ . '/$zipName';
 `$zip = new ZipArchive();
 if (!is_file(`$zipFile) || `$zip->open(`$zipFile) !== true) { http_response_code(500); exit('ERROR'); }
