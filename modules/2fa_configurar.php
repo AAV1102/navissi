@@ -45,6 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = ['ok', 'Verificación en dos pasos desactivada.'];
         $stmt->execute([$u['id']]);
         $cuenta = $stmt->fetch(PDO::FETCH_ASSOC);
+    } elseif ($accion === 'revocar_dispositivo') {
+        $pdo->prepare("DELETE FROM dispositivos_confianza WHERE id = ? AND usuario_id = ?")->execute([(int) $_POST['id'], $u['id']]);
+        $msg = ['ok', 'Dispositivo revocado. La próxima vez que entres desde ahí, se pedirá el código otra vez.'];
     } elseif ($accion === 'cambiar_clave') {
         $actual = $_POST['clave_actual'] ?? '';
         $nueva = $_POST['clave_nueva'] ?? '';
@@ -62,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$dispositivosConfianza = $pdo->prepare("SELECT * FROM dispositivos_confianza WHERE usuario_id = ? ORDER BY ultima_vez DESC");
+$dispositivosConfianza->execute([$u['id']]);
+$dispositivosConfianza = $dispositivosConfianza->fetchAll(PDO::FETCH_ASSOC);
 
 $secretoPendiente = $_SESSION['totp_secreto_pendiente'] ?? null;
 $otpauthUri = $secretoPendiente ? totp_uri_otpauth($secretoPendiente, $cuenta['email']) : null;
@@ -129,5 +136,28 @@ layout_inicio('Mi Cuenta', 'Mi Cuenta', '../');
         <button type="submit"><?= icon('shield') ?> Activar verificación en dos pasos</button>
     </form>
 <?php endif; ?>
+</div>
+
+<div class="panel">
+    <h3><?= icon('shield') ?> Dispositivos de confianza (<?= count($dispositivosConfianza) ?>)</h3>
+    <p class="small">Equipos donde marcaste "Confiar en este dispositivo" al verificar el código — no te piden 2FA de nuevo ahí por 30 días. Revócalos si perdiste o cambiaste un equipo.</p>
+    <table>
+        <tr><th>Dispositivo</th><th>Registrado</th><th>Último uso</th><th>Vence</th><th></th></tr>
+        <?php foreach ($dispositivosConfianza as $d): ?>
+        <tr>
+            <td class="small"><?= e($d['nombre_dispositivo']) ?: 'Desconocido' ?></td>
+            <td class="small"><?= e($d['creado_en']) ?></td>
+            <td class="small"><?= e($d['ultima_vez']) ?></td>
+            <td class="small"><?= e($d['expira_en']) ?></td>
+            <td>
+                <form method="post" class="inline" onsubmit="return confirm('¿Revocar este dispositivo? Volverá a pedir el código 2FA ahí.');">
+                    <input type="hidden" name="accion" value="revocar_dispositivo"><input type="hidden" name="id" value="<?= (int)$d['id'] ?>">
+                    <button type="submit" class="btn-danger" style="padding:4px 10px;font-size:12px;">Revocar</button>
+                </form>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+        <?php if (!$dispositivosConfianza): ?><tr><td colspan="5" class="small">Ningún dispositivo marcado como confiable todavía.</td></tr><?php endif; ?>
+    </table>
 </div>
 <?php layout_fin(); ?>

@@ -361,6 +361,21 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // ---- Dispositivos de confianza: permite saltar el codigo 2FA en un equipo
+    // ya verificado antes (30 dias), sin guardar la clave ni la sesion en si -
+    // solo un token propio de "este navegador ya paso 2FA una vez". ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS dispositivos_confianza (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios_sistema(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        nombre_dispositivo TEXT,
+        ip_registro TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        expira_en TEXT NOT NULL,
+        ultima_vez TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_dispositivos_usuario ON dispositivos_confianza (usuario_id)");
+
     // ---- Baja formal de equipos: registro auditable (motivo, aprobacion) en vez de
     // solo cambiar el campo estado a mano, sin dejar rastro de por que ni quien aprobo. ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS inventario_bajas (
@@ -1989,6 +2004,36 @@ function modulos_extra_usuario(): array {
         $_SESSION['modulos_extra_cache'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
     return $_SESSION['modulos_extra_cache'];
+}
+
+/** Nombre de la cookie de dispositivo de confianza (2FA). */
+const COOKIE_DISPOSITIVO_CONFIANZA = 'navissi_dispositivo';
+
+/** Registra el dispositivo actual como confiable por 30 dias y deja la cookie puesta. */
+function dispositivo_confianza_registrar(PDO $pdo, int $usuarioId): void {
+    $token = bin2hex(random_bytes(32));
+    $expira = date('Y-m-d H:i:s', strtotime('+30 days'));
+    $agente = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? 'Dispositivo'), 0, 120);
+    $pdo->prepare("INSERT INTO dispositivos_confianza (usuario_id, token_hash, nombre_dispositivo, ip_registro, expira_en) VALUES (?,?,?,?,?)")
+        ->execute([$usuarioId, hash('sha256', $token), $agente, $_SERVER['REMOTE_ADDR'] ?? null, $expira]);
+    $seguro = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie(COOKIE_DISPOSITIVO_CONFIANZA, $usuarioId . ':' . $token, [
+        'expires' => strtotime('+30 days'), 'path' => '/', 'secure' => $seguro, 'httponly' => true, 'samesite' => 'Lax',
+    ]);
+}
+
+/** Si la cookie de dispositivo de confianza es valida para este usuario, actualiza su ultimo uso y devuelve true. */
+function dispositivo_confianza_valido(PDO $pdo, int $usuarioId): bool {
+    $cookie = $_COOKIE[COOKIE_DISPOSITIVO_CONFIANZA] ?? '';
+    if (!$cookie || !str_contains($cookie, ':')) return false;
+    [$uidCookie, $token] = explode(':', $cookie, 2);
+    if ((int) $uidCookie !== $usuarioId) return false;
+    $stmt = $pdo->prepare("SELECT id FROM dispositivos_confianza WHERE usuario_id = ? AND token_hash = ? AND expira_en > datetime('now')");
+    $stmt->execute([$usuarioId, hash('sha256', $token)]);
+    $id = $stmt->fetchColumn();
+    if (!$id) return false;
+    $pdo->prepare("UPDATE dispositivos_confianza SET ultima_vez = CURRENT_TIMESTAMP WHERE id = ?")->execute([$id]);
+    return true;
 }
 
 /** SUPER_ADMIN (real, sin estar "viendo como" otro rol) ve y gestiona todo. */

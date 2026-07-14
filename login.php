@@ -64,6 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
         && hash_equals($_SESSION['pendiente_2fa']['codigo_correo'], $codigoIngresado)
         && time() < ($_SESSION['pendiente_2fa']['codigo_expira'] ?? 0);
     if ($u && (($u['totp_habilitado'] && totp_verificar($u['totp_secreto'], $codigoIngresado)) || $codigoCorreoValido)) {
+        if (!empty($_POST['confiar_dispositivo'])) {
+            dispositivo_confianza_registrar($pdo, (int) $u['id']);
+        }
         login_completar($u);
     }
     $error = 'Código de verificación incorrecto o vencido.';
@@ -75,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
     $stmt->execute([$email]);
     $u = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($u && password_verify($clave, $u['password_hash'])) {
-        if (!empty($u['totp_habilitado'])) {
+        if (!empty($u['totp_habilitado']) && !dispositivo_confianza_valido($pdo, (int) $u['id'])) {
             $_SESSION['pendiente_2fa'] = ['id' => $u['id']];
             $pedirCodigo = true;
         } else {
@@ -123,6 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
                     <input type="hidden" name="_csrf" value="<?= e(csrf_token()) ?>">
                     <label>Código de verificación</label>
                     <input type="text" name="codigo_2fa" required autofocus inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" class="auth-code-input">
+                    <label class="small" style="display:flex;align-items:center;gap:8px;margin-top:14px;font-weight:400;">
+                        <input type="checkbox" name="confiar_dispositivo" value="1">
+                        Confiar en este dispositivo por 30 días (no pedir código de nuevo aquí)
+                    </label>
                     <button type="submit" class="btn-primary-lg"><?= icon('check') ?> Verificar y entrar</button>
                 </form>
                 <p class="auth-foot">
