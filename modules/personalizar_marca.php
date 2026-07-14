@@ -49,16 +49,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 layout_inicio('Personalizar Marca', 'Personalizar Marca', '../');
 ?>
-<h1><?= icon('inventory','icon-lg') ?> Personalizar Marca</h1>
-<p class="subtitle">Cambia el logo y el nombre que aparecen arriba del menú — se aplica en todo el sitio al instante.</p>
+<h1><?= icon('inventory','icon-lg') ?> Editor visual en vivo</h1>
+<p class="subtitle">Cambia el logo, el nombre, el color de marca y los textos que se ven en todo el sitio — sin tocar código. Se aplica al instante en cuanto guardas.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <div class="panel">
-    <h3>Logo y nombre del sitio</h3>
+    <h3>Logo, nombre y color de marca</h3>
     <form method="post" enctype="multipart/form-data">
         <div class="grid-form">
             <div><label>Nombre del sitio</label><input type="text" name="nombre_sitio" value="<?= e($config['nombre_sitio'] ?? 'NAVISSI') ?>"></div>
             <div><label>Subtítulo</label><input type="text" name="subtitulo" value="<?= e($config['subtitulo'] ?? 'Inventario · Grupo 10Z') ?>"></div>
+            <div><label>Color de marca (acento)</label><input type="color" name="color_acento" value="<?= e($config['color_acento'] ?? '#d0342c') ?>" style="height:42px;"></div>
         </div>
         <label>Logo (PNG, JPG, SVG o WEBP — máx. 2 MB)</label>
         <input type="file" name="logo" accept="image/png,image/jpeg,image/svg+xml,image/webp">
@@ -66,6 +67,10 @@ layout_inicio('Personalizar Marca', 'Personalizar Marca', '../');
         <p class="small" style="margin-top:10px;">Logo actual:</p>
         <img src="../assets/uploads/<?= e($config['logo']) ?>" alt="Logo actual" style="max-width:120px;max-height:60px;border-radius:8px;border:1px solid var(--line);padding:6px;background:var(--navy-900);">
         <?php endif; ?>
+        <div class="grid-form" style="margin-top:14px;">
+            <div><label>Texto del pie de página</label><input type="text" name="texto_footer" value="<?= e($config['texto_footer'] ?? '') ?>" placeholder="NAVISSI Inventario · Grupo 10Z SAS"></div>
+            <div><label>Texto de bienvenida en el login</label><input type="text" name="texto_bienvenida_login" value="<?= e($config['texto_bienvenida_login'] ?? '') ?>" placeholder="La operación detrás de cada tienda."></div>
+        </div>
         <br><button type="submit" style="margin-top:14px;"><?= icon('check') ?> Guardar marca</button>
     </form>
 </div>

@@ -96,8 +96,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ingresar - NAVISSI Inventario</title>
+<?php
+$marcaConfigPathLogin = __DIR__ . '/data/marca_config.json';
+$marcaLogin = file_exists($marcaConfigPathLogin) ? (json_decode(file_get_contents($marcaConfigPathLogin), true) ?: []) : [];
+?>
+<title>Ingresar - <?= e($marcaLogin['nombre_sitio'] ?? 'NAVISSI Inventario') ?></title>
 <link rel="stylesheet" href="assets/style.css?v=<?= @filemtime(__DIR__ . '/assets/style.css') ?: time() ?>">
+<?php if (!empty($marcaLogin['color_acento'])): ?>
+<style>:root{--accent-600:<?= e($marcaLogin['color_acento']) ?>;--accent-500:<?= e($marcaLogin['color_acento']) ?>;}</style>
+<?php endif; ?>
 </head>
 <body class="auth-body">
 <div class="auth-shell">
@@ -105,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'envia
         <div class="auth-brand-inner">
             <span class="auth-brand-mark"><?= icon('inventory', 'icon') ?></span>
             <p class="auth-brand-kicker">NAVISSI BACKSTAGE</p>
-            <h1>La operación detrás de cada tienda.</h1>
+            <h1><?= e($marcaLogin['texto_bienvenida_login'] ?? 'La operación detrás de cada tienda.') ?></h1>
             <p>Inventario, servicio, personas y automatización en un mismo pulso operativo para Grupo 10Z.</p>
             <ul class="auth-brand-list">
                 <li><?= icon('shield') ?> Verificación en dos pasos con Authenticator</li>

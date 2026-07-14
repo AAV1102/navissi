@@ -177,8 +177,15 @@ function layout_inicio($titulo, $activo, $prefix = '') {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
-<title><?= e($titulo) ?> - NAVISSI Inventario</title>
+<?php
+$marcaConfigPathHead = __DIR__ . '/../data/marca_config.json';
+$marcaHead = file_exists($marcaConfigPathHead) ? (json_decode(file_get_contents($marcaConfigPathHead), true) ?: []) : [];
+?>
+<title><?= e($titulo) ?> - <?= e($marcaHead['nombre_sitio'] ?? 'NAVISSI Inventario') ?></title>
 <link rel="stylesheet" href="<?= $prefix ?>assets/style.css?v=<?= @filemtime(__DIR__ . '/../assets/style.css') ?: time() ?>">
+<?php if (!empty($marcaHead['color_acento'])): ?>
+<style>:root{--accent-600:<?= e($marcaHead['color_acento']) ?>;--accent-500:<?= e($marcaHead['color_acento']) ?>;}</style>
+<?php endif; ?>
 <script>
 (function () {
     var tema = localStorage.getItem('navissi_tema');
@@ -506,9 +513,11 @@ if ($activo !== 'Dashboard') {
 
 function layout_fin() {
     $prefix = strpos($_SERVER['SCRIPT_NAME'] ?? '', '/modules/') !== false ? '../' : '';
+    $marcaConfigPathFooter = __DIR__ . '/../data/marca_config.json';
+    $marcaFooter = file_exists($marcaConfigPathFooter) ? (json_decode(file_get_contents($marcaConfigPathFooter), true) ?: []) : [];
     ?></main>
 <footer class="site-footer">
-    <span>NAVISSI Inventario · Grupo 10Z SAS · <?= date('Y') ?> · <span class="footer-marca">Creado por Anderson Ayala Vera — Director de Tecnología</span></span>
+    <span><?= e($marcaFooter['texto_footer'] ?? 'NAVISSI Inventario · Grupo 10Z SAS') ?> · <?= date('Y') ?> · <span class="footer-marca">Creado por Anderson Ayala Vera — Director de Tecnología</span></span>
     <span class="site-footer-links">
         <a href="<?= $prefix ?>modules/base_conocimiento.php"><?= icon('book','icon') ?> Base de Conocimiento</a>
         <a href="<?= $prefix ?>modules/mesa_ayuda.php"><?= icon('ticket','icon') ?> Mesa de Ayuda</a>
