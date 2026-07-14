@@ -106,6 +106,13 @@ function nav_grupos() {
                 'modules/noticias.php' => ['Noticias', 'megaphone'],
             ],
         ],
+        'Contabilidad' => [
+            'icon' => 'dollar', 'roles' => ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO'],
+            'items' => [
+                'modules/gastos_proveedor.php' => ['Gastos por Proveedor', 'dollar'],
+                'modules/conciliacion_bancaria.php' => ['Conciliación Bancaria', 'dollar'],
+            ],
+        ],
         'Formularios y constructor' => [
             'icon' => 'file', 'roles' => ['ADMIN', 'DIRECTOR', 'RRHH', 'GERENCIA', 'CEO', 'SUPER_ADMIN'],
             'items' => [

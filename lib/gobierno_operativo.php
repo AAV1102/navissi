@@ -68,7 +68,7 @@ function solicitud_crear(PDO $pdo, array $usuario, int $catalogoId, string $desc
 }
 
 function solicitud_obtener(PDO $pdo, int $id): ?array {
-    $stmt = $pdo->prepare('SELECT s.*,c.nombre servicio_nombre,c.descripcion servicio_descripcion,c.nivel_aprobacion servicio_nivel,c.monto_escalamiento,c.crea_ticket,c.categoria_ticket,c.prioridad_ticket,c.sla_horas,sd.nombre sede_nombre FROM solicitudes_aprobacion s LEFT JOIN catalogo_servicios c ON c.id=s.catalogo_id LEFT JOIN sedes sd ON sd.id=s.sede_id WHERE s.id=?');
+    $stmt = $pdo->prepare('SELECT s.*,c.nombre servicio_nombre,c.descripcion servicio_descripcion,c.nivel_aprobacion servicio_nivel,c.monto_escalamiento,c.crea_ticket,c.categoria_ticket,c.prioridad_ticket,c.sla_horas,c.area_tramite,sd.nombre sede_nombre FROM solicitudes_aprobacion s LEFT JOIN catalogo_servicios c ON c.id=s.catalogo_id LEFT JOIN sedes sd ON sd.id=s.sede_id WHERE s.id=?');
     $stmt->execute([$id]);
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
@@ -86,8 +86,12 @@ function solicitud_crear_ticket(PDO $pdo, array $solicitud): ?int {
     if (!(int)$solicitud['crea_ticket'] || !empty($solicitud['ticket_id'])) return $solicitud['ticket_id'] ? (int)$solicitud['ticket_id'] : null;
     $prioridad = $solicitud['prioridad_ticket'] ?: ($solicitud['prioridad'] === 'URGENTE' ? 'URGENTE' : 'MEDIA');
     $sla = gmdate('Y-m-d H:i:s', time() + max(1, (int)$solicitud['sla_horas']) * 3600);
+    // Si el catalogo define area_tramite, el ticket se asigna a esa area (ej. Contabilidad
+    // solicita y el Director de Contabilidad aprueba, pero quien tramita es RRHH) en vez
+    // del area que aprobo.
+    $areaDestino = $solicitud['area_tramite'] ?: $solicitud['area_responsable'];
     $pdo->prepare("INSERT INTO tickets(titulo,descripcion,categoria,prioridad,estado,sede_id,solicitante,solicitante_contacto,sla_limite,origen,creado_por_documento,solicitante_area) VALUES(?,?,?,?,'ABIERTO',?,?,?,?,?,?,?)")
-        ->execute([$solicitud['codigo'] . ' · ' . $solicitud['servicio_nombre'], $solicitud['descripcion'], $solicitud['categoria_ticket'] ?: 'SOLICITUD_INTERAREA', $prioridad, $solicitud['sede_id'], $solicitud['solicitante_nombre'], null, $sla, 'APROBACION', $solicitud['solicitante_documento'], $solicitud['area_responsable']]);
+        ->execute([$solicitud['codigo'] . ' · ' . $solicitud['servicio_nombre'], $solicitud['descripcion'], $solicitud['categoria_ticket'] ?: 'SOLICITUD_INTERAREA', $prioridad, $solicitud['sede_id'], $solicitud['solicitante_nombre'], null, $sla, 'APROBACION', $solicitud['solicitante_documento'], $areaDestino]);
     $ticketId = (int)$pdo->lastInsertId();
     $pdo->prepare('UPDATE solicitudes_aprobacion SET ticket_id=? WHERE id=?')->execute([$ticketId, $solicitud['id']]);
     return $ticketId;

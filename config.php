@@ -162,7 +162,8 @@ function migrar_fases_operativas(PDO $pdo): void {
         categoria TEXT NOT NULL DEFAULT 'OPERACION', area_responsable TEXT NOT NULL, nivel_aprobacion TEXT NOT NULL DEFAULT 'DIRECTOR',
         requiere_monto INTEGER NOT NULL DEFAULT 0, monto_escalamiento REAL, sla_horas INTEGER NOT NULL DEFAULT 24,
         crea_ticket INTEGER NOT NULL DEFAULT 0, categoria_ticket TEXT, prioridad_ticket TEXT DEFAULT 'MEDIA',
-        activo INTEGER NOT NULL DEFAULT 1, orden INTEGER NOT NULL DEFAULT 0, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT
+        activo INTEGER NOT NULL DEFAULT 1, orden INTEGER NOT NULL DEFAULT 0, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, actualizado_en TEXT,
+        area_tramite TEXT
     )");
     $pdo->exec("CREATE TABLE IF NOT EXISTS solicitudes_aprobacion_eventos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, solicitud_id INTEGER NOT NULL REFERENCES solicitudes_aprobacion(id) ON DELETE CASCADE,
@@ -310,6 +311,47 @@ function migrar_esquema(PDO $pdo) {
             $pdo->exec("ALTER TABLE empleados ADD COLUMN {$col} {$tipo}");
         }
     }
+
+    // ---- Catálogo de servicios: el ticket resultante puede ir a un área distinta
+    // de la que aprueba (ej. Contabilidad solicita, Director de Contabilidad aprueba,
+    // pero el trámite final lo hace RRHH). Si queda vacío, se comporta como antes
+    // (el ticket va al área que aprobó). ----
+    $columnasCatalogo = array_column($pdo->query("PRAGMA table_info(catalogo_servicios)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('area_tramite', $columnasCatalogo, true)) {
+        $pdo->exec("ALTER TABLE catalogo_servicios ADD COLUMN area_tramite TEXT");
+    }
+
+    // ---- Aprobador de gastos por proveedor: cuando se identifica un proveedor en un
+    // documento/factura, se le puede asignar un responsable de aprobar el gasto (por
+    // area). Contabilidad ve si ya fue aprobado antes de pasarlo a pago. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS proveedores_aprobadores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proveedor_nombre TEXT NOT NULL,
+        proveedor_nit TEXT,
+        area TEXT NOT NULL,
+        aprobador_usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+        activo INTEGER DEFAULT 1,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(proveedor_nombre, area)
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS gastos_proveedor (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proveedor_nombre TEXT NOT NULL,
+        proveedor_nit TEXT,
+        numero_factura TEXT,
+        area TEXT,
+        valor REAL,
+        descripcion TEXT,
+        estado TEXT DEFAULT 'PENDIENTE',
+        aprobador_usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+        aprobado_por TEXT,
+        aprobado_en TEXT,
+        comentario_aprobador TEXT,
+        contabilizada INTEGER DEFAULT 0,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_gastos_proveedor_estado ON gastos_proveedor (estado)");
 
     // ---- Logística: ubicación física dentro de la bodega ----
     $columnasInv = array_column($pdo->query("PRAGMA table_info(inventario)")->fetchAll(PDO::FETCH_ASSOC), 'name');
