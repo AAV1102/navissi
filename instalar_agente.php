@@ -28,9 +28,8 @@ echo.
 
 net session >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: este instalador requiere permisos de administrador.
-    echo Haz clic derecho sobre el archivo y selecciona "Ejecutar como administrador".
-    pause
+    echo Se necesitan permisos de Windows para instalar el agente. Se solicitaran automaticamente...
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b 1
 )
 
