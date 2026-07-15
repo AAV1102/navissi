@@ -97,7 +97,11 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
     $stmt = $pdo->prepare("SELECT id FROM correos_a_tickets WHERE mensaje_id = ?");
     $stmt->execute([$mensajeId]);
     if ($stmt->fetchColumn()) return false;
-    if (correo_es_rebote_automatico($remitente, $asunto)) {
+    // Nunca convertir en ticket un mensaje enviado por el mismo buzón que se
+    // está leyendo. Las confirmaciones y alertas internas podrían regresar a
+    // la bandeja y crear un ciclo infinito de tickets y respuestas.
+    $esMensajePropio = strcasecmp(trim($remitente), trim($buzon)) === 0;
+    if ($esMensajePropio || correo_es_rebote_automatico($remitente, $asunto)) {
         // Se marca como procesado igual (para no revisarlo de nuevo cada vez) pero sin crear ticket.
         $pdo->prepare("INSERT INTO correos_a_tickets (mensaje_id, buzon, remitente, asunto, ticket_id) VALUES (?,?,?,?,NULL)")
             ->execute([$mensajeId, $buzon, $remitente, $asunto]);
