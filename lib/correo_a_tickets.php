@@ -86,10 +86,23 @@ function correo_notificar_tecnico_respaldo(PDO $pdo, int $ticketId, ?string $tec
 }
 
 /** Crea el ticket + comentario + registro de trazabilidad + dispara la IA, evitando duplicados por mensaje_id. */
+/** Rebotes automáticos (buzón lleno, dirección inexistente, etc.) no deben crear tickets - son ruido, no una solicitud real de un usuario. */
+function correo_es_rebote_automatico(string $remitente, string $asunto): bool {
+    if (preg_match('/^(mailer-daemon|postmaster|mail delivery subsystem|no-?reply)/i', $remitente)) return true;
+    if (preg_match('/^(undeliverable|non-?delivery|delivery status notification|mail delivery failed|returned mail|failure notice)/i', trim($asunto))) return true;
+    return false;
+}
+
 function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon, string $remitente, string $remitenteNombre, string $asunto, string $cuerpo): bool {
     $stmt = $pdo->prepare("SELECT id FROM correos_a_tickets WHERE mensaje_id = ?");
     $stmt->execute([$mensajeId]);
     if ($stmt->fetchColumn()) return false;
+    if (correo_es_rebote_automatico($remitente, $asunto)) {
+        // Se marca como procesado igual (para no revisarlo de nuevo cada vez) pero sin crear ticket.
+        $pdo->prepare("INSERT INTO correos_a_tickets (mensaje_id, buzon, remitente, asunto, ticket_id) VALUES (?,?,?,?,NULL)")
+            ->execute([$mensajeId, $buzon, $remitente, $asunto]);
+        return false;
+    }
 
     $tecnico = autoasignar_tecnico($pdo);
     $slaLimite = gmdate('Y-m-d H:i:s', strtotime('+24 hours'));
