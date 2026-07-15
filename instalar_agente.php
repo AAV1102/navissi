@@ -7,8 +7,7 @@ require_once __DIR__ . '/lib/agente_auth.php';
 requiere_login('');
 if (!tiene_rol(['ADMIN', 'TI'])) { http_response_code(403); exit('No autorizado.'); }
 
-$hostSeguro=preg_replace('/[^A-Za-z0-9.\-:\[\]]/','',(string)($_SERVER['HTTP_HOST']??'localhost'));
-$base = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $hostSeguro;
+$base = rtrim(navissi_url_publica(), '/');
 $sede = limpio($_GET['sede'] ?? null);
 $sedeBatch=$sede?preg_replace('/[\r\n"&|<>^%!]/','',$sede):null;$pdo=db();$sedeId=$sede?sede_id_por_nombre($pdo,$sede,false):null;if($sede&&!$sedeId){http_response_code(400);exit('Sede inválida.');}$u=usuario_actual();$tokenAgente=agente_token_emitir($pdo,'Instalador '.($sede?:'sin sede').' · '.date('Y-m-d H:i'),$sedeId,$u['nombre']??null);
 
@@ -49,12 +48,19 @@ set /p SEDE=Nombre de la sede/tienda de este equipo (ej. Molinos):
 
 if not exist "%DESTINO%" mkdir "%DESTINO%"
 > "%TOKENFILE%" echo <?= $tokenAgente ?>
-icacls "%TOKENFILE%" /inheritance:r /grant:r "SYSTEM:F" "Administrators:F" >nul 2>&1
+icacls "%TOKENFILE%" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F >nul 2>&1
+if not exist "%TOKENFILE%" (
+    echo ERROR: no se pudo crear la credencial local del agente.
+    pause
+    exit /b 1
+)
 
 echo.
 echo [1/3] Descargando el agente desde %SERVIDOR% ...
-powershell -Command "Invoke-WebRequest -Uri '%SERVIDOR%/data/agente_navissi.ps1' -OutFile '%SCRIPT%'"
-powershell -Command "Invoke-WebRequest -Uri '%SERVIDOR%/data/reportar_problema.ps1' -OutFile '%REPORTAR%'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-WebRequest -UseBasicParsing -Uri '%SERVIDOR%/descargar_agente_archivo.php?archivo=inventario^&token=<?= $tokenAgente ?>' -OutFile '%SCRIPT%'"
+if errorlevel 1 goto :download_error
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-WebRequest -UseBasicParsing -Uri '%SERVIDOR%/descargar_agente_archivo.php?archivo=reportar^&token=<?= $tokenAgente ?>' -OutFile '%REPORTAR%'"
+if errorlevel 1 goto :download_error
 if not exist "%SCRIPT%" (
     echo ERROR: no se pudo descargar el agente. Revisa la conexion a internet/red y vuelve a intentar.
     pause
@@ -92,6 +98,12 @@ echo ============================================
 pause
 start "" /b cmd /c del /f /q "%~f0"
 exit /b 0
+
+:download_error
+echo ERROR: no se pudieron descargar todos los componentes del agente.
+echo Comprueba internet, fecha/hora de Windows y vuelve a descargar un instalador nuevo.
+pause
+exit /b 1
 
 :task_error
 echo ERROR: Windows no pudo crear las tareas programadas.
