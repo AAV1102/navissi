@@ -22,7 +22,7 @@ if (empty($_GET['code']) || empty($_GET['state']) || $_GET['state'] !== ($_SESSI
 }
 unset($_SESSION['sso_state']);
 
-$redirectUri = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . '/sso_microsoft_callback.php';
+$redirectUri = navissi_url_publica('sso_microsoft_callback.php');
 
 $ch = curl_init('https://login.microsoftonline.com/' . $cfg['tenant_id'] . '/oauth2/v2.0/token');
 curl_setopt_array($ch, [

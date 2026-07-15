@@ -25,7 +25,7 @@ $cfg = leer_config_json($configPath);
 $state = bin2hex(random_bytes(16));
 $_SESSION['sso_state'] = $state;
 
-$redirectUri = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . '/sso_microsoft_callback.php';
+$redirectUri = navissi_url_publica('sso_microsoft_callback.php');
 
 $params = [
     'client_id' => $cfg['client_id'],

@@ -65,7 +65,7 @@ layout_inicio('Correo a Tickets', 'Correo → Tickets', '../');
         <div><label>Servidor IMAP</label><input type="text" name="imap_host" value="<?= e($cfgImapActual['host']) ?>"></div>
         <div><label>Puerto (SSL)</label><input type="number" name="imap_puerto" value="<?= (int) $cfgImapActual['puerto'] ?>"></div>
         <div><label>Correo</label><input type="text" name="imap_usuario" value="<?= e($cfgImapActual['usuario']) ?>"></div>
-        <div><label>Contraseña</label><input type="password" name="imap_password" placeholder="<?= $cfgImapActual['password'] ? '••••••••' : 'Admin-Navissi26*' ?>"></div>
+        <div><label>Contraseña</label><input type="password" name="imap_password" placeholder="<?= $cfgImapActual['password'] ? '••••••••' : 'Contraseña del buzón' ?>"></div>
         <div style="align-self:end;"><button type="submit">Guardar</button></div>
     </form>
     <p class="small">Este buzón vive en el hosting de correo de FreeHosting (no en Microsoft 365), así que se lee directo por IMAP - no necesita ningún permiso adicional. La contraseña queda vacía a menos que la escribas de nuevo (por seguridad no se muestra la guardada).</p>
@@ -77,8 +77,8 @@ layout_inicio('Correo a Tickets', 'Correo → Tickets', '../');
         <input type="hidden" name="accion" value="sincronizar">
         <button type="submit">📥 Revisar correos ahora</button>
     </form>
-    <p class="small" style="margin-top:12px;">Para que esto corra <strong>solo, sin que nadie tenga que entrar a hacer clic</strong>, programa esta URL cada 5 minutos con el Programador de Tareas de Windows (o un cron en el hosting):</p>
-    <pre style="background:#0f1720;color:#d7e3ef;padding:12px;border-radius:8px;overflow-x:auto;font-size:12.5px;"><?= e($base) ?>/api_correo_mesadeayuda.php?token=<?= e(hash('sha256', 'navissi-correo-' . ($_SERVER['HTTP_HOST'] ?? ''))) ?></pre>
+    <p class="small" style="margin-top:12px;">La automatización llama cada 10 minutos a este endpoint mediante HTTPS y envía el secreto en la cabecera <code>X-Navissi-Correo-Token</code>; el token nunca debe incluirse en la URL.</p>
+    <pre style="background:#0f1720;color:#d7e3ef;padding:12px;border-radius:8px;overflow-x:auto;font-size:12.5px;"><?= e($base) ?>/api_correo_mesadeayuda.php</pre>
 </div>
 
 <div class="panel">

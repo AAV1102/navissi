@@ -2219,6 +2219,18 @@ function iniciar_sesion_segura(): void {
     session_start();
 }
 
+/** Esquema público real, incluso cuando Cloudflare termina TLS y habla HTTP al origen. */
+function navissi_es_https(): bool {
+    return (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+        || strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0])) === 'https'
+        || strtolower((string) ($_SERVER['HTTP_CF_VISITOR'] ?? '')) === '{"scheme":"https"}';
+}
+
+function navissi_url_publica(string $ruta = ''): string {
+    $host = preg_replace('/[^A-Za-z0-9.\-:\[\]]/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost')) ?: 'localhost';
+    return (navissi_es_https() ? 'https' : 'http') . '://' . $host . '/' . ltrim($ruta, '/');
+}
+
 function csrf_token(): string {
     iniciar_sesion_segura();
     if (empty($_SESSION['_csrf'])) $_SESSION['_csrf'] = bin2hex(random_bytes(32));

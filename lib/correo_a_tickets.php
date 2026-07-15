@@ -152,8 +152,10 @@ function sincronizar_correo_a_tickets(PDO $pdo): array {
                     // la descripción y en los prompts de IA.
                     $cuerpoGraph = trim(html_entity_decode(strip_tags((string) $cuerpoGraph), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
                     $creado = correo_crear_ticket_si_nuevo($pdo, $correo['id'], $buzon, $remitente, $remitenteNombre, $asunto, $cuerpoGraph);
-                    if ($creado) { $creados++; $gc->marcarCorreoLeido($buzon, $correo['id']); }
-                    else $yaExistian++;
+                    if ($creado) $creados++; else $yaExistian++;
+                    // También marcar duplicados y rebotes procesados; de lo contrario
+                    // quedan no leídos y se vuelven a consultar en cada ejecución.
+                    $gc->marcarCorreoLeido($buzon, $correo['id']);
                 }
             } catch (GraphClientException $e) {
                 $errores[] = "{$buzon} (Microsoft 365): {$e->getMessage()}";

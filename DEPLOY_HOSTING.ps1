@@ -64,7 +64,7 @@ if (!is_file(`$zipFile) || `$zip->open(`$zipFile) !== true) { http_response_code
     # El extractor remoto elimina el ZIP y su propio archivo al terminar.
     # No se ejecutan comandos DELE adicionales: algunos servidores responden
     # 550 cuando el archivo ya fue eliminado, aunque el deploy haya sido exitoso.
-    Write-Host "5/5 Listo. Verifica https://$SiteHost" -ForegroundColor Green
+    Write-Host "5/5 Listo. Verifica http://$SiteHost" -ForegroundColor Green
 } finally {
     Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue

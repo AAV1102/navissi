@@ -224,6 +224,20 @@ class GraphClient {
         return $this->patch("/users/{$buzon}/messages/{$mensajeId}", ['isRead' => true]);
     }
 
+    /** Envía correo desde un buzón de Microsoft 365. Requiere Mail.Send (Application). */
+    public function enviarCorreo($buzon, $para, $asunto, $cuerpoHtml, $paraNombre = null) {
+        $destinatario = ['address' => (string) $para];
+        if ($paraNombre) $destinatario['name'] = (string) $paraNombre;
+        return $this->postJson('/users/' . rawurlencode((string) $buzon) . '/sendMail', [
+            'message' => [
+                'subject' => (string) $asunto,
+                'body' => ['contentType' => 'HTML', 'content' => (string) $cuerpoHtml],
+                'toRecipients' => [['emailAddress' => $destinatario]],
+            ],
+            'saveToSentItems' => true,
+        ]);
+    }
+
     /** Últimos correos de la bandeja (leídos y no leídos), para auditoría/verificación. */
     public function leerMensajesRecientes($buzon, $top = 10) {
         $orderby = rawurlencode('receivedDateTime desc');

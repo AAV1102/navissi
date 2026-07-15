@@ -14,6 +14,23 @@ function smtp_log(string $linea): void {
     @file_put_contents($ruta, '[' . gmdate('Y-m-d H:i:s') . " UTC] {$linea}\n", FILE_APPEND);
 }
 
+/** Respaldo moderno para Microsoft 365 cuando SMTP AUTH no está disponible. */
+function enviar_correo_graph(string $para, string $asunto, string $cuerpoHtml, ?string $paraNombre = null): bool {
+    if (!function_exists('ms365_configurado') || !ms365_configurado()) return false;
+    require_once __DIR__ . '/graph_client.php';
+    $cfg = ms365_config();
+    $buzon = trim((string) (getenv('NAVISSI_CORREO_REMITENTE') ?: 'mesadeayuda@navissi.com'));
+    try {
+        $gc = new GraphClient($cfg['tenant_id'], $cfg['client_id'], $cfg['client_secret']);
+        $gc->enviarCorreo($buzon, $para, $asunto, $cuerpoHtml, $paraNombre);
+        smtp_log("OK Graph enviado desde {$buzon} a {$para}: {$asunto}");
+        return true;
+    } catch (Throwable $e) {
+        smtp_log("ERROR Graph enviando desde {$buzon} a {$para}: " . $e->getMessage());
+        return false;
+    }
+}
+
 /**
  * Envía un correo real vía SMTP+STARTTLS. Devuelve true/false; nunca lanza excepción
  * (un fallo de correo no debe tumbar el flujo de creación/activación de usuarios).
@@ -28,8 +45,8 @@ function enviar_correo(string $para, string $asunto, string $cuerpoHtml, ?string
     }
     $cfg = smtp_config();
     if (!$cfg || empty($cfg['host']) || empty($cfg['usuario']) || empty($cfg['password'])) {
-        smtp_log("SIN CONFIGURAR - no se envió a {$para}: {$asunto}");
-        return false;
+        smtp_log("SMTP SIN CONFIGURAR - intentando Microsoft Graph para {$para}: {$asunto}");
+        return enviar_correo_graph($para, $asunto, $cuerpoHtml, $paraNombre);
     }
 
     $host = $cfg['host'];
@@ -51,7 +68,7 @@ function enviar_correo(string $para, string $asunto, string $cuerpoHtml, ?string
     $fp = @fsockopen($host, $port, $errno, $errstr, 12);
     if (!$fp) {
         smtp_log("ERROR conexión {$host}:{$port} - {$errstr} ({$errno})");
-        return false;
+        return enviar_correo_graph($para, $asunto, $cuerpoHtml, $paraNombre);
     }
     stream_set_timeout($fp, 12);
 
@@ -111,7 +128,7 @@ function enviar_correo(string $para, string $asunto, string $cuerpoHtml, ?string
     } catch (Throwable $e) {
         @fclose($fp);
         smtp_log("ERROR enviando a {$para}: " . $e->getMessage());
-        return false;
+        return enviar_correo_graph($para, $asunto, $cuerpoHtml, $paraNombre);
     }
 }
 

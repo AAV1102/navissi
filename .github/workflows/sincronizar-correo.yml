@@ -1,12 +1,8 @@
 name: Sincronizar correo Mesa de Ayuda
 
 on:
-  # Cron automatico desactivado (2026-07-15) a pedido del dueño de la cuenta:
-  # seguia fallando/enviando correos de notificacion molestos. Se puede correr
-  # a mano desde GitHub -> Actions -> este workflow -> "Run workflow", o
-  # reactivar el "schedule:" de abajo cuando el hosting tenga HTTPS real.
-  # schedule:
-  #   - cron: '*/10 * * * *'
+  schedule:
+    - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -18,12 +14,8 @@ jobs:
       - name: Llamar al endpoint de sincronizacion de correo
         run: |
           test -n "$NAVISSI_CORREO_TOKEN"
-          # HTTP en vez de HTTPS: el hosting no tiene SSL valido todavia (FreeHosting
-          # devuelve su propia pagina "SSL Unavailable" en https, no llega a la app) -
-          # cambiar de vuelta a https cuando el dominio pase por Cloudflare. max-time
-          # generoso porque revisar los buzones reales puede tardar mas de 30s.
           curl --fail --silent --show-error --max-time 90 --retry 2 \
             -H "X-Navissi-Correo-Token: ${NAVISSI_CORREO_TOKEN}" \
-            "http://grupo10z.com.co/api_correo_mesadeayuda.php" \
+            "https://grupo10z.com.co/api_correo_mesadeayuda.php" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json
