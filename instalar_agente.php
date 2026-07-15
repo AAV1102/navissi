@@ -10,6 +10,8 @@ if (!tiene_rol(['ADMIN', 'TI'])) { http_response_code(403); exit('No autorizado.
 $base = rtrim(navissi_url_publica(), '/');
 $sede = limpio($_GET['sede'] ?? null);
 $sedeBatch=$sede?preg_replace('/[\r\n"&|<>^%!]/','',$sede):null;$pdo=db();$sedeId=$sede?sede_id_por_nombre($pdo,$sede,false):null;if($sede&&!$sedeId){http_response_code(400);exit('Sede inválida.');}$u=usuario_actual();$tokenAgente=agente_token_emitir($pdo,'Instalador '.($sede?:'sin sede').' · '.date('Y-m-d H:i'),$sedeId,$u['nombre']??null);
+$agenteB64=base64_encode((string)file_get_contents(__DIR__.'/data/agente_navissi.ps1'));
+$reportarB64=base64_encode((string)file_get_contents(__DIR__.'/data/reportar_problema.ps1'));
 
 $serverPubKeyPath = __DIR__ . '/rustdesk-server/id_ed25519.pub';
 $rustdeskClave = file_exists($serverPubKeyPath) ? trim(file_get_contents($serverPubKeyPath)) : null;
@@ -60,10 +62,8 @@ exit /b 1
 :credential_ready
 
 echo.
-echo [1/3] Descargando el agente desde %SERVIDOR% ...
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-WebRequest -UseBasicParsing -Uri '%SERVIDOR%/descargar_agente_archivo.php?archivo=inventario^&token=<?= $tokenAgente ?>' -OutFile '%SCRIPT%'"
-if errorlevel 1 goto :download_error
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;Invoke-WebRequest -UseBasicParsing -Uri '%SERVIDOR%/descargar_agente_archivo.php?archivo=reportar^&token=<?= $tokenAgente ?>' -OutFile '%REPORTAR%'"
+echo [1/3] Preparando el agente incluido en este instalador ...
+powershell -NoProfile -Command "[IO.File]::WriteAllBytes('%SCRIPT%',[Convert]::FromBase64String('<?= $agenteB64 ?>'));[IO.File]::WriteAllBytes('%REPORTAR%',[Convert]::FromBase64String('<?= $reportarB64 ?>'))"
 if errorlevel 1 goto :download_error
 if not exist "%SCRIPT%" (
     echo ERROR: no se pudo descargar el agente. Revisa la conexion a internet/red y vuelve a intentar.
