@@ -2477,6 +2477,24 @@ function rol_efectivo(): ?string {
     return $u['rol'];
 }
 
+/**
+ * True solo para los roles que ven TODOS los módulos sin importar su área
+ * (SUPER_ADMIN, GERENCIA, CEO, Director de RRHH) - a diferencia de
+ * usuario_ve_todo(), que incluye a cualquier DIRECTOR (esa función es para
+ * alcance de DATOS dentro de su propia área, no para qué grupos del menú
+ * puede ver). Se usa para que el menú lateral solo muestre a cada Director
+ * el/los grupo(s) obligatorios de su propia área, más lo que se le asigne
+ * individualmente como módulo extra.
+ */
+function tiene_acceso_universal_modulos(): bool {
+    $u = usuario_actual();
+    if (!$u) return false;
+    $rol = rol_efectivo();
+    if (in_array($rol, ['SUPER_ADMIN', 'GERENCIA', 'CEO'], true)) return true;
+    if ($rol === 'DIRECTOR' && in_array($u['area_responsable'] ?? null, ['Direccion Recursos Humanos', 'RRHH'], true)) return true;
+    return false;
+}
+
 function tiene_rol(array $rolesPermitidos): bool {
     $u = usuario_actual();
     if (!$u) return false;

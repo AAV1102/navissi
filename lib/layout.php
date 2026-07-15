@@ -32,6 +32,7 @@ function nav_grupos() {
         ],
         'Inventario y activos' => [
             'icon' => 'inventory', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
+            'areas' => ['Direccion de Tecnologia', 'Direccion de Logistica'],
             'items' => [
                 'modules/inventario.php' => ['Inventario', 'inventory'],
                 'modules/movimientos.php' => ['Movimientos', 'arrow-right'],
@@ -58,6 +59,7 @@ function nav_grupos() {
         ],
         'Tiendas e infraestructura' => [
             'icon' => 'store', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR', 'DIRECTOR'],
+            'areas' => ['Direccion de Tecnologia', 'Direccion de Logistica', 'Direccion Comercial'],
             'items' => [
                 'modules/salud_tiendas.php' => ['Salud de Tiendas', 'store'],
                 'modules/mapa_tiendas.php' => ['Mapa de Tiendas', 'store'],
@@ -71,6 +73,7 @@ function nav_grupos() {
         ],
         'Automatización e IA' => [
             'icon' => 'robot', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
+            'areas' => ['Direccion de Tecnologia'],
             'items' => [
                 'modules/inteligencia_operativa.php' => ['Inteligencia Operativa', 'dashboard'],
                 'modules/retail_inteligencia.php' => ['Inventario Retail', 'inventory'],
@@ -84,7 +87,8 @@ function nav_grupos() {
             ],
         ],
         'CRM y ecommerce' => [
-            'icon' => 'users', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'COORDINADOR'],
+            'icon' => 'users', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'COORDINADOR', 'DIRECTOR'],
+            'areas' => ['Direccion Comercial', 'Direccion de Ecommerce', 'Direccion de Marketing'],
             'items' => [
                 'modules/crm.php' => ['Clientes y proveedores', 'users'],
                 'modules/comercial.php' => ['Comercial', 'dollar'],
@@ -99,6 +103,7 @@ function nav_grupos() {
         ],
         'Canales y Microsoft 365' => [
             'icon' => 'cloud', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
+            'areas' => ['Direccion de Tecnologia'],
             'items' => [
                 'modules/identidades.php' => ['Gobierno de Identidades', 'users'],
                 'modules/microsoft365.php' => ['Microsoft 365', 'cloud'],
@@ -113,6 +118,7 @@ function nav_grupos() {
         ],
         'Producción y Operación' => [
             'icon' => 'check', 'roles' => ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO', 'COORDINADOR'],
+            'areas' => ['Direccion de Produccion', 'Direccion de Operacion'],
             'items' => [
                 'modules/produccion.php' => ['Producción', 'inventory'],
                 'modules/operacion.php' => ['Operación', 'check'],
@@ -120,6 +126,7 @@ function nav_grupos() {
         ],
         'Contabilidad' => [
             'icon' => 'dollar', 'roles' => ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO'],
+            'areas' => ['Direccion de Contabilidad'],
             'items' => [
                 'modules/gastos_proveedor.php' => ['Gastos por Proveedor', 'dollar'],
                 'modules/conciliacion_bancaria.php' => ['Conciliación Bancaria', 'dollar'],
@@ -149,6 +156,7 @@ function nav_grupos() {
         ],
         'Talento Humano' => [
             'icon' => 'briefcase', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'RRHH', 'DIRECTOR'],
+            'areas' => ['Direccion Recursos Humanos'],
             'items' => [
                 'modules/rrhh.php' => ['Empleados', 'users'],
                 'modules/sst_perfil.php' => ['SST - Perfil Sociodemográfico', 'shield'],
@@ -296,7 +304,8 @@ $marcaHead = file_exists($marcaConfigPathHead) ? (json_decode(file_get_contents(
             <a class="sidebar-link <?= $activo === 'Canal de Denuncias' ? 'active' : '' ?>" href="<?= $prefix ?>modules/denuncias.php" <?= $activo === 'Canal de Denuncias' ? 'aria-current="page"' : '' ?>><?= icon('shield') ?> Canal de Denuncias</a>
             <?php $modulosExtra = modulos_extra_usuario(); ?>
             <?php foreach (nav_grupos() as $grupo => $def):
-                $tieneAccesoPorRol = tiene_rol($def['roles']);
+                $tieneAccesoPorRol = tiene_rol($def['roles'])
+                    && (empty($def['areas']) || tiene_acceso_universal_modulos() || in_array($u['area_responsable'] ?? null, $def['areas'], true));
                 $items = $def['items'];
                 if (!$tieneAccesoPorRol) {
                     // Aunque el rol no de acceso al grupo completo, se muestran
@@ -423,7 +432,9 @@ $marcaHead = file_exists($marcaConfigPathHead) ? (json_decode(file_get_contents(
 (function () {
     var TODOS_MODULOS = [
         <?php foreach (nav_grupos() as $grupo => $def):
-            $itemsBusqueda = tiene_rol($def['roles']) ? $def['items'] : array_filter($def['items'], fn($href) => in_array($href, $modulosExtra, true), ARRAY_FILTER_USE_KEY);
+            $tieneAccesoGrupoBusqueda = tiene_rol($def['roles'])
+                && (empty($def['areas']) || tiene_acceso_universal_modulos() || in_array($u['area_responsable'] ?? null, $def['areas'], true));
+            $itemsBusqueda = $tieneAccesoGrupoBusqueda ? $def['items'] : array_filter($def['items'], fn($href) => in_array($href, $modulosExtra, true), ARRAY_FILTER_USE_KEY);
             foreach ($itemsBusqueda as $href => [$label, $ic]): ?>
         { label: <?= json_encode($label) ?>, grupo: <?= json_encode($grupo) ?>, href: <?= json_encode($prefix . $href) ?> },
         <?php endforeach; endforeach; ?>
