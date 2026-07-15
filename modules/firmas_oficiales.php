@@ -30,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
     $msg = ['ok', 'Firma eliminada.'];
 }
 
-$firmas = $pdo->query("SELECT * FROM firmas_oficiales")->fetchAll(PDO::FETCH_KEY_PAIR_2 ?? PDO::FETCH_ASSOC);
 $firmasPorArea = [];
 foreach ($pdo->query("SELECT * FROM firmas_oficiales") as $f) { $firmasPorArea[$f['area']] = $f; }
 
