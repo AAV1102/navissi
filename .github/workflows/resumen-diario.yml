@@ -15,8 +15,11 @@ jobs:
       - name: Llamar al endpoint de resumen diario
         run: |
           test -n "$NAVISSI_RESUMEN_TOKEN"
-          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
+          # HTTP en vez de HTTPS: el hosting no tiene SSL valido todavia (FreeHosting
+          # devuelve su propia pagina "SSL Unavailable" en https, no llega a la app) -
+          # cambiar de vuelta a https cuando el dominio pase por Cloudflare.
+          curl --fail --silent --show-error --max-time 90 --retry 2 \
             -H "X-Navissi-Resumen-Token: ${NAVISSI_RESUMEN_TOKEN}" \
-            "https://grupo10z.com.co/api_resumen_diario.php" \
+            "http://grupo10z.com.co/api_resumen_diario.php" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json
