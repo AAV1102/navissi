@@ -288,6 +288,7 @@ $marcaHead = file_exists($marcaConfigPathHead) ? (json_decode(file_get_contents(
         </div>
         <nav class="sidebar-nav">
             <a class="sidebar-link <?= $activo === 'Dashboard' ? 'active' : '' ?>" href="<?= $prefix ?>index.php" <?= $activo === 'Dashboard' ? 'aria-current="page"' : '' ?>><?= icon('dashboard') ?> Dashboard</a>
+            <a class="sidebar-link <?= $activo === 'Mi Portal de Empleado' ? 'active' : '' ?>" href="<?= $prefix ?>modules/portal_empleado.php" <?= $activo === 'Mi Portal de Empleado' ? 'aria-current="page"' : '' ?>><?= icon('users') ?> Mi Portal / Autogestión</a>
             <a class="sidebar-link <?= $activo === 'Mis Accesos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_accesos.php" <?= $activo === 'Mis Accesos' ? 'aria-current="page"' : '' ?>><?= icon('key') ?> Mis Accesos</a>
             <a class="sidebar-link <?= $activo === 'Mis Documentos' ? 'active' : '' ?>" href="<?= $prefix ?>modules/mis_documentos.php" <?= $activo === 'Mis Documentos' ? 'aria-current="page"' : '' ?>><?= icon('folder') ?> Mis Documentos</a>
             <a class="sidebar-link <?= $activo === 'SST - Perfil Sociodemográfico' ? 'active' : '' ?>" href="<?= $prefix ?>modules/sst_perfil.php" <?= $activo === 'SST - Perfil Sociodemográfico' ? 'aria-current="page"' : '' ?>><?= icon('shield') ?> Mi Perfil SST</a>
