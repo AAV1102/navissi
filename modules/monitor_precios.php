@@ -73,7 +73,7 @@ if ($sitioVer) {
 layout_inicio('Monitor de Precios', 'Monitor de Precios', '../');
 ?>
 <h1><?= icon('dollar', 'icon-lg') ?> Monitor de Precios</h1>
-<p class="subtitle">Vigila precios de tiendas online (Shopify, Zara y sitios con datos estructurados). Trae precio lleno, precio con descuento y % de descuento — no solo el precio final.</p>
+<p class="subtitle">Vigila precios de cualquier tienda online: nuestra tienda oficial (navissi.com), cualquier otra tienda Shopify, Zara, o sitios con datos estructurados — todo detectado automáticamente. Trae precio lleno, precio con descuento y % de descuento, no solo el precio final.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <div class="panel">

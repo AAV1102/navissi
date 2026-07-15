@@ -39,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Si este empleado ya tiene cuenta de NAVISSI, su área queda sincronizada
             // automáticamente - así el alcance por área de un Director no se desactualiza.
             sincronizar_usuario_desde_empleado($pdo, $datos['documento'], $datos['area'], $datos['cargo']);
+            // Si quedó INACTIVO (retiro) o se reactivó, se propaga a toda la cuenta
+            // de NAVISSI y al perfil de SST, sin tener que tocar cada módulo a mano.
+            sincronizar_retiro_empleado($pdo, $datos['documento'], $datos['estado'], usuario_actual()['nombre'] ?? null);
         }
     } elseif ($accion === 'eliminar') {
         $pdo->prepare("DELETE FROM empleados WHERE id = ?")->execute([(int) $_POST['id']]);

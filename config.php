@@ -680,6 +680,52 @@ function migrar_esquema(PDO $pdo) {
     // ---- Monitor de precios: vigila tiendas online (Shopify, Zara, u otras con
     // datos estructurados JSON-LD) y guarda cada escaneo para comparar precio
     // lleno, precio con descuento y % de descuento a través del tiempo. ----
+    // ---- SST: perfil sociodemografico por empleado (RRHH / Seguridad y Salud
+    // en el Trabajo). Datos sensibles - solo RRHH/SST/ADMIN ven todos, cada
+    // empleado solo ve y diligencia el suyo. La edad NUNCA se guarda como
+    // numero fijo: se calcula siempre a partir de fecha_nacimiento para que
+    // nunca quede desactualizada. archivado_en marca cuando el empleado fue
+    // retirado, sin borrar el historico (obligacion legal de SST). ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sst_perfil_sociodemografico (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        documento TEXT NOT NULL UNIQUE,
+        nombre TEXT,
+        celular TEXT,
+        nacionalidad TEXT,
+        fecha_nacimiento TEXT,
+        lugar_nacimiento TEXT,
+        tipo_sangre TEXT,
+        contacto_emergencia TEXT,
+        cabeza_hogar TEXT,
+        tipo_vinculacion TEXT,
+        turno_trabajo TEXT,
+        nivel_educacion TEXT,
+        sexo TEXT,
+        direccion TEXT,
+        municipio TEXT,
+        sector TEXT,
+        pertenece_grupo_vulnerado TEXT,
+        tipo_vivienda TEXT,
+        estado_civil TEXT,
+        composicion_familiar TEXT,
+        raza_ayudas TEXT,
+        numero_hijos INTEGER,
+        edades_hijos TEXT,
+        actividad_fisica TEXT,
+        sufre_enfermedad TEXT,
+        restriccion_medica TEXT,
+        uso_tiempo_libre TEXT,
+        estrato_socioeconomico INTEGER,
+        eps TEXT,
+        arl TEXT,
+        afp TEXT,
+        completado_en TEXT,
+        actualizado_por TEXT,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        archivado_en TEXT
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_sst_perfil_documento ON sst_perfil_sociodemografico (documento)");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS monitor_precios_sitios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
@@ -689,6 +735,13 @@ function migrar_esquema(PDO $pdo) {
         creado_por TEXT,
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
+    if ((int) $pdo->query("SELECT COUNT(*) FROM monitor_precios_sitios")->fetchColumn() === 0) {
+        // Tienda oficial propia precargada - el resto de sitios (cualquier
+        // Shopify, Zara, o sitio con datos estructurados) se agregan desde la
+        // interfaz, se detectan solos.
+        $pdo->prepare("INSERT INTO monitor_precios_sitios (nombre, url, tipo, creado_por) VALUES (?,?,?,?)")
+            ->execute(['NAVISSI (tienda oficial)', 'https://navissi.com', 'shopify', 'Sistema']);
+    }
     $pdo->exec("CREATE TABLE IF NOT EXISTS monitor_precios_escaneos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sitio_id INTEGER NOT NULL REFERENCES monitor_precios_sitios(id) ON DELETE CASCADE,
@@ -2327,6 +2380,42 @@ function sincronizar_usuario_desde_empleado(PDO $pdo, ?string $documento, ?strin
     $usuarioId = $stmt->fetchColumn();
     if (!$usuarioId) return;
     $pdo->prepare("UPDATE usuarios_sistema SET area_responsable = ? WHERE id = ?")->execute([$area ?: null, $usuarioId]);
+}
+
+/** Edad calculada siempre a partir de la fecha de nacimiento - nunca se guarda como numero fijo. */
+function sst_edad(?string $fechaNacimiento): ?int {
+    if (!$fechaNacimiento) return null;
+    $ts = strtotime($fechaNacimiento);
+    if (!$ts) return null;
+    $nacimiento = new DateTime('@' . $ts);
+    $hoy = new DateTime('now');
+    return $hoy->diff($nacimiento)->y;
+}
+
+/**
+ * Cuando un empleado pasa a INACTIVO (retiro), esto se propaga a todo el
+ * sitio: se desactiva su cuenta de NAVISSI (ya no puede iniciar sesion) y su
+ * perfil de SST queda archivado (se conserva por obligacion legal, pero deja
+ * de aparecer como "pendiente" y ya no se puede editar desde autogestion).
+ * Si vuelve a ACTIVO, se reactiva todo de nuevo.
+ */
+function sincronizar_retiro_empleado(PDO $pdo, ?string $documento, string $estado, ?string $actor = null): void {
+    if (!$documento) return;
+    $inactivo = $estado === 'INACTIVO';
+
+    $stmt = $pdo->prepare("SELECT id, activo FROM usuarios_sistema WHERE documento = ?");
+    $stmt->execute([$documento]);
+    $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($usuario && (int) $usuario['activo'] !== ($inactivo ? 0 : 1)) {
+        $pdo->prepare("UPDATE usuarios_sistema SET activo = ? WHERE id = ?")->execute([$inactivo ? 0 : 1, $usuario['id']]);
+    }
+
+    $pdo->prepare("UPDATE sst_perfil_sociodemografico SET archivado_en = ? WHERE documento = ?")
+        ->execute([$inactivo ? gmdate('Y-m-d H:i:s') : null, $documento]);
+
+    hoja_vida_registrar($pdo, 'EMPLEADO', $documento, $inactivo ? 'RETIRADO' : 'REACTIVADO',
+        $inactivo ? 'Empleado marcado INACTIVO: cuenta desactivada y perfil SST archivado en todo el sitio.' : 'Empleado reactivado: cuenta y perfil SST reactivados.',
+        $actor ?: 'Sistema', null);
 }
 
 /**
