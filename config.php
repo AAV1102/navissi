@@ -677,6 +677,40 @@ function migrar_esquema(PDO $pdo) {
         expira_en TEXT,
         usado_en TEXT
     )");
+    // ---- Monitor de precios: vigila tiendas online (Shopify, Zara, u otras con
+    // datos estructurados JSON-LD) y guarda cada escaneo para comparar precio
+    // lleno, precio con descuento y % de descuento a través del tiempo. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS monitor_precios_sitios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        url TEXT NOT NULL,
+        tipo TEXT NOT NULL DEFAULT 'jsonld',
+        activo INTEGER DEFAULT 1,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS monitor_precios_escaneos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sitio_id INTEGER NOT NULL REFERENCES monitor_precios_sitios(id) ON DELETE CASCADE,
+        productos_encontrados INTEGER DEFAULT 0,
+        error TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS monitor_precios_productos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        escaneo_id INTEGER NOT NULL REFERENCES monitor_precios_escaneos(id) ON DELETE CASCADE,
+        clave TEXT NOT NULL,
+        producto TEXT,
+        variante TEXT,
+        precio REAL,
+        precio_antes REAL,
+        descuento_pct REAL,
+        disponible INTEGER DEFAULT 1,
+        url TEXT
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_monitor_precios_escaneos_sitio ON monitor_precios_escaneos (sitio_id, creado_en DESC)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_monitor_precios_productos_escaneo ON monitor_precios_productos (escaneo_id, clave)");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS proveedores_actualizaciones (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         contrato_id INTEGER REFERENCES contratos(id) ON DELETE CASCADE,
@@ -2612,6 +2646,24 @@ function sede_id_por_nombre(PDO $pdo, ?string $nombre, bool $crearSiNoExiste = t
 function limpio($v) {
     if ($v === null) return null;
     $v = trim((string) $v);
+    return $v === '' ? null : $v;
+}
+
+/**
+ * Limpia HTML que viene de un editor WYSIWYG (contenteditable) antes de
+ * guardarlo: solo deja etiquetas de formato basico y quita atributos on*
+ * (onclick, onerror...) y href/src con "javascript:" para evitar XSS
+ * guardado. El HTML resultante se puede imprimir sin volver a escapar
+ * (a diferencia de limpio(), que no filtra nada).
+ */
+function limpio_html($v): ?string {
+    if ($v === null) return null;
+    $v = trim((string) $v);
+    if ($v === '' || $v === '<br>') return null;
+    $permitidas = '<b><strong><i><em><u><ul><ol><li><br><p><a><span>';
+    $v = strip_tags($v, $permitidas);
+    $v = preg_replace('/\son\w+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)/i', '', $v);
+    $v = preg_replace('/(href|src)\s*=\s*(["\']?)\s*javascript:[^"\'>]*\2/i', '$1="#"', $v);
     return $v === '' ? null : $v;
 }
 

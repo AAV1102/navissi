@@ -172,6 +172,18 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
                 <tr><th>Última actividad</th><td class="small"><?= e($ticket['actualizado_en']) ?></td></tr>
                 <tr><th>SLA límite</th><td class="small"><?= e($ticket['sla_limite']) ?: '—' ?></td></tr>
             </table>
+            <?php if (!empty($ticket['descripcion'])): ?>
+            <h4 style="margin-top:14px;">Descripción</h4>
+            <div class="wysiwyg-contenido"><?= $ticket['descripcion'] /* ya limpiado con limpio_html() al guardar */ ?></div>
+            <?php endif; ?>
+            <?php $adjuntosTicket = $adjuntosPorComentario[''] ?? []; if ($adjuntosTicket): ?>
+            <h4 style="margin-top:14px;">Adjuntos del ticket</h4>
+            <ul class="lista-adjuntos">
+                <?php foreach ($adjuntosTicket as $a): ?>
+                <li><a href="descargar_adjunto_ticket.php?id=<?= (int) $a['id'] ?>"><?= icon('file') ?> <?= e($a['nombre_archivo']) ?></a> <span class="small">(<?= number_format($a['tamano'] / 1024, 0) ?> KB)</span></li>
+                <?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
         </div>
         <?php if ($equipoRelacionado && tiene_rol(['ADMIN', 'TI'])): ?>
         <div class="panel" style="border-left:4px solid var(--teal-500);">

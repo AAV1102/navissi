@@ -263,4 +263,61 @@
         btn.setAttribute('aria-label', mostrando ? 'Mostrar contraseña' : 'Ocultar contraseña');
         btn.classList.toggle('activo', !mostrando);
     });
+
+    // Editor de texto enriquecido (WYSIWYG) reutilizable: cualquier
+    // <textarea class="wysiwyg"> en cualquier formulario del sitio se
+    // convierte en un editor con barra de negrita/cursiva/listas/enlaces,
+    // sin depender de ninguna librería externa. Al enviar el formulario, el
+    // HTML del editor se vuelve a copiar al textarea (oculto) para que el
+    // backend lo reciba como siempre, sin tener que cambiar cada módulo.
+    function inicializarWysiwyg() {
+        document.querySelectorAll('textarea.wysiwyg:not([data-wysiwyg-listo])').forEach(function (textarea) {
+            textarea.setAttribute('data-wysiwyg-listo', '1');
+            textarea.style.display = 'none';
+
+            var envoltorio = document.createElement('div');
+            envoltorio.className = 'wysiwyg-envoltorio';
+
+            var barra = document.createElement('div');
+            barra.className = 'wysiwyg-barra';
+            var botones = [
+                ['bold', 'N', 'Negrita'], ['italic', 'I', 'Cursiva'], ['underline', 'S', 'Subrayado'],
+                ['insertUnorderedList', '•', 'Lista'], ['insertOrderedList', '1.', 'Lista numerada'],
+                ['createLink', '🔗', 'Insertar enlace'], ['removeFormat', '×', 'Quitar formato'],
+            ];
+            botones.forEach(function (b) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'wysiwyg-btn';
+                btn.title = b[2];
+                btn.textContent = b[1];
+                btn.addEventListener('click', function () {
+                    editable.focus();
+                    if (b[0] === 'createLink') {
+                        var url = prompt('URL del enlace:', 'https://');
+                        if (url) document.execCommand('createLink', false, url);
+                    } else {
+                        document.execCommand(b[0], false, null);
+                    }
+                });
+                barra.appendChild(btn);
+            });
+
+            var editable = document.createElement('div');
+            editable.className = 'wysiwyg-editable';
+            editable.contentEditable = 'true';
+            editable.innerHTML = textarea.value || '';
+            editable.setAttribute('data-placeholder', textarea.placeholder || 'Escribe aquí...');
+            editable.addEventListener('input', function () { textarea.value = editable.innerHTML; });
+
+            envoltorio.appendChild(barra);
+            envoltorio.appendChild(editable);
+            textarea.parentNode.insertBefore(envoltorio, textarea);
+
+            var form = textarea.closest('form');
+            if (form) form.addEventListener('submit', function () { textarea.value = editable.innerHTML; });
+        });
+    }
+    inicializarWysiwyg();
+    window.navissiWysiwygRefrescar = inicializarWysiwyg; // por si un panel se carga despues (ej. AJAX)
 })();

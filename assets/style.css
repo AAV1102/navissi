@@ -391,6 +391,20 @@ form.inline { display:inline; }
 }
 .btn-mostrar-clave:hover { background:var(--bg); color:var(--ink-900); }
 .btn-mostrar-clave.activo { color:var(--accent-600); }
+
+.wysiwyg-envoltorio { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
+.wysiwyg-barra { display:flex; gap:2px; padding:6px; border-bottom:1px solid var(--line); background:var(--bg); flex-wrap:wrap; }
+.wysiwyg-btn {
+    min-width:28px; height:28px; padding:0 6px; border:1px solid transparent; border-radius:5px;
+    background:transparent; color:var(--ink-700); cursor:pointer; font-size:13px; font-weight:600;
+}
+.wysiwyg-btn:hover { background:var(--card); border-color:var(--line); }
+.wysiwyg-editable {
+    min-height:120px; padding:10px 12px; outline:none; font-size:14px; line-height:1.5; color:var(--ink-900);
+}
+.wysiwyg-editable:empty::before { content: attr(data-placeholder); color:var(--ink-500); }
+.wysiwyg-editable ul, .wysiwyg-editable ol { margin:6px 0 6px 20px; }
+.wysiwyg-editable a { color:var(--accent-600); }
 .btn-mostrar-clave .icon { width:18px; height:18px; }
 .btn-primary-lg {
     margin-top:20px; width:100%; justify-content:center; background:var(--accent-600); padding:12px; font-size:14.5px;

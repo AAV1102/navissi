@@ -2,8 +2,25 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 require_once __DIR__ . '/../lib/ia_triage.php';
+require_once __DIR__ . '/../lib/correo_a_tickets.php';
 $pdo = db();
 $msg = null;
+$dirAdjuntos = tickets_adjuntos_dir();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'revisar_correo') {
+    // Refresco manual, obligatorio y visible: el usuario dispara la revision
+    // de buzones el mismo desde Mesa de Ayuda (no solo desde un cron externo
+    // ni desde una pagina de administracion aparte) y ve de inmediato cuantos
+    // tickets nuevos llegaron.
+    $resultado = sincronizar_correo_a_tickets($pdo);
+    if ($resultado['errores']) {
+        $msg = ['error', 'Revisado con errores: ' . implode(' | ', $resultado['errores'])];
+    } elseif ($resultado['creados'] > 0) {
+        $msg = ['ok', "Llegaron {$resultado['creados']} ticket(s) nuevo(s) desde el correo."];
+    } else {
+        $msg = ['ok', 'Revisado — no hay correos nuevos desde la última vez.'];
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear') {
     $titulo = limpio($_POST['titulo'] ?? null);
@@ -25,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
         $stmt = $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, sla_limite, asignado_a, solicitante_area)
             VALUES (?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
-            $titulo, limpio($_POST['descripcion'] ?? null), limpio($_POST['categoria'] ?? null) ?: 'SOPORTE',
+            $titulo, limpio_html($_POST['descripcion'] ?? null), limpio($_POST['categoria'] ?? null) ?: 'SOPORTE',
             $prioridad, $sedeId,
             $solicitanteNombre, $solicitanteContacto, $slaLimite,
             limpio($_POST['asignado_a'] ?? null), $areaSolicitante,
@@ -34,6 +51,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
         $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
             ->execute([$nuevoId, $_POST['solicitante'] ?? 'Sistema', 'Ticket creado.', 'SISTEMA']);
         hoja_vida_registrar($pdo, 'TICKET', (string) $nuevoId, 'CREADO', $titulo, $_POST['solicitante'] ?? 'Sistema', $nuevoId);
+
+        // Adjuntos desde la creación (fotos, video corto, PDF, evidencia) - mismas
+        // reglas de tamaño/tipo que los adjuntos de comentarios en ticket_detalle.php.
+        if (!empty($_FILES['adjuntos']['tmp_name'][0])) {
+            $permitidos = [
+                'application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
+                'video/mp4' => 'mp4', 'text/plain' => 'txt', 'text/csv' => 'csv',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+            ];
+            foreach ($_FILES['adjuntos']['tmp_name'] as $i => $tmp) {
+                if (!$tmp) continue;
+                $original = basename($_FILES['adjuntos']['name'][$i]);
+                $tamano = (int) ($_FILES['adjuntos']['size'][$i] ?? 0);
+                if ($tamano <= 0 || $tamano > 25 * 1024 * 1024) continue; // 25MB (video ocupa mas que un PDF)
+                $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp) ?: 'application/octet-stream';
+                if (!isset($permitidos[$mime])) continue;
+                $rutaGuardada = bin2hex(random_bytes(18)) . '.' . $permitidos[$mime];
+                if (move_uploaded_file($tmp, $dirAdjuntos . '/' . $rutaGuardada)) {
+                    $pdo->prepare("INSERT INTO tickets_adjuntos (ticket_id, nombre_archivo, ruta, tipo_mime, tamano, subido_por) VALUES (?,?,?,?,?,?)")
+                        ->execute([$nuevoId, $original, $rutaGuardada, $mime, $tamano, $solicitanteNombre ?: 'Sistema']);
+                }
+            }
+        }
 
         $notificacion = plantilla_renderizar($pdo, 'TICKET_CREADO', ['id' => $nuevoId, 'titulo' => $titulo, 'solicitante' => $_POST['solicitante'] ?? 'el solicitante']);
         if ($notificacion) {
@@ -122,6 +163,10 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
         <h1><?= icon('ticket', 'icon-lg') ?> Tickets</h1>
         <p class="subtitle">Tickets de tiendas y oficina hacia TI - correo, WhatsApp, portal y creación manual, todo en un solo lugar.</p>
     </div>
+    <form method="post">
+        <input type="hidden" name="accion" value="revisar_correo">
+        <button type="submit" class="btn-secondary"><?= icon('zap') ?> Revisar correos ahora</button>
+    </form>
 </div>
 
 <div class="cards">
@@ -135,7 +180,7 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
 
 <div class="panel">
     <h3><?= icon('plus') ?> Nuevo ticket</h3>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         <input type="hidden" name="accion" value="crear">
         <div class="form-2col">
             <div>
@@ -152,7 +197,9 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
                 <label>Título del ticket *</label>
                 <input type="text" name="titulo" required placeholder="Agrega un breve resumen del ticket">
                 <label>Descripción</label>
-                <textarea name="descripcion" rows="6" style="width:100%;" placeholder="Introduce los detalles del ticket aquí"></textarea>
+                <textarea name="descripcion" class="wysiwyg" rows="6" style="width:100%;" placeholder="Introduce los detalles del ticket aquí"></textarea>
+                <label style="margin-top:10px;">Adjuntar archivos (fotos, video, PDF, evidencia)</label>
+                <input type="file" name="adjuntos[]" multiple accept="image/jpeg,image/png,image/webp,video/mp4,application/pdf,.docx,.xlsx,.csv,.txt">
             </div>
             <div>
                 <p class="small" style="text-transform:uppercase;letter-spacing:.02em;font-weight:600;color:var(--ink-500);">Asignación y tipo</p>
