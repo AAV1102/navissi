@@ -317,7 +317,9 @@ function migrar_esquema(PDO $pdo) {
     // pero el trámite final lo hace RRHH). Si queda vacío, se comporta como antes
     // (el ticket va al área que aprobó). ----
     $columnasCatalogo = array_column($pdo->query("PRAGMA table_info(catalogo_servicios)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    if (!in_array('area_tramite', $columnasCatalogo, true)) {
+    // En una instalación nueva la tabla se crea después en
+    // migrar_fases_operativas(), cuyo CREATE TABLE ya incluye esta columna.
+    if ($columnasCatalogo && !in_array('area_tramite', $columnasCatalogo, true)) {
         $pdo->exec("ALTER TABLE catalogo_servicios ADD COLUMN area_tramite TEXT");
     }
 
@@ -2207,7 +2209,8 @@ function crear_esquema(PDO $pdo) {
 function iniciar_sesion_segura(): void {
     if (session_status() !== PHP_SESSION_NONE) return;
     $segura = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+        || (($_SERVER['HTTP_X_NAVISSI_ORIGINAL_PROTO'] ?? '') === 'https');
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
@@ -2223,7 +2226,8 @@ function iniciar_sesion_segura(): void {
 function navissi_es_https(): bool {
     return (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
         || strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0])) === 'https'
-        || strtolower((string) ($_SERVER['HTTP_CF_VISITOR'] ?? '')) === '{"scheme":"https"}';
+        || strtolower((string) ($_SERVER['HTTP_CF_VISITOR'] ?? '')) === '{"scheme":"https"}'
+        || strtolower((string) ($_SERVER['HTTP_X_NAVISSI_ORIGINAL_PROTO'] ?? '')) === 'https';
 }
 
 function navissi_url_publica(string $ruta = ''): string {

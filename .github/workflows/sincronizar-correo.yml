@@ -1,8 +1,8 @@
 name: Sincronizar correo Mesa de Ayuda
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'
+  # La ejecución periódica vive en Cloudflare Workers (cada 2 minutos).
+  # Este flujo queda disponible como respaldo manual, sin duplicar llamadas.
   workflow_dispatch: {}
 
 jobs:

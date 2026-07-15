@@ -1,0 +1,11 @@
+{
+  "name": "navissi-freehosting-ssl",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-15",
+  "account_id": "77005d58d4e735db9051b288f6f7011a",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "grupo10z.com.co/*", "zone_name": "grupo10z.com.co" },
+    { "pattern": "www.grupo10z.com.co/*", "zone_name": "grupo10z.com.co" }
+  ]
+}
