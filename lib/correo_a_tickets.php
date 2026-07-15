@@ -47,25 +47,41 @@ function guardar_config_imap(PDO $pdo, array $cfg): void {
  * de soporte (TI, COORDINADOR). Devuelve el nombre asignado o null si no hay
  * ningún técnico activo disponible (el ticket queda sin asignar, como antes).
  */
-function autoasignar_tecnico(PDO $pdo): ?string {
-    $stmt = $pdo->query("
+function usuario_soporte_es_prueba(array $usuario): bool {
+    $email = strtolower(trim((string)($usuario['email'] ?? '')));
+    $nombre = strtolower(trim((string)($usuario['nombre'] ?? '')));
+    return str_ends_with($email, '.local') || str_starts_with($email, 'prueba.') || str_starts_with($nombre, 'prueba ');
+}
+
+function autoasignar_tecnico(PDO $pdo, ?string $area = null): ?string {
+    $sql = "
         SELECT u.nombre,
+               u.email,
                (SELECT COUNT(*) FROM tickets t WHERE t.asignado_a = u.nombre AND t.estado NOT IN ('CERRADO','RESUELTO')) AS carga
         FROM usuarios_sistema u
-        WHERE u.activo = 1 AND u.rol IN ('TI','COORDINADOR')
+        WHERE u.activo = 1 AND u.rol IN ('TI','COORDINADOR','ANALISTA','ADMIN','DIRECTOR')
+          AND u.email NOT LIKE '%.local' AND u.email NOT LIKE 'prueba.%' AND lower(u.nombre) NOT LIKE 'prueba %'";
+    $params = [];
+    if ($area) { $sql .= " AND lower(trim(COALESCE(u.area_responsable,'')))=lower(trim(?))"; $params[] = $area; }
+    $sql .= "
         ORDER BY carga ASC, u.nombre ASC
-        LIMIT 1
-    ");
+        LIMIT 1";
+    $stmt = $pdo->prepare($sql); $stmt->execute($params);
     $fila = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
-    return $fila['nombre'] ?? null;
+    return ($fila && !usuario_soporte_es_prueba($fila)) ? $fila['nombre'] : null;
 }
 
 /** Envía al remitente original la confirmación de creación del ticket, con el técnico asignado si aplica. */
-function correo_notificar_creacion(string $para, string $paraNombre, int $ticketId, string $asunto, ?string $tecnico): void {
+function correo_notificar_creacion(string $para, string $paraNombre, int $ticketId, string $asunto, ?string $tecnico, string $estado = 'ABIERTO', ?string $departamento = null): void {
     if (!filter_var($para, FILTER_VALIDATE_EMAIL)) return;
-    $lineaTecnico = $tecnico
-        ? "<p>Tu caso fue asignado al técnico <strong>{$tecnico}</strong>, quien se pondrá en contacto contigo.</p>"
-        : "<p>Tu caso está en cola y será asignado a un técnico en breve.</p>";
+    if ($estado === 'RESUELTO POR IA') {
+        $lineaTecnico = '<p>Nuestro agente virtual revisó el caso y envió una solución automática. El ticket quedó resuelto por IA.</p>';
+    } elseif ($tecnico) {
+        $lineaTecnico = '<p>El agente virtual realizó la revisión inicial y escaló el caso a <strong>' . e($tecnico) . '</strong>'
+            . ($departamento ? ' del departamento <strong>' . e($departamento) . '</strong>' : '') . '.</p>';
+    } else {
+        $lineaTecnico = '<p>Nuestro agente virtual inició la revisión y el diagnóstico. Solo lo asignará a una persona si no puede resolverlo automáticamente.</p>';
+    }
     $cuerpo = "<p>Hola " . e($paraNombre) . ",</p><p>Recibimos tu solicitud y creamos el ticket <strong>#{$ticketId}</strong>: \"" . e($asunto) . "\".</p>{$lineaTecnico}<p>Te avisaremos por este mismo correo cuando haya novedades.</p>";
     enviar_correo($para, "Ticket #{$ticketId} creado - Mesa de Ayuda", $cuerpo, $paraNombre);
 }
@@ -108,7 +124,6 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
         return false;
     }
 
-    $tecnico = autoasignar_tecnico($pdo);
     $slaLimite = gmdate('Y-m-d H:i:s', strtotime('+24 hours'));
     // El cuerpo del correo es contenido NO confiable (lo escribe quien sea que
     // envie el correo) - se limpia con limpio_html() antes de guardarlo, porque
@@ -118,12 +133,10 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
     $cuerpoSeguro = limpio_html($cuerpo) ?? '';
     $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, solicitante, solicitante_contacto, asignado_a, sla_limite, origen)
         VALUES (?,?,?,?,?,?,?,?,?)")
-        ->execute(["[{$buzon}] {$asunto}", $cuerpoSeguro, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, $tecnico, $slaLimite, 'CORREO']);
+        ->execute(["[{$buzon}] {$asunto}", $cuerpoSeguro, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, null, $slaLimite, 'CORREO']);
     $ticketId = $pdo->lastInsertId();
 
-    $comentarioSistema = $tecnico
-        ? "Ticket creado automáticamente desde el correo {$buzon}. Asignado automáticamente a {$tecnico}."
-        : "Ticket creado automáticamente desde el correo {$buzon}. Sin técnico disponible para asignación automática.";
+    $comentarioSistema = "Ticket creado automáticamente desde el correo {$buzon}. Enviado primero al agente virtual para revisión y diagnóstico.";
     $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
         ->execute([$ticketId, 'Sistema', $comentarioSistema, 'SISTEMA']);
 
@@ -132,7 +145,10 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
 
     hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'CREADO_DESDE_CORREO', $asunto, $remitente, $ticketId);
     ia_triage_ticket($pdo, $ticketId);
-    correo_notificar_creacion($remitente, $remitenteNombre, $ticketId, $asunto, $tecnico);
+    $estadoFinal = $pdo->prepare('SELECT estado,asignado_a,departamento FROM tickets WHERE id=?');
+    $estadoFinal->execute([$ticketId]); $final = $estadoFinal->fetch(PDO::FETCH_ASSOC) ?: [];
+    $tecnico = $final['asignado_a'] ?? null;
+    correo_notificar_creacion($remitente, $remitenteNombre, $ticketId, $asunto, $tecnico, $final['estado'] ?? 'ABIERTO', $final['departamento'] ?? null);
     correo_notificar_tecnico_respaldo($pdo, (int) $ticketId, $tecnico, $asunto);
     return true;
 }

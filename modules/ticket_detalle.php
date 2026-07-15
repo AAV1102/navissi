@@ -157,7 +157,7 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
 <h1><?= icon('ticket','icon-lg') ?> #<?= (int)$ticket['id'] ?> — <?= e($ticket['titulo']) ?>
     <span class="badge <?= $ticket['estado']==='CERRADO'?'badge-otro':($ticket['estado']==='RESUELTO POR IA'?'badge-activo':'badge-err') ?>"><?= e($ticket['estado']) ?></span>
 </h1>
-<p class="subtitle"><?= e($ticket['categoria']) ?> · Prioridad <?= e($ticket['prioridad']) ?> · Sede: <?= e($ticket['sede_nombre']) ?: '—' ?> · Origen: <?= e($ticket['origen'] ?? 'MANUAL') ?></p>
+<p class="subtitle"><?= e($ticket['categoria']) ?><?= !empty($ticket['departamento']) ? ' · Departamento: '.e($ticket['departamento']) : '' ?> · Prioridad <?= e($ticket['prioridad']) ?> · Sede: <?= e($ticket['sede_nombre']) ?: '—' ?> · Origen: <?= e($ticket['origen'] ?? 'MANUAL') ?></p>
 
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= icon('check') ?> <?= e($msg[1]) ?></div><?php endif; ?>
 
@@ -168,6 +168,8 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
             <table class="deftable">
                 <tr><th>Solicitante</th><td><?= e($ticket['solicitante']) ?: '—' ?></td></tr>
                 <tr><th>Contacto</th><td><?= e($ticket['solicitante_contacto']) ?: '—' ?></td></tr>
+                <tr><th>Departamento</th><td><?= e($ticket['departamento'] ?? '') ?: 'Pendiente de clasificación' ?></td></tr>
+                <tr><th>Revisión IA</th><td><?= !empty($ticket['diagnostico_ia']) ? e($ticket['diagnostico_ia']).' (confianza '.(int)($ticket['confianza_ia']??0).'%)' : 'Pendiente' ?></td></tr>
                 <tr><th>Creado</th><td class="small"><?= e($ticket['creado_en']) ?></td></tr>
                 <tr><th>Última actividad</th><td class="small"><?= e($ticket['actualizado_en']) ?></td></tr>
                 <tr><th>SLA límite</th><td class="small"><?= e($ticket['sla_limite']) ?: '—' ?></td></tr>

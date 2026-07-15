@@ -26,6 +26,24 @@ function ia_clasificar_categoria(IAClient $client, array $ticket, array $categor
     return $nombresValidos[0] ?? 'SOPORTE';
 }
 
+/** Agente local de respaldo: enruta aun cuando el proveedor externo de IA no esté disponible. */
+function ia_clasificar_determinista(array $ticket, array $categorias): string {
+    $texto = mb_strtoupper(($ticket['titulo'] ?? '') . ' ' . ($ticket['descripcion'] ?? ''), 'UTF-8');
+    $reglas = [
+        'SIESA / FACTURACIÓN' => ['SIESA','FACTURA','FACTURACIÓN','CONTABLE','CONTABILIDAD','PROVEEDOR','PAGO','NOTA CRÉDITO'],
+        'INFRAESTRUCTURA' => ['INFRAESTRUCTURA','INTERNET','WIFI','RED','ROUTER','SWITCH','SERVIDOR','IMPRESORA','EQUIPO','COMPUTADOR','HARDWARE'],
+        'TECNOLOGÍA Y SOFTWARE' => ['SOFTWARE','PROGRAMA','APLICACIÓN','ACCESO','CONTRASEÑA','CLAVE','MICROSOFT','OFFICE','CORREO'],
+        'GESTIÓN HUMANA' => ['NÓMINA','NOMINA','VACACIONES','CONTRATO','INCAPACIDAD','RRHH','RECURSOS HUMANOS'],
+        'SERVICIO AL CLIENTE' => ['CLIENTE','PQRS','QUEJA','RECLAMO','DEVOLUCIÓN','GARANTÍA'],
+        'COMERCIAL' => ['VENTA','COMERCIAL','COTIZACIÓN','PEDIDO','DESCUENTO'],
+    ];
+    foreach ($reglas as $categoria=>$palabras) {
+        foreach ($palabras as $palabra) if (str_contains($texto, $palabra)) return $categoria;
+    }
+    foreach ($categorias as $c) if (strcasecmp($c['nombre'], 'SOPORTE GENERAL') === 0) return $c['nombre'];
+    return $categorias[0]['nombre'] ?? 'SOPORTE GENERAL';
+}
+
 /**
  * Autogestión con IA: cuando entra un ticket nuevo (de cualquier canal):
  *  1. Clasifica el ticket en una categoría/área real (RRHH, TI, INVENTARIO...).
@@ -37,10 +55,7 @@ function ia_clasificar_categoria(IAClient $client, array $ticket, array $categor
  */
 function ia_triage_ticket(PDO $pdo, int $ticketId) {
     $configPath = private_path('ia_config.json');
-    if (!file_exists($configPath)) return; // IA no configurada: no hace nada, el ticket sigue como manual
-
-    $config = leer_config_json($configPath);
-    if (empty($config['api_key'])) return;
+    $config = file_exists($configPath) ? leer_config_json($configPath) : [];
 
     $stmt = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
     $stmt->execute([$ticketId]);
@@ -50,18 +65,25 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
     $categorias = $pdo->query("SELECT nombre, descripcion, area_responsable, tecnico_default FROM categorias_tickets WHERE activa = 1 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
     if (!$categorias) return; // sin categorías configuradas, no hay a qué clasificar
 
-    try {
-        $client = new IAClient($config['proveedor'] ?? 'anthropic', $config['api_key']);
-        $categoriaDetectada = ia_clasificar_categoria($client, $ticket, $categorias);
-    } catch (IAException $e) {
-        hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'IA_ERROR', $e->getMessage(), 'IA', $ticketId);
-        return;
+    $client = null;
+    $categoriaDetectada = ia_clasificar_determinista($ticket, $categorias);
+    if (!empty($config['api_key'])) {
+        try {
+            $client = new IAClient($config['proveedor'] ?? 'anthropic', $config['api_key']);
+            $categoriaDetectada = ia_clasificar_categoria($client, $ticket, $categorias);
+        } catch (IAException $e) {
+            hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'IA_ERROR', $e->getMessage() . ' Se aplicó el agente local de respaldo.', 'IA', $ticketId);
+        }
     }
 
-    // El ticket queda re-categorizado de inmediato, aunque la IA no logre resolverlo sola.
-    $pdo->prepare("UPDATE tickets SET categoria = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$categoriaDetectada, $ticketId]);
     $catInfo = current(array_filter($categorias, fn($c) => $c['nombre'] === $categoriaDetectada)) ?: null;
     $tecnicoDefault = $catInfo['tecnico_default'] ?? null;
+    $departamento = $catInfo['area_responsable'] ?? null;
+    $diagnosticoInicial = "Revisión automática completada. Clasificación: {$categoriaDetectada}" . ($departamento ? ". Departamento responsable: {$departamento}." : '.');
+    $pdo->prepare("UPDATE tickets SET categoria=?,departamento=?,diagnostico_ia=?,confianza_ia=?,actualizado_en=CURRENT_TIMESTAMP WHERE id=?")
+        ->execute([$categoriaDetectada,$departamento,$diagnosticoInicial,$client ? 85 : 65,$ticketId]);
+    $pdo->prepare("INSERT INTO tickets_comentarios(ticket_id,autor,comentario,tipo) VALUES(?,?,?,'IA')")
+        ->execute([$ticketId,'Agente virtual',$diagnosticoInicial . ' Buscando una solución segura en la base de conocimiento.']);
 
     // Base de conocimiento SOLO de la categoría detectada — nunca mezcla el contexto de otra área.
     $stmtKb = $pdo->prepare("SELECT titulo, contenido FROM base_conocimiento WHERE categoria = ? LIMIT 8");
@@ -81,11 +103,29 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
         . "tu respuesta EXACTAMENTE con la línea: ESCALAR\n\n"
         . "BASE DE CONOCIMIENTO DE \"{$categoriaDetectada}\":\n{$contextoArticulos}";
 
-    try {
-        $respuesta = $client->preguntar($systemPrompt, "Título: {$ticket['titulo']}\nDescripción: {$ticket['descripcion']}");
-    } catch (IAException $e) {
-        hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'IA_ERROR', $e->getMessage(), 'IA', $ticketId);
-        return;
+    if ($client) {
+        try {
+            $respuesta = $client->preguntar($systemPrompt, "Título: {$ticket['titulo']}\nDescripción: {$ticket['descripcion']}");
+        } catch (IAException $e) {
+            hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'IA_ERROR', $e->getMessage(), 'IA', $ticketId);
+            $respuesta = 'No fue posible completar una solución automática confiable. El caso requiere revisión humana del departamento responsable. ESCALAR';
+        }
+    } else {
+        // El agente local solo autogestiona cuando encuentra una coincidencia
+        // fuerte con un artículo aprobado de la misma categoría.
+        $textoTicket = mb_strtoupper(($ticket['titulo'] ?? '').' '.($ticket['descripcion'] ?? ''),'UTF-8');
+        $mejorArticulo = null; $mejorPuntaje = 0;
+        foreach ($articulos as $articulo) {
+            $palabras = array_unique(preg_split('/[^\pL\pN]+/u', mb_strtoupper($articulo['titulo'],'UTF-8'), -1, PREG_SPLIT_NO_EMPTY));
+            $puntaje = 0;
+            foreach ($palabras as $palabra) if (mb_strlen($palabra) >= 5 && str_contains($textoTicket,$palabra)) $puntaje++;
+            if ($puntaje > $mejorPuntaje) { $mejorPuntaje=$puntaje; $mejorArticulo=$articulo; }
+        }
+        $respuesta = ($mejorArticulo && $mejorPuntaje >= 2 && mb_strlen(trim($mejorArticulo['contenido'])) >= 50)
+            ? trim($mejorArticulo['contenido'])."\nRESUELTO"
+            : ($articulos
+                ? 'La base de conocimiento no contiene una coincidencia suficientemente segura. El caso será escalado con el diagnóstico preliminar. ESCALAR'
+                : 'No existe todavía una solución aprobada en la base de conocimiento para este caso. Se requiere revisión humana del departamento responsable. ESCALAR');
     }
 
     $resuelto = str_contains($respuesta, 'RESUELTO');
@@ -107,6 +147,14 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
         $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
             ->execute([$ticketId, 'Agente IA', $textoLimpio, 'IA']);
 
+        // El técnico configurado debe ser una cuenta real, activa y del mismo departamento.
+        if ($tecnicoDefault) {
+            $validar = $pdo->prepare("SELECT nombre,email FROM usuarios_sistema WHERE activo=1 AND (nombre=? OR email=?) AND email NOT LIKE '%.local' AND email NOT LIKE 'prueba.%' AND lower(nombre) NOT LIKE 'prueba %' AND (? IS NULL OR lower(trim(COALESCE(area_responsable,'')))=lower(trim(?))) LIMIT 1");
+            $validar->execute([$tecnicoDefault,$tecnicoDefault,$departamento,$departamento]);
+            if (!$validar->fetch(PDO::FETCH_ASSOC)) $tecnicoDefault = null;
+        }
+        if (!$tecnicoDefault && function_exists('autoasignar_tecnico')) $tecnicoDefault = autoasignar_tecnico($pdo, $departamento);
+
         if ($tecnicoDefault) {
             $pdo->prepare("UPDATE tickets SET asignado_a = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$tecnicoDefault, $ticketId]);
             $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
@@ -125,7 +173,7 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
             // Notifica también al técnico real (si está registrado en NAVISSI).
             // El campo tecnico_default es texto histórico, por eso se resuelve
             // por nombre y nunca se intenta adivinar un dominio de correo.
-            $stmtTecnico = $pdo->prepare("SELECT email, nombre FROM usuarios_sistema WHERE activo = 1 AND (nombre = ? OR email = ?) LIMIT 1");
+            $stmtTecnico = $pdo->prepare("SELECT email, nombre FROM usuarios_sistema WHERE activo=1 AND (nombre=? OR email=?) AND email NOT LIKE '%.local' AND email NOT LIKE 'prueba.%' AND lower(nombre) NOT LIKE 'prueba %' LIMIT 1");
             $stmtTecnico->execute([$tecnicoDefault, $tecnicoDefault]);
             $tecnico = $stmtTecnico->fetch(PDO::FETCH_ASSOC) ?: null;
             $enviadoTecnico = false;

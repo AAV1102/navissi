@@ -290,6 +290,10 @@ function migrar_fases_operativas(PDO $pdo): void {
 }
 
 function migrar_esquema(PDO $pdo) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS departamentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL UNIQUE,
+        responsable TEXT, estado TEXT DEFAULT 'ACTIVO'
+    )");
     $columnasSedes = array_column($pdo->query("PRAGMA table_info(sedes)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     $nuevas = [
         'zona' => 'TEXT', 'coordinadora' => 'TEXT', 'coordinadora_celular' => 'TEXT',
@@ -321,6 +325,20 @@ function migrar_esquema(PDO $pdo) {
     // migrar_fases_operativas(), cuyo CREATE TABLE ya incluye esta columna.
     if ($columnasCatalogo && !in_array('area_tramite', $columnasCatalogo, true)) {
         $pdo->exec("ALTER TABLE catalogo_servicios ADD COLUMN area_tramite TEXT");
+    }
+
+    // La Mesa de Servicio usa las mismas áreas organizacionales del sitio.
+    $pdo->exec("INSERT OR IGNORE INTO departamentos(nombre)
+        SELECT DISTINCT trim(area) FROM empleados WHERE trim(COALESCE(area,'')) != ''");
+    $columnasUsuariosArea = array_column($pdo->query("PRAGMA table_info(usuarios_sistema)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (in_array('area_responsable', $columnasUsuariosArea, true)) {
+        $pdo->exec("INSERT OR IGNORE INTO departamentos(nombre)
+            SELECT DISTINCT trim(area_responsable) FROM usuarios_sistema WHERE trim(COALESCE(area_responsable,'')) != ''");
+    }
+
+    $columnasTicketsMesa = array_column($pdo->query("PRAGMA table_info(tickets)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach (['departamento'=>'TEXT','diagnostico_ia'=>'TEXT','confianza_ia'=>'INTEGER DEFAULT 0'] as $col=>$tipo) {
+        if (!in_array($col, $columnasTicketsMesa, true)) $pdo->exec("ALTER TABLE tickets ADD COLUMN {$col} {$tipo}");
     }
 
     // ---- Comercial: clientes comerciales + cotizaciones con items, relacionadas a
@@ -571,6 +589,21 @@ function migrar_esquema(PDO $pdo) {
     foreach (['area_responsable'=>'TEXT','color'=>"TEXT DEFAULT '#e31c6c'",'activa'=>'INTEGER DEFAULT 1','creado_en'=>'TEXT','tecnico_default'=>'TEXT'] as $col=>$tipo) {
         if (!in_array($col, $columnasCategoriasTk, true)) $pdo->exec("ALTER TABLE categorias_tickets ADD COLUMN {$col} {$tipo}");
     }
+    $categoriasMesa = [
+        ['SIESA / FACTURACIÓN','Facturas, notas crédito, pagos, proveedores y procesos Siesa.','Direccion de Contabilidad','#7c3aed'],
+        ['INFRAESTRUCTURA','Redes, internet, equipos, servidores, impresoras y hardware.','Direccion de Tecnologia','#2563eb'],
+        ['TECNOLOGÍA Y SOFTWARE','Aplicaciones, accesos, Microsoft 365, correo y software.','Direccion de Tecnologia','#0891b2'],
+        ['GESTIÓN HUMANA','Nómina, contratos, vacaciones, incapacidades y empleados.','Direccion Recursos Humanos','#db2777'],
+        ['SERVICIO AL CLIENTE','PQRS, garantías, devoluciones y atención al cliente.','Servicio al Cliente','#ea580c'],
+        ['COMERCIAL','Ventas, pedidos, cotizaciones y descuentos.','Direccion Comercial','#16a34a'],
+        ['SOPORTE GENERAL','Casos que requieren revisión y clasificación adicional.',null,'#64748b'],
+    ];
+    $insertarCategoriaMesa = $pdo->prepare("INSERT OR IGNORE INTO categorias_tickets(nombre,descripcion,area_responsable,color,activa) VALUES(?,?,?,?,1)");
+    foreach ($categoriasMesa as $categoriaMesa) $insertarCategoriaMesa->execute($categoriaMesa);
+    $pdo->exec("UPDATE categorias_tickets SET area_responsable='Direccion de Tecnologia' WHERE area_responsable IS NULL AND nombre IN('ACCESOS','HARDWARE','RED','SOFTWARE')");
+    $pdo->exec("UPDATE categorias_tickets SET area_responsable='Direccion Recursos Humanos' WHERE area_responsable IS NULL AND nombre='RRHH'");
+    // Las cuentas de demostración nunca deben quedar como responsables reales.
+    $pdo->exec("UPDATE tickets SET asignado_a=NULL WHERE lower(COALESCE(asignado_a,'')) LIKE 'prueba %'");
 
     // ---- Mesa de Ayuda: adjuntos y respuestas al cliente ----
     $pdo->exec("CREATE TABLE IF NOT EXISTS tickets_adjuntos (
