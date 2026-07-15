@@ -47,13 +47,18 @@ set /p SEDE=Nombre de la sede/tienda de este equipo (ej. Molinos):
 <?php endif; ?>
 
 if not exist "%DESTINO%" mkdir "%DESTINO%"
-> "%TOKENFILE%" echo <?= $tokenAgente ?>
+powershell -NoProfile -Command "$d=[Environment]::ExpandEnvironmentVariables('%DESTINO%');$f=[Environment]::ExpandEnvironmentVariables('%TOKENFILE%');New-Item -ItemType Directory -Force -Path $d -ErrorAction Stop | Out-Null;[IO.File]::WriteAllText($f,'<?= $tokenAgente ?>',[Text.Encoding]::ASCII)"
+if errorlevel 1 goto :credential_error
 icacls "%TOKENFILE%" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F >nul 2>&1
-if not exist "%TOKENFILE%" (
-    echo ERROR: no se pudo crear la credencial local del agente.
-    pause
-    exit /b 1
-)
+powershell -NoProfile -Command "if(-not (Test-Path -LiteralPath '%TOKENFILE%')){exit 1}"
+if errorlevel 1 goto :credential_error
+goto credential_ready
+:credential_error
+echo ERROR: no se pudo crear la credencial local del agente.
+echo Ejecuta este instalador haciendo clic derecho: Ejecutar como administrador.
+pause
+exit /b 1
+:credential_ready
 
 echo.
 echo [1/3] Descargando el agente desde %SERVIDOR% ...
