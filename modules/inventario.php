@@ -78,8 +78,19 @@ if (isset($_GET['editar'])) {
 }
 
 $busqueda = trim($_GET['q'] ?? '');
+$vista = strtoupper(trim((string)($_GET['vista'] ?? 'TODOS')));
+$vistas = [
+    'TODOS'=>['Todos',[]],
+    'COMPUTADORES'=>['Computadores',['PORTATIL','ESCRITORIO','ALL IN ONE','POS','TABLET']],
+    'IMPRESORAS'=>['Impresoras',['IMPRESORA']],
+    'SERVIDORES'=>['Servidores',['SERVIDOR']],
+    'REDES'=>['Redes y puntos de acceso',['PUNTO DE ACCESO','ACCESS POINT','ROUTER','SWITCH','RED']],
+    'PERIFERICOS'=>['Monitores y periféricos',['MONITOR','CAMARA','OTRO']],
+];
+if(!isset($vistas[$vista]))$vista='TODOS';
 $sql = "SELECT i.*, s.nombre AS sede_nombre FROM inventario i LEFT JOIN sedes s ON i.sede_id = s.id WHERE 1=1";
 $params = [];
+if($vistas[$vista][1]){$ph=[];foreach($vistas[$vista][1] as $n=>$tipoVista){$k='tipo_v'.$n;$ph[]=':'.$k;$params[$k]=$tipoVista;}$sql.=' AND upper(i.tipo) IN ('.implode(',',$ph).')';}
 if ($busqueda !== '') {
     $sql .= " AND (i.serial LIKE :b OR i.placa LIKE :b OR i.asignado_a LIKE :b OR i.asignado_documento LIKE :b OR i.marca LIKE :b OR i.modelo LIKE :b OR s.nombre LIKE :b)";
     $params['b'] = "%{$busqueda}%";
@@ -115,6 +126,10 @@ $camposPorTipo = [
     'POS' => ['marca','sistema_operativo','procesador','memoria','almacenamiento'],
     'MONITOR' => ['marca'],
     'IMPRESORA' => ['marca'],
+    'PUNTO DE ACCESO' => ['marca'],
+    'ROUTER' => ['marca'],
+    'SWITCH' => ['marca'],
+    'RED' => ['marca'],
     'CAMARA' => ['marca'],
     'TABLET' => ['marca','sistema_operativo','almacenamiento'],
     'OTRO' => ['marca','sistema_operativo','procesador','memoria','almacenamiento'],
@@ -137,7 +152,15 @@ layout_inicio('Inventario', 'Inventario', '../');
 
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
-<button type="button" id="btn-abrir-form" class="btn"><?= icon('plus') ?> Agregar equipo</button>
+<div class="toolbar" style="margin-bottom:14px"><button type="button" id="btn-abrir-form" class="btn"><?= icon('plus') ?> Agregar activo</button><a class="btn btn-secondary" href="agente_inventario.php"><?=icon('zap')?> Instalar agente</a><a class="btn btn-secondary" href="acceso_remoto.php"><?=icon('remote')?> Acceso remoto</a></div>
+
+<div class="panel-grid-4" style="margin-bottom:16px">
+<?php foreach ([['COMPUTADORES','Computadores','inventory','inventario.php?vista=COMPUTADORES'],['IMPRESORAS','Impresoras','file','impresoras.php'],['SERVIDORES','Servidores','cloud','inventario.php?vista=SERVIDORES'],['REDES','Access point / redes','cloud','inventario.php?vista=REDES']] as $tarjeta): $cnt=0; if($tarjeta[0]==='IMPRESORAS'){$cnt=(int)$pdo->query("SELECT COUNT(*) FROM impresoras")->fetchColumn();}else{$tipos=$vistas[$tarjeta[0]][1];$ph=implode(',',array_fill(0,count($tipos),'?'));$st=$pdo->prepare("SELECT COUNT(*) FROM inventario WHERE upper(tipo) IN ($ph)");$st->execute($tipos);$cnt=(int)$st->fetchColumn();} ?><a class="panel" href="<?=e($tarjeta[3])?>" style="text-decoration:none;display:block;border-top:3px solid var(--teal-500)"><div class="small"><?=icon($tarjeta[2])?> <?=e($tarjeta[1])?></div><strong style="font-size:24px;display:block;margin-top:6px"><?=$cnt?></strong><span class="small">Ver y gestionar →</span></a><?php endforeach; ?>
+</div>
+
+<nav class="tabs-atera" aria-label="Tipos de inventario" style="margin-bottom:16px">
+<?php foreach($vistas as $claveVista=>$datosVista):?><a class="tab-atera <?=$vista===$claveVista?'activo':''?>" href="?vista=<?=e($claveVista)?><?= $busqueda?'&q='.urlencode($busqueda):'' ?>"><?=e($datosVista[0])?></a><?php endforeach;?>
+</nav>
 
 <div class="panel" id="panel-form-equipo" data-form-manual="1" <?= $editar ? '' : 'hidden' ?> style="margin-top:14px;">
     <h3><?= $editar ? 'Editar equipo' : 'Agregar equipo' ?></h3>
@@ -270,16 +293,15 @@ layout_inicio('Inventario', 'Inventario', '../');
 </script>
 
 <form class="toolbar" method="get">
+    <input type="hidden" name="vista" value="<?=e($vista)?>">
     <input type="search" name="q" placeholder="Buscar por serial, placa, usuario, marca, sede..." value="<?= e($busqueda) ?>" style="min-width:320px">
     <button type="submit">Buscar</button>
-    <?php if ($busqueda): ?><a class="btn btn-secondary" href="inventario.php">Limpiar</a><?php endif; ?>
+    <?php if ($busqueda): ?><a class="btn btn-secondary" href="inventario.php?vista=<?=e($vista)?>">Limpiar</a><?php endif; ?>
 </form>
 
 <div class="tabla-toolbar">
     <label class="small chk-todos"><input type="checkbox" id="chk-todos-eq"> Seleccionar todo</label>
-    <span class="tabla-toolbar-acciones small">
-        <button type="button" class="link-btn" disabled><?= icon('trash') ?> Eliminar</button>
-    </span>
+    <span class="tabla-toolbar-acciones small">Selecciona un activo para abrir su ficha, editarlo o eliminarlo.</span>
     <span class="small" style="margin-left:auto;">Mostrando <?= count($equipos) ?> de <?= count($equipos) ?> dispositivos</span>
 </div>
 <table class="tabla-tickets">

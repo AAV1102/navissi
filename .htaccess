@@ -2,7 +2,7 @@ RewriteEngine On
 Options -Indexes
 
 # Los datos persistentes nunca se sirven directamente.
-RewriteRule ^data/(?!agente_navissi\.ps1$|desplegar_en_pc_empleado\.ps1$) - [F,L,NC]
+RewriteRule ^data/(?!agente_navissi\.ps1$|reportar_problema\.ps1$|desplegar_en_pc_empleado\.ps1$) - [F,L,NC]
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
 <FilesMatch "(?i)\.(sqlite|db|json|log|env|ini|bak|sql|key)$">
     Require all denied
