@@ -8,6 +8,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/correo_a_tickets.php';
 header('Content-Type: application/json; charset=utf-8');
 @set_time_limit(120); // este endpoint corre sin usuario esperando (cron/GitHub Actions), puede tomarse su tiempo con varios buzones
+ob_start();
 
 // El token debe ser un secreto compartido configurado fuera del repositorio
 // (GitHub Actions lo envía como NAVISSI_CORREO_TOKEN y el hosting lo guarda en
@@ -29,5 +30,22 @@ $pdo = db();
 // Registro simple de la última vez que se llamó este endpoint - así se puede verificar
 // desde fuera si la automatización (Power Automate, cron, etc.) sigue corriendo.
 @file_put_contents(private_path('ultima_sincronizacion_correo.txt'), gmdate('Y-m-d H:i:s') . " UTC\n", FILE_APPEND);
+
+// Responder de inmediato y seguir revisando los buzones en segundo plano: los
+// servicios gratuitos de cron-ping (cron-job.org, etc.) suelen limitar el
+// timeout a 30s, y revisar varios buzones puede tardar más. Si el servidor
+// soporta fastcgi_finish_request, el cliente HTTP recibe la respuesta ya
+// mismo y no importa cuánto tarde lo de después.
+ignore_user_abort(true);
+echo json_encode(['ok' => true, 'estado' => 'en_proceso'], JSON_UNESCAPED_UNICODE);
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    header('Content-Length: ' . ob_get_length());
+    header('Connection: close');
+    @ob_end_flush();
+    @flush();
+}
+
 $resultado = sincronizar_correo_a_tickets($pdo);
-echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
+@file_put_contents(private_path('ultimo_resultado_correo.json'), json_encode($resultado, JSON_UNESCAPED_UNICODE));
