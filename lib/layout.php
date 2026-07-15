@@ -86,8 +86,11 @@ function nav_grupos() {
             'icon' => 'users', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'COORDINADOR'],
             'items' => [
                 'modules/crm.php' => ['Clientes y proveedores', 'users'],
+                'modules/comercial.php' => ['Comercial', 'dollar'],
                 'modules/oportunidades.php' => ['Pipeline de Ventas', 'dollar'],
                 'modules/comisiones.php' => ['Comisiones de Venta', 'dollar'],
+                'modules/ecommerce.php' => ['Ecommerce', 'store'],
+                'modules/marketing.php' => ['Marketing', 'megaphone'],
                 'modules/devoluciones.php' => ['Devoluciones y Garantías', 'inventory'],
                 'modules/servicio_cliente.php' => ['Servicio al Cliente (PQRS)', 'chat'],
             ],
@@ -104,6 +107,13 @@ function nav_grupos() {
                 'modules/siesa_integracion.php' => ['Conector Siesa', 'cloud'],
                 'modules/licencias.php' => ['Licencias', 'shield'],
                 'modules/noticias.php' => ['Noticias', 'megaphone'],
+            ],
+        ],
+        'Producción y Operación' => [
+            'icon' => 'check', 'roles' => ['SUPER_ADMIN', 'ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO', 'COORDINADOR'],
+            'items' => [
+                'modules/produccion.php' => ['Producción', 'inventory'],
+                'modules/operacion.php' => ['Operación', 'check'],
             ],
         ],
         'Contabilidad' => [

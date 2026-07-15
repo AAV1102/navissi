@@ -321,6 +321,117 @@ function migrar_esquema(PDO $pdo) {
         $pdo->exec("ALTER TABLE catalogo_servicios ADD COLUMN area_tramite TEXT");
     }
 
+    // ---- Comercial: clientes comerciales + cotizaciones con items, relacionadas a
+    // sede y vendedor (usuarios_sistema). ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS clientes_comerciales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        nit TEXT,
+        contacto TEXT,
+        telefono TEXT,
+        email TEXT,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        vendedor_usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+        estado TEXT DEFAULT 'ACTIVO',
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cotizaciones_comerciales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT UNIQUE,
+        cliente_id INTEGER NOT NULL REFERENCES clientes_comerciales(id) ON DELETE CASCADE,
+        vendedor_usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+        valor_total REAL DEFAULT 0,
+        estado TEXT DEFAULT 'BORRADOR',
+        valido_hasta TEXT,
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cotizaciones_comerciales_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cotizacion_id INTEGER NOT NULL REFERENCES cotizaciones_comerciales(id) ON DELETE CASCADE,
+        descripcion TEXT NOT NULL,
+        cantidad REAL DEFAULT 1,
+        valor_unitario REAL DEFAULT 0
+    )");
+
+    // ---- Ecommerce: pedidos online con items, relacionados a sede de despacho. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pedidos_ecommerce (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT UNIQUE,
+        cliente_nombre TEXT NOT NULL,
+        cliente_email TEXT,
+        cliente_telefono TEXT,
+        canal TEXT DEFAULT 'WEB',
+        sede_despacho_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        valor_total REAL DEFAULT 0,
+        estado TEXT DEFAULT 'PENDIENTE',
+        guia_envio TEXT,
+        transportadora TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pedidos_ecommerce_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pedido_id INTEGER NOT NULL REFERENCES pedidos_ecommerce(id) ON DELETE CASCADE,
+        producto TEXT NOT NULL,
+        cantidad INTEGER DEFAULT 1,
+        valor_unitario REAL DEFAULT 0
+    )");
+
+    // ---- Marketing: campañas de marketing (distinto de campanas.php, que es
+    // calendario de colecciones de producto) con presupuesto y resultados reales. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS campanas_marketing (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        canal TEXT,
+        objetivo TEXT,
+        presupuesto REAL,
+        fecha_inicio TEXT,
+        fecha_fin TEXT,
+        estado TEXT DEFAULT 'PLANEADA',
+        alcance INTEGER,
+        conversiones INTEGER,
+        inversion_real REAL,
+        responsable_usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Producción: órdenes de producción, relacionadas a sede/planta y responsable. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ordenes_produccion (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT UNIQUE,
+        producto TEXT NOT NULL,
+        cantidad REAL NOT NULL,
+        unidad TEXT DEFAULT 'UND',
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        responsable_usuario_id INTEGER REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+        estado TEXT DEFAULT 'PENDIENTE',
+        fecha_programada TEXT,
+        fecha_inicio_real TEXT,
+        fecha_fin_real TEXT,
+        observaciones TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // ---- Operación: checklist operativo diario por sede (apertura, cierre, arqueo,
+    // limpieza, etc.), relacionado a sede y responsable. ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS checklist_operativo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        frecuencia TEXT DEFAULT 'DIARIA',
+        activo INTEGER DEFAULT 1,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS checklist_operativo_registros (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        checklist_id INTEGER NOT NULL REFERENCES checklist_operativo(id) ON DELETE CASCADE,
+        sede_id INTEGER REFERENCES sedes(id) ON DELETE SET NULL,
+        completado_por TEXT,
+        completado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        observaciones TEXT
+    )");
+
     // ---- Aprobador de gastos por proveedor: cuando se identifica un proveedor en un
     // documento/factura, se le puede asignar un responsable de aprobar el gasto (por
     // area). Contabilidad ve si ya fue aprobado antes de pasarlo a pago. ----
