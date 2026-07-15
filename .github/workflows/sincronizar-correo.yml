@@ -19,3 +19,4 @@ jobs:
             "https://grupo10z.com.co/api_correo_mesadeayuda.php" \
             -o respuesta.json -w "HTTP %{http_code}\n"
           cat respuesta.json
+          jq -e '.ok == true and .estado == "en_proceso"' respuesta.json >/dev/null

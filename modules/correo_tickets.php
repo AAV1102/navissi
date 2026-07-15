@@ -54,7 +54,7 @@ layout_inicio('Correo a Tickets', 'Correo → Tickets', '../');
         <button type="submit">Guardar</button>
     </form>
     <p class="small" style="margin-top:10px;">
-        Falta un paso en Azure AD para que esto funcione: el permiso de aplicación <code>Mail.Read</code> concedido a esta misma app (Azure AD → tu app → Permisos de API → Microsoft Graph → Aplicación → <code>Mail.Read</code> → conceder consentimiento de administrador). Sin ese permiso, la sincronización de este buzón dará error 403.
+        La aplicación de Azure debe tener consentimiento de administrador para <code>Mail.Read</code>, <code>Mail.ReadWrite</code> y <code>Mail.Send</code>. Estos permisos permiten leer el buzón, marcar como procesados los mensajes y enviar la confirmación del ticket.
     </p>
 </div>
 
