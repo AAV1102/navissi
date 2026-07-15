@@ -24,20 +24,29 @@ $agentesActivos = (int)$pdo->query("SELECT COUNT(*) FROM inventario WHERE ultima
 $remotos = (int)$pdo->query("SELECT COUNT(*) FROM inventario WHERE trim(COALESCE(rustdesk_id,'')) != ''")->fetchColumn();
 
 function respuesta_agente_local(PDO $pdo, string $pregunta, array $contexto): string {
-    $q=mb_strtoupper($pregunta,'UTF-8');
+    $q=mb_strtoupper(trim($pregunta),'UTF-8');
+    $nombre=trim((string)($contexto['nombre']??''));
+    if(preg_match('/^(HOLA|HOLI|BUENAS|BUENOS D[IÍ]AS|BUENAS TARDES|BUENAS NOCHES)[!,. ]*$/u',$q)){
+        return '¡Hola'.($nombre?' '.explode(' ',$nombre)[0]:'').'! 👋 Soy el asistente de NAVISSI. Puedo consultar datos reales y ayudarte a actuar. Puedes preguntarme, por ejemplo: “¿qué equipos necesitan atención?”, “muéstrame los tickets abiertos” o “¿cómo reporto un problema?”.';
+    }
+    if(preg_match('/^(GRACIAS|MUCHAS GRACIAS|OK|LISTO|ENTENDIDO)[!,. ]*$/u',$q)) return 'Con gusto. ¿Quieres que revisemos tickets, equipos, agentes, acceso remoto o automatizaciones?';
     if(str_contains($q,'LOGIST')||str_contains($q,'BODEGA')){
         $sin=(int)$pdo->query("SELECT COUNT(*) FROM inventario WHERE trim(COALESCE(ubicacion_bodega,''))='' ")->fetchColumn();
         return "Logística está activa. Hay {$sin} equipos sin ubicación de bodega. Entra a Inventario y activos → Logística y Bodega para escanear seriales, mover equipos y consultar trazabilidad.";
     }
     if(str_contains($q,'REMOT')||str_contains($q,'RUSTDESK')) return "Hay {$contexto['remotos']} equipos con RustDesk listos para conexión. Abre Inventario y activos → Acceso Remoto; también puedes entrar al ticket vinculado y usar Conectar.";
-    if(str_contains($q,'AGENTE')||str_contains($q,'INVENTARIO')) return "Inventario tiene {$contexto['equipos']} equipos; {$contexto['agentes']} reportaron durante las últimas 24 horas. Revisa Inventario y activos → Agente de inventario para instaladores, tokens y últimos reportes.";
+    if(str_contains($q,'AGENTE')||str_contains($q,'INVENTARIO')||str_contains($q,'EQUIPO')||str_contains($q,'COMPUTADOR')||str_contains($q,'PC')) {
+        $sinAgente=max(0,$contexto['equipos']-$contexto['agentes']);
+        return "Tenemos {$contexto['equipos']} equipos registrados. {$contexto['agentes']} reportaron en las últimas 24 horas y {$sinAgente} no lo hicieron. Puedo ayudarte a revisar los desconectados, los que no tienen ubicación, sus parches o su acceso remoto. ¿Cuál quieres consultar?";
+    }
     if(str_contains($q,'AUTOMAT')){
         $ultima=$pdo->query("SELECT estado,resumen,iniciado_en FROM automatizacion_ejecuciones ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         return $ultima ? "La última automatización se ejecutó {$ultima['iniciado_en']} con estado {$ultima['estado']}: {$ultima['resumen']}. Puedes revisarla en Automatización e IA → Automatizaciones y alertas." : "Todavía no hay ejecuciones registradas. Ve a Automatización e IA → Automatizaciones y alertas y ejecuta el primer ciclo.";
     }
     if(str_contains($q,'TICKET')||str_contains($q,'MESA')) return "Actualmente hay {$contexto['tickets']} tickets abiertos. La Mesa de Ayuda clasifica por departamento, intenta autogestión y solo escala a una persona si no encuentra una solución segura.";
     if(str_contains($q,'SIESA')||str_contains($q,'FACTUR')) return "Los casos de Siesa, facturación, proveedores, pagos y notas crédito se enrutan al departamento Dirección de Contabilidad.";
-    return "Puedo consultar el estado real de tickets, inventario, agentes, acceso remoto, logística y automatizaciones. Por ejemplo escribe: “¿cuántos agentes están conectados?”, “estado de automatizaciones” o “equipos sin ubicación de bodega”.";
+    if(str_contains($q,'AYUDA')||str_contains($q,'QUE PUEDES')||str_contains($q,'QUÉ PUEDES')) return 'Puedo consultar tickets, equipos, empleados, sedes, logística, agentes y automatizaciones; también te indico dónde realizar cada acción. Cuéntame con tus palabras qué necesitas.';
+    return 'Entendí “'.mb_substr(trim($pregunta),0,80).'”, pero necesito un poco más de contexto para darte un dato correcto. ¿Te refieres a tickets, equipos, empleados, sedes, logística o automatizaciones?';
 }
 
 $systemPrompt = "Eres el asistente general del software NAVISSI Inventario (Grupo 10Z / Navissi retail). "
@@ -48,7 +57,7 @@ $systemPrompt = "Eres el asistente general del software NAVISSI Inventario (Grup
     . "Si te preguntan algo que requiere datos que no tienes aquí, sugiere en qué módulo del menú lo pueden ver.";
 
 if (empty($config['api_key'])) {
-    echo json_encode(['respuesta'=>respuesta_agente_local($pdo,$pregunta,['tickets'=>(int)$ticketsAbiertos,'equipos'=>(int)$equipos,'agentes'=>$agentesActivos,'remotos'=>$remotos]),'modo'=>'AGENTE_LOCAL'],JSON_UNESCAPED_UNICODE);
+    echo json_encode(['respuesta'=>respuesta_agente_local($pdo,$pregunta,['tickets'=>(int)$ticketsAbiertos,'equipos'=>(int)$equipos,'agentes'=>$agentesActivos,'remotos'=>$remotos,'nombre'=>$u['nombre']??'']),'modo'=>'AGENTE_LOCAL'],JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -57,5 +66,5 @@ try {
     $respuesta = $client->preguntar($systemPrompt, $pregunta);
     echo json_encode(['respuesta' => $respuesta]);
 } catch (IAException $e) {
-    echo json_encode(['respuesta'=>respuesta_agente_local($pdo,$pregunta,['tickets'=>(int)$ticketsAbiertos,'equipos'=>(int)$equipos,'agentes'=>$agentesActivos,'remotos'=>$remotos]),'modo'=>'RESPALDO_LOCAL'],JSON_UNESCAPED_UNICODE);
+    echo json_encode(['respuesta'=>respuesta_agente_local($pdo,$pregunta,['tickets'=>(int)$ticketsAbiertos,'equipos'=>(int)$equipos,'agentes'=>$agentesActivos,'remotos'=>$remotos,'nombre'=>$u['nombre']??'']),'modo'=>'RESPALDO_LOCAL'],JSON_UNESCAPED_UNICODE);
 }
