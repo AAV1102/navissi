@@ -1,9 +1,12 @@
 name: Resumen operativo diario a Gerencia
 
 on:
-  schedule:
-    # 13:00 UTC = 8:00 a.m. hora Colombia (UTC-5), de lunes a viernes.
-    - cron: '0 13 * * 1-5'
+  # Cron automatico desactivado (2026-07-15) a pedido del dueño de la cuenta -
+  # el disparo se movio a un servicio externo de cron-ping (ver README/aviso
+  # del equipo). Se puede correr a mano desde Actions -> este workflow ->
+  # "Run workflow", o reactivar el "schedule:" de abajo si se vuelve a GitHub.
+  # schedule:
+  #   - cron: '0 13 * * 1-5'
   workflow_dispatch: {}
 
 jobs:

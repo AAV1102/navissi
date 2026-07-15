@@ -1,11 +1,12 @@
 name: Sincronizar correo Mesa de Ayuda
 
 on:
-  schedule:
-    # Cada 10 minutos. GitHub Actions no garantiza el minuto exacto (puede
-    # atrasarse unos minutos en horas de mucha carga), pero corre sola,
-    # sin depender de que FreeHosting tenga cron.
-    - cron: '*/10 * * * *'
+  # Cron automatico desactivado (2026-07-15) a pedido del dueño de la cuenta:
+  # seguia fallando/enviando correos de notificacion molestos. Se puede correr
+  # a mano desde GitHub -> Actions -> este workflow -> "Run workflow", o
+  # reactivar el "schedule:" de abajo cuando el hosting tenga HTTPS real.
+  # schedule:
+  #   - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
 jobs:
