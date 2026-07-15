@@ -9,6 +9,7 @@ param([string]$Servidor = "http://127.0.0.1:8099", [string]$TokenFile = "$env:Pr
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName Microsoft.VisualBasic
 
 $bios = Get-CimInstance -ClassName Win32_BIOS
 $cs = Get-CimInstance -ClassName Win32_ComputerSystem
@@ -41,9 +42,10 @@ $descripcion=$texto.Text
 if ($resultado -ne [System.Windows.Forms.DialogResult]::OK -or [string]::IsNullOrWhiteSpace($descripcion)) {
     exit
 }
+$serialAfectado = [Microsoft.VisualBasic.Interaction]::InputBox("Si el problema es de ESTE equipo, deja vacío.`nSi es de otro equipo, escribe su serial o placa (opcional):", "Equipo afectado", "")
 
 $payload = @{
-    serial          = $bios.SerialNumber
+    serial          = if ([string]::IsNullOrWhiteSpace($serialAfectado)) { $bios.SerialNumber } else { $serialAfectado.Trim() }
     usuario_windows = $env:USERNAME
     descripcion     = $descripcion
 } | ConvertTo-Json
