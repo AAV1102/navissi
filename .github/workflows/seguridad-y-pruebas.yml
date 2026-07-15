@@ -1,9 +1,13 @@
 name: Seguridad y pruebas NAVISSI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # Disparo automatico desactivado (2026-07-15) a pedido del dueño de la cuenta -
+  # los workflows automaticos de GitHub Actions estaban generando demasiadas
+  # notificaciones y posiblemente agotando los minutos gratis del plan. Se
+  # puede correr a mano desde Actions -> este workflow -> "Run workflow".
+  # push:
+  #   branches: [main]
+  # pull_request:
   workflow_dispatch: {}
 
 permissions:
