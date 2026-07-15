@@ -31,7 +31,7 @@ function nav_grupos() {
             ],
         ],
         'Inventario y activos' => [
-            'icon' => 'inventory', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
+            'icon' => 'inventory', 'roles' => ['SUPER_ADMIN', 'GERENCIA', 'CEO', 'ADMIN', 'TI', 'DIRECTOR', 'COORDINADOR', 'ANALISTA'],
             'areas' => ['Direccion de Tecnologia', 'Direccion de Logistica'],
             'items' => [
                 'modules/inventario.php' => ['Inventario', 'inventory'],

@@ -31,6 +31,7 @@ function ia_clasificar_determinista(array $ticket, array $categorias): string {
     $texto = mb_strtoupper(($ticket['titulo'] ?? '') . ' ' . ($ticket['descripcion'] ?? ''), 'UTF-8');
     $reglas = [
         'SIESA / FACTURACIÓN' => ['SIESA','FACTURA','FACTURACIÓN','CONTABLE','CONTABILIDAD','PROVEEDOR','PAGO','NOTA CRÉDITO'],
+        'LOGÍSTICA Y BODEGA' => ['LOGÍSTICA','LOGISTICA','BODEGA','DESPACHO','TRASLADO','TRANSPORTE','RECEPCIÓN','RECEPCION','ALMACENAMIENTO','UBICACIÓN','UBICACION'],
         'INFRAESTRUCTURA' => ['INFRAESTRUCTURA','INTERNET','WIFI','RED','ROUTER','SWITCH','SERVIDOR','IMPRESORA','EQUIPO','COMPUTADOR','HARDWARE'],
         'TECNOLOGÍA Y SOFTWARE' => ['SOFTWARE','PROGRAMA','APLICACIÓN','ACCESO','CONTRASEÑA','CLAVE','MICROSOFT','OFFICE','CORREO'],
         'GESTIÓN HUMANA' => ['NÓMINA','NOMINA','VACACIONES','CONTRATO','INCAPACIDAD','RRHH','RECURSOS HUMANOS'],
@@ -42,6 +43,12 @@ function ia_clasificar_determinista(array $ticket, array $categorias): string {
     }
     foreach ($categorias as $c) if (strcasecmp($c['nombre'], 'SOPORTE GENERAL') === 0) return $c['nombre'];
     return $categorias[0]['nombre'] ?? 'SOPORTE GENERAL';
+}
+
+function ia_autoasignar_tecnico(PDO $pdo, ?string $departamento): ?string {
+    $sql="SELECT u.nombre,(SELECT COUNT(*) FROM tickets t WHERE t.asignado_a=u.nombre AND t.estado NOT IN('CERRADO','RESUELTO POR IA')) carga FROM usuarios_sistema u WHERE u.activo=1 AND u.rol IN('TI','COORDINADOR','ANALISTA','ADMIN','DIRECTOR') AND u.email NOT LIKE '%.local' AND u.email NOT LIKE 'prueba.%' AND lower(u.nombre) NOT LIKE 'prueba %'";
+    $args=[];if($departamento){$sql.=" AND lower(trim(COALESCE(u.area_responsable,'')))=lower(trim(?))";$args[]=$departamento;}
+    $sql.=' ORDER BY carga,u.nombre LIMIT 1';$q=$pdo->prepare($sql);$q->execute($args);$nombre=$q->fetchColumn();return $nombre!==false?(string)$nombre:null;
 }
 
 /**
@@ -153,7 +160,7 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
             $validar->execute([$tecnicoDefault,$tecnicoDefault,$departamento,$departamento]);
             if (!$validar->fetch(PDO::FETCH_ASSOC)) $tecnicoDefault = null;
         }
-        if (!$tecnicoDefault && function_exists('autoasignar_tecnico')) $tecnicoDefault = autoasignar_tecnico($pdo, $departamento);
+        if (!$tecnicoDefault) $tecnicoDefault = ia_autoasignar_tecnico($pdo, $departamento);
 
         if ($tecnicoDefault) {
             $pdo->prepare("UPDATE tickets SET asignado_a = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$tecnicoDefault, $ticketId]);

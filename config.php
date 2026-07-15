@@ -596,6 +596,7 @@ function migrar_esquema(PDO $pdo) {
         ['GESTIÓN HUMANA','Nómina, contratos, vacaciones, incapacidades y empleados.','Direccion Recursos Humanos','#db2777'],
         ['SERVICIO AL CLIENTE','PQRS, garantías, devoluciones y atención al cliente.','Servicio al Cliente','#ea580c'],
         ['COMERCIAL','Ventas, pedidos, cotizaciones y descuentos.','Direccion Comercial','#16a34a'],
+        ['LOGÍSTICA Y BODEGA','Traslados, despachos, recepción, almacenamiento, bodega y movimientos de equipos.','Direccion de Logistica','#ca8a04'],
         ['SOPORTE GENERAL','Casos que requieren revisión y clasificación adicional.',null,'#64748b'],
     ];
     $insertarCategoriaMesa = $pdo->prepare("INSERT OR IGNORE INTO categorias_tickets(nombre,descripcion,area_responsable,color,activa) VALUES(?,?,?,?,1)");

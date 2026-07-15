@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 $msg=null;if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['accion']??'')==='revocar'&&tiene_rol(['ADMIN','TI'])){$pdo->prepare("UPDATE agentes_tokens SET activo=0 WHERE id=?")->execute([(int)$_POST['id']]);$msg=['ok','Credencial revocada.'];}
-$base = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+$base = rtrim(navissi_url_publica(), '/');
 
 $ultimos = $pdo->query("SELECT * FROM inventario WHERE fuente = 'Agente automático' ORDER BY actualizado_en DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
 $tokensAgente=$pdo->query("SELECT a.*,s.nombre sede_nombre FROM agentes_tokens a LEFT JOIN sedes s ON s.id=a.sede_id ORDER BY a.id DESC LIMIT 30")->fetchAll(PDO::FETCH_ASSOC);$sedesAgente=$pdo->query("SELECT nombre FROM sedes WHERE estado='ACTIVO' ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);

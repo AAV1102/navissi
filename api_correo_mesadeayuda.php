@@ -6,6 +6,8 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/correo_a_tickets.php';
+require_once __DIR__ . '/lib/automatizacion_operativa.php';
+require_once __DIR__ . '/lib/inteligencia_operativa.php';
 header('Content-Type: application/json; charset=utf-8');
 @set_time_limit(120); // este endpoint corre sin usuario esperando (cron/GitHub Actions), puede tomarse su tiempo con varios buzones
 ob_start();
@@ -48,4 +50,7 @@ if (function_exists('fastcgi_finish_request')) {
 }
 
 $resultado = sincronizar_correo_a_tickets($pdo);
+$resultado['automatizacion'] = automatizacion_operativa_ejecutar($pdo, 'CLOUDFLARE', 'auto-' . (string)floor(time() / 120));
+// Los agentes de inteligencia requieren menos frecuencia que el correo.
+$resultado['inteligencia'] = inteligencia_ejecutar($pdo, 'CLOUDFLARE', 'intel-' . (string)floor(time() / 600));
 @file_put_contents(private_path('ultimo_resultado_correo.json'), json_encode($resultado, JSON_UNESCAPED_UNICODE));

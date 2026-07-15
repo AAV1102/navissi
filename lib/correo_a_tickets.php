@@ -109,6 +109,18 @@ function correo_es_rebote_automatico(string $remitente, string $asunto): bool {
     return false;
 }
 
+/** Vincula automáticamente el ticket al inventario por serial/placa o por identidad del remitente. */
+function correo_detectar_equipo(PDO $pdo,string $remitente,string $asunto,string $cuerpo): ?array {
+    preg_match_all('/[A-Za-z0-9][A-Za-z0-9._-]{3,39}/', $asunto.' '.$cuerpo, $m);
+    $buscar=$pdo->prepare("SELECT serial,sede_id FROM inventario WHERE lower(serial)=lower(?) OR lower(COALESCE(placa,''))=lower(?) LIMIT 1");
+    foreach(array_unique($m[0]??[]) as $token){$buscar->execute([$token,$token]);if($e=$buscar->fetch(PDO::FETCH_ASSOC))return $e;}
+    if(filter_var($remitente,FILTER_VALIDATE_EMAIL)){
+        $q=$pdo->prepare("SELECT i.serial,i.sede_id FROM usuarios_sistema u JOIN inventario i ON lower(i.asignado_a)=lower(u.nombre) WHERE lower(u.email)=lower(?) AND u.activo=1 ORDER BY i.actualizado_en DESC LIMIT 1");
+        $q->execute([$remitente]);if($e=$q->fetch(PDO::FETCH_ASSOC))return $e;
+    }
+    return null;
+}
+
 function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon, string $remitente, string $remitenteNombre, string $asunto, string $cuerpo): bool {
     $stmt = $pdo->prepare("SELECT id FROM correos_a_tickets WHERE mensaje_id = ?");
     $stmt->execute([$mensajeId]);
@@ -125,15 +137,16 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
     }
 
     $slaLimite = gmdate('Y-m-d H:i:s', strtotime('+24 hours'));
+    $equipoDetectado = correo_detectar_equipo($pdo,$remitente,$asunto,$cuerpo);
     // El cuerpo del correo es contenido NO confiable (lo escribe quien sea que
     // envie el correo) - se limpia con limpio_html() antes de guardarlo, porque
     // el detalle del ticket ahora renderiza descripcion como HTML (para que el
     // editor WYSIWYG funcione), y sin este saneamiento un correo malicioso
     // podria inyectar <script>/onerror en la pantalla de un tecnico de TI.
     $cuerpoSeguro = limpio_html($cuerpo) ?? '';
-    $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, solicitante, solicitante_contacto, asignado_a, sla_limite, origen)
-        VALUES (?,?,?,?,?,?,?,?,?)")
-        ->execute(["[{$buzon}] {$asunto}", $cuerpoSeguro, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, null, $slaLimite, 'CORREO']);
+    $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, sede_id, solicitante, solicitante_contacto, asignado_a, sla_limite, origen, equipo_serial)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        ->execute(["[{$buzon}] {$asunto}", $cuerpoSeguro, 'CORREO', 'MEDIA', $equipoDetectado['sede_id']??null, $remitenteNombre, $remitente, null, $slaLimite, 'CORREO', $equipoDetectado['serial']??null]);
     $ticketId = $pdo->lastInsertId();
 
     $comentarioSistema = "Ticket creado automáticamente desde el correo {$buzon}. Enviado primero al agente virtual para revisión y diagnóstico.";
@@ -144,6 +157,7 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
         ->execute([$mensajeId, $buzon, $remitente, $asunto, $ticketId]);
 
     hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'CREADO_DESDE_CORREO', $asunto, $remitente, $ticketId);
+    if($equipoDetectado) hoja_vida_registrar($pdo,'EQUIPO',$equipoDetectado['serial'],'TICKET_VINCULADO_DESDE_CORREO',$asunto,$remitente,(int)$ticketId);
     ia_triage_ticket($pdo, $ticketId);
     $estadoFinal = $pdo->prepare('SELECT estado,asignado_a,departamento FROM tickets WHERE id=?');
     $estadoFinal->execute([$ticketId]); $final = $estadoFinal->fetch(PDO::FETCH_ASSOC) ?: [];

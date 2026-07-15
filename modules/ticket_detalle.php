@@ -87,6 +87,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($accion === 'vincular_equipo') {
+        $serial=limpio($_POST['equipo_serial']??null);
+        $q=$pdo->prepare("SELECT serial,sede_id FROM inventario WHERE lower(serial)=lower(?) OR lower(COALESCE(placa,''))=lower(?) LIMIT 1");$q->execute([$serial,$serial]);$eqV=$q->fetch(PDO::FETCH_ASSOC);
+        if($eqV){$pdo->prepare("UPDATE tickets SET equipo_serial=?,sede_id=COALESCE(sede_id,?),actualizado_en=CURRENT_TIMESTAMP WHERE id=?")->execute([$eqV['serial'],$eqV['sede_id'],$id]);hoja_vida_registrar($pdo,'EQUIPO',$eqV['serial'],'TICKET_VINCULADO','Ticket #'.$id,usuario_actual()['nombre']??'TI',$id);$msg=['ok','Equipo vinculado. Ya están disponibles inventario, agente y acceso remoto.'];}
+        else $msg=['error','No se encontró un equipo con ese serial o placa.'];
+    }
+
     if ($accion === 'guardar_campos') {
         foreach ($_POST['campo'] ?? [] as $campoId => $valor) {
             $pdo->prepare("INSERT INTO campos_personalizados_valor (campo_id, entidad_id, valor) VALUES (?,?,?)
@@ -202,6 +209,7 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
             <?php else: ?>
             <p class="small">Este equipo aún no tiene agente RustDesk ni IP registrada — <a href="acceso_remoto.php">ver en Acceso Remoto</a>.</p>
             <?php endif; ?>
+            <div class="toolbar" style="margin-top:8px"><a class="btn btn-secondary" href="equipo_detalle.php?id=<?= (int)$equipoRelacionado['id'] ?>"><?= icon('inventory') ?> Ver inventario</a><a class="btn btn-secondary" href="agente_inventario.php"><?= icon('zap') ?> Estado del agente</a></div>
         </div>
         <?php endif; ?>
         <?php if ($camposDef): ?>
@@ -243,6 +251,7 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
                 <input type="text" name="asignado_a" value="<?= e($ticket['asignado_a']) ?>" placeholder="Nombre del técnico" style="width:100%;margin-bottom:8px;">
                 <button type="submit" style="width:100%;justify-content:center;"><?= icon('check') ?> Asignar</button>
             </form>
+            <form method="post" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><input type="hidden" name="accion" value="vincular_equipo"><label class="small">Vincular equipo (serial o placa)</label><input name="equipo_serial" value="<?= e($ticket['equipo_serial']??'') ?>" placeholder="Ej. SERIAL-PC-001" style="width:100%;margin-bottom:8px"><button class="btn-secondary" style="width:100%;justify-content:center"><?= icon('inventory') ?> Vincular inventario y remoto</button></form>
         </div>
     </div>
 

@@ -5,7 +5,7 @@ $pdo = db();
 $u = usuario_actual();
 $msg = null;
 
-if (!tiene_rol(['ADMIN', 'TI', 'COORDINADOR'])) {
+if (!tiene_rol(['SUPER_ADMIN','ADMIN','TI','COORDINADOR','DIRECTOR','ANALISTA']) && strcasecmp((string)($u['area_responsable']??''),'Direccion de Logistica') !== 0) {
     layout_inicio('Logística y Bodega', 'Logística y Bodega', '../');
     echo '<div class="msg-error">No tienes permiso para gestionar bodega/logística.</div>';
     layout_fin();
