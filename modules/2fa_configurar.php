@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 require_once __DIR__ . '/../lib/totp.php';
+require_once __DIR__ . '/../lib/mailer.php';
 $pdo = db();
 $msg = null;
 $u = usuario_actual();
@@ -63,6 +64,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             hoja_vida_registrar($pdo, 'EMPLEADO', $cuenta['documento'] ?? (string)$u['id'], 'CONTRASENA_CAMBIADA', 'Cambio de contraseña por el propio usuario', $u['nombre']);
             $msg = ['ok', 'Contraseña actualizada correctamente.'];
         }
+    } elseif ($accion === 'enviar_nueva_clave') {
+        // No se puede "mostrar" la contraseña actual porque solo se guarda su
+        // hash (irreversible) - lo que sí se puede hacer, sin necesidad de
+        // conocer la clave vieja, es generar una nueva y enviarla al correo
+        // ya registrado del propio usuario (sesión ya autenticada).
+        $simbolos = '!@#$%*';
+        $nuevaClave = 'Navissi' . random_int(1000, 9999) . $simbolos[random_int(0, strlen($simbolos) - 1)];
+        $pdo->prepare("UPDATE usuarios_sistema SET password_hash = ?, password_temporal = 1 WHERE id = ?")
+            ->execute([password_hash($nuevaClave, PASSWORD_DEFAULT), $u['id']]);
+        $cuerpo = "<p>Hola " . e($cuenta['nombre']) . ",</p>"
+            . "<p>Generaste una nueva contraseña desde <strong>Mi Cuenta</strong> porque no recordabas la actual.</p>"
+            . "<p style='font-size:20px;font-family:monospace;background:#f4f6f9;padding:12px 16px;border-radius:8px;text-align:center;'>" . e($nuevaClave) . "</p>"
+            . "<p>Te pedirá cambiarla la próxima vez que inicies sesión. Si no fuiste tú quien la solicitó, avisa a Sistemas de inmediato.</p>";
+        $enviado = enviar_correo($cuenta['email'], 'Tu nueva contraseña de NAVISSI', plantilla_correo_html('Nueva contraseña generada', $cuerpo), $cuenta['nombre']);
+        hoja_vida_registrar($pdo, 'EMPLEADO', $cuenta['documento'] ?? (string)$u['id'], 'CONTRASENA_AUTOGENERADA', 'El propio usuario solicitó una nueva contraseña por olvido', $u['nombre']);
+        $msg = $enviado
+            ? ['ok', 'Te enviamos una nueva contraseña a ' . $cuenta['email'] . '. Úsala para entrar y el sistema te pedirá cambiarla.']
+            : ['error', 'No se pudo enviar el correo. Avisa a Sistemas para que te la generen manualmente.'];
     }
 }
 
@@ -102,6 +121,12 @@ layout_inicio('Mi Cuenta', 'Mi Cuenta', '../');
             <div><label>Confirmar nueva contraseña</label><input type="password" name="clave_confirmar" required minlength="8"></div>
         </div>
         <button type="submit"><?= icon('check') ?> Actualizar contraseña</button>
+    </form>
+    <hr style="margin:16px 0;border:none;border-top:1px solid var(--line);">
+    <p class="small">¿No recuerdas tu contraseña actual? No es posible mostrarla (nunca se guarda en texto plano), pero podemos generarte una nueva y enviártela a tu correo registrado.</p>
+    <form method="post" onsubmit="return confirm('Se generará una contraseña nueva y se enviará a ' + '<?= e($cuenta['email']) ?>' + '. La actual dejará de funcionar. ¿Continuar?');">
+        <input type="hidden" name="accion" value="enviar_nueva_clave">
+        <button type="submit" class="btn btn-secondary"><?= icon('send') ?> Olvidé mi contraseña - enviarme una nueva</button>
     </form>
 </div>
 
