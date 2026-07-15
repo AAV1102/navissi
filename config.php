@@ -2481,7 +2481,16 @@ function tiene_rol(array $rolesPermitidos): bool {
     $u = usuario_actual();
     if (!$u) return false;
     $rol = rol_efectivo();
-    if ($rol === 'SUPER_ADMIN' || in_array($rol, $rolesPermitidos, true)) return true;
+    // SUPER_ADMIN, GERENCIA y CEO abren cualquier modulo (igual que ven todos
+    // los datos via usuario_ve_todo()) - son perfil tipo Admin de toda la
+    // empresa, solo sin poder crear/borrar cuentas de otros usuarios (eso
+    // sigue exigiendo tiene_rol(['ADMIN']) explicito).
+    if (in_array($rol, ['SUPER_ADMIN', 'GERENCIA', 'CEO'], true)) return true;
+    // El Director de RRHH tiene el mismo alcance total (lo pidio el dueño de
+    // la cuenta) - el resto de Directores solo tienen el acceso ampliado de
+    // su propia area (alcance_area() ya los limita en los datos que ven).
+    if ($rol === 'DIRECTOR' && in_array($u['area_responsable'] ?? null, ['Direccion Recursos Humanos', 'RRHH'], true)) return true;
+    if (in_array($rol, $rolesPermitidos, true)) return true;
     // Un usuario puede tener un segundo perfil (ej. ADMIN + EMPLEADO) - da acceso a lo que cualquiera de los dos permita.
     $secundario = rol_secundario_efectivo();
     return $secundario !== null && in_array($secundario, $rolesPermitidos, true);
