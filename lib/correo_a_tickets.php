@@ -93,9 +93,15 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
 
     $tecnico = autoasignar_tecnico($pdo);
     $slaLimite = gmdate('Y-m-d H:i:s', strtotime('+24 hours'));
+    // El cuerpo del correo es contenido NO confiable (lo escribe quien sea que
+    // envie el correo) - se limpia con limpio_html() antes de guardarlo, porque
+    // el detalle del ticket ahora renderiza descripcion como HTML (para que el
+    // editor WYSIWYG funcione), y sin este saneamiento un correo malicioso
+    // podria inyectar <script>/onerror en la pantalla de un tecnico de TI.
+    $cuerpoSeguro = limpio_html($cuerpo) ?? '';
     $pdo->prepare("INSERT INTO tickets (titulo, descripcion, categoria, prioridad, solicitante, solicitante_contacto, asignado_a, sla_limite, origen)
         VALUES (?,?,?,?,?,?,?,?,?)")
-        ->execute(["[{$buzon}] {$asunto}", $cuerpo, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, $tecnico, $slaLimite, 'CORREO']);
+        ->execute(["[{$buzon}] {$asunto}", $cuerpoSeguro, 'CORREO', 'MEDIA', $remitenteNombre, $remitente, $tecnico, $slaLimite, 'CORREO']);
     $ticketId = $pdo->lastInsertId();
 
     $comentarioSistema = $tecnico

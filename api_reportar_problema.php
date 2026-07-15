@@ -29,7 +29,10 @@ if (!$sesionValida && !$tokenAgente) {
 if (!$sesionValida) {
     agente_autenticar($pdo, $serial, true);
 }
-$descripcion = limpio($data['descripcion'] ?? null);
+// limpio_html() por seguridad: descripcion queda como texto plano normal pero
+// bloquea cualquier <script>/onerror si alguien manda HTML malicioso via API,
+// ya que el detalle del ticket renderiza descripcion sin volver a escapar.
+$descripcion = limpio_html($data['descripcion'] ?? null);
 $usuarioWindows = limpio($data['usuario_windows'] ?? null);
 $correoSolicitante = filter_var($data['correo'] ?? $data['reporter_email'] ?? null, FILTER_VALIDATE_EMAIL) ?: null;
 

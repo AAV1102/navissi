@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     if ($accion === 'comentar') {
-        $comentario = limpio($_POST['comentario'] ?? null);
+        $comentario = limpio_html($_POST['comentario'] ?? null);
         $visibleCliente = isset($_POST['visible_cliente']) ? 1 : 0;
         if ($comentario || !empty($_FILES['adjuntos']['tmp_name'][0])) {
             $autor = limpio($_POST['autor'] ?? null) ?: 'TI';
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $t = $stmtT->fetch(PDO::FETCH_ASSOC);
                 if ($t && $t['solicitante_contacto'] && filter_var($t['solicitante_contacto'], FILTER_VALIDATE_EMAIL)) {
                     $html = plantilla_correo_html("Actualización de tu ticket #{$id}",
-                        "<p>Hola " . e($t['solicitante']) . ",</p><p>" . nl2br(e($comentario)) . "</p><p class=\"small\">— {$autor}, Mesa de Ayuda NAVISSI</p>");
+                        "<p>Hola " . e($t['solicitante']) . ",</p><div>" . $comentario . "</div><p class=\"small\">— {$autor}, Mesa de Ayuda NAVISSI</p>");
                     $enviado = enviar_correo($t['solicitante_contacto'], "Re: Ticket #{$id} — {$t['titulo']}", $html, $t['solicitante']);
                 }
                 $pdo->prepare("UPDATE tickets_comentarios SET enviado_correo = ? WHERE id = ?")->execute([$enviado ? 1 : 0, $comentarioId]);
@@ -260,7 +260,7 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
                     <?php elseif ($tipo !== 'IA'): ?><span class="badge badge-otro" style="margin-left:6px;font-size:10px;">Nota interna</span><?php endif; ?>
                 </div>
                 <?php endif; ?>
-                <?= nl2br(e($c['comentario'])) ?>
+                <?= $c['comentario'] /* ya limpiado con limpio_html() al guardar */ ?>
                 <?php if (!empty($adjuntosPorComentario[$c['id']])): ?>
                 <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
                     <?php foreach ($adjuntosPorComentario[$c['id']] as $a): ?>
@@ -291,7 +291,7 @@ layout_inicio("Ticket #{$id}", 'Mesa de Ayuda', '../');
                 </div>
                 <?php endif; ?>
             </div>
-            <textarea name="comentario" id="textarea-comentario" rows="3" style="width:100%;margin-bottom:10px;" placeholder="Escribe una actualización o respuesta..."></textarea>
+            <textarea name="comentario" id="textarea-comentario" class="wysiwyg" rows="3" style="width:100%;margin-bottom:10px;" placeholder="Escribe una actualización o respuesta..."></textarea>
             <label class="small">Adjuntar archivos (fotos, PDF, evidencia)</label>
             <input type="file" name="adjuntos[]" multiple style="width:100%;margin-bottom:10px;">
             <label class="small" style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
@@ -307,7 +307,12 @@ var selRespuesta = document.getElementById('selector-respuesta-rapida');
 if (selRespuesta) {
     selRespuesta.addEventListener('change', function () {
         var opt = this.options[this.selectedIndex];
-        document.getElementById('textarea-comentario').value = opt.dataset.texto || '';
+        var textarea = document.getElementById('textarea-comentario');
+        textarea.value = opt.dataset.texto || '';
+        // Si el WYSIWYG ya convirtio el textarea en editor visual, hay que
+        // actualizar tambien el div visible (el textarea de atras queda oculto).
+        var editable = textarea.previousSibling && textarea.previousSibling.querySelector ? textarea.previousSibling.querySelector('.wysiwyg-editable') : null;
+        if (editable) editable.innerHTML = (opt.dataset.texto || '').replace(/\n/g, '<br>');
         document.getElementById('respuesta_rapida_id').value = this.value;
     });
 }
