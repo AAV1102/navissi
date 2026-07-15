@@ -68,12 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($accion === 'asignar') {
         $asignado = limpio($_POST['asignado_a'] ?? null);
-        $pdo->prepare("UPDATE tickets SET asignado_a = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$asignado, $id]);
-        $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
-            ->execute([$id, 'Sistema', "Asignado a {$asignado}.", 'SISTEMA']);
-        $msg = ['ok', 'Ticket asignado.'];
+        if (!$asignado) {
+            $msg = ['error', 'Escribe el nombre del técnico antes de asignar.'];
+        } else {
+            $pdo->prepare("UPDATE tickets SET asignado_a = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$asignado, $id]);
+            $pdo->prepare("INSERT INTO tickets_comentarios (ticket_id, autor, comentario, tipo) VALUES (?,?,?,?)")
+                ->execute([$id, 'Sistema', "Asignado a {$asignado}.", 'SISTEMA']);
+            $msg = ['ok', 'Ticket asignado.'];
 
-        if ($asignado) {
             $stmtT = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
             $stmtT->execute([$id]);
             $t = $stmtT->fetch(PDO::FETCH_ASSOC);
