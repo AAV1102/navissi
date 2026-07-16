@@ -90,9 +90,9 @@ if errorlevel 1 (
 )
 
 echo [3/3] Programando las tareas automaticas con la cuenta SYSTEM ...
-schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%SCRIPT%\" <?= $psArgsPlantilla ?>" /sc onstart /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File %SCRIPT% <?= $psArgsPlantilla ?>" /sc onstart /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
-schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%SCRIPT%\" <?= $psArgsPlantilla ?>" /sc minute /mo 5 /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File %SCRIPT% <?= $psArgsPlantilla ?>" /sc minute /mo 5 /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Reportar problema a NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%REPORTAR%\" -Servidor \"%SERVIDOR%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Crear un ticket asociado automáticamente a este equipo';$s.Save()"
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Estado agente NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -NoExit -File \"%SCRIPT%\" -Servidor \"%SERVIDOR%\" -TokenFile \"%TOKENFILE%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Verificar el reporte del agente NAVISSI';$s.Save()"
