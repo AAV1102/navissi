@@ -189,7 +189,7 @@ try {
                 $session=New-Object -ComObject Microsoft.Update.Session;$search=$session.CreateUpdateSearcher().Search("IsInstalled=0 and Type='Software'");$updates=$search.Updates
                 if($updates.Count -gt 0){$down=$session.CreateUpdateDownloader();$down.Updates=$updates;$null=$down.Download();$inst=$session.CreateUpdateInstaller();$inst.Updates=$updates;$r=$inst.Install();$resultado="Actualizaciones instaladas: $($updates.Count). Resultado: $($r.ResultCode)"}else{$resultado='No había actualizaciones pendientes.'}
             } elseif($orden.tipo -eq 'INSTALLER_URL' -and $orden.parametros.url -match '^https://') {
-                $tmp="$env:TEMP\navissi_orden_$($orden.id).exe";Invoke-WebRequest -UseBasicParsing -Uri $orden.parametros.url -OutFile $tmp;Start-Process -FilePath $tmp -ArgumentList ($orden.parametros.argumentos??'/quiet') -Wait;Remove-Item $tmp -Force -ErrorAction SilentlyContinue;$resultado='Instalador ejecutado correctamente.'
+                $tmp="$env:TEMP\navissi_orden_$($orden.id).exe";$argsInst=if($orden.parametros.argumentos){$orden.parametros.argumentos}else{'/quiet'};Invoke-WebRequest -UseBasicParsing -Uri $orden.parametros.url -OutFile $tmp;Start-Process -FilePath $tmp -ArgumentList $argsInst -Wait;Remove-Item $tmp -Force -ErrorAction SilentlyContinue;$resultado='Instalador ejecutado correctamente.'
             } else { throw 'Tipo de orden no permitido.' }
         } catch { $estado='FALLIDA';$errorOrden=$_.Exception.Message }
         $body=@{accion='resultado';serial=$bios.SerialNumber;orden_id=$orden.id;estado=$estado;resultado=$resultado;error=$errorOrden}|ConvertTo-Json
