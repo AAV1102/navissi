@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($accion === 'preguntar') {
         $c = ia_config();
-        if (empty($c['api_key'])) {
+        if (empty($c['api_key']) && ($c['proveedor'] ?? '') !== 'local') {
             $msg = ['error', 'Configura primero tu clave de API arriba.'];
         } else {
             $agente = $_POST['agente'] ?? 'TI';
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $c = ia_config();
-$configurado = !empty($c['api_key']);
+$configurado = !empty($c['api_key']) || ($c['proveedor'] ?? '') === 'local';
 
 layout_inicio('IA Multiagente', 'IA Multiagente', '../');
 ?>
@@ -100,7 +100,7 @@ layout_inicio('IA Multiagente', 'IA Multiagente', '../');
                 <option value="openai" <?= $c['proveedor']==='openai'?'selected':'' ?>>OpenAI (GPT)</option>
             </select>
         </div>
-        <div style="grid-column:span 2;"><label>API Key</label><input type="password" name="api_key" value="" autocomplete="new-password" placeholder="Vacío para conservar la clave actual"></div>
+        <div style="grid-column:span 2;"><label>API Key (o servidor local si elegiste "NAVISSI Local")</label><input type="password" name="api_key" value="" autocomplete="new-password" placeholder="Para NAVISSI Local: 127.0.0.1:11434 (vacío = valor por defecto). Para los demás: tu API key."></div>
         <div style="align-self:end;"><button type="submit">Guardar</button></div>
     </form>
 </div>

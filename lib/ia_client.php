@@ -14,6 +14,7 @@ class IAClient {
         return match ($this->proveedor) {
             'openai' => $this->preguntarOpenAI($systemPrompt, $mensajeUsuario),
             'gemini' => $this->preguntarGemini($systemPrompt, $mensajeUsuario),
+            'ollama', 'local' => $this->preguntarOllama($systemPrompt, $mensajeUsuario),
             default => $this->preguntarAnthropic($systemPrompt, $mensajeUsuario),
         };
     }
@@ -71,4 +72,33 @@ class IAClient {
         ]);
         return $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
     }
+
+    /**
+     * IA propia, local y gratuita: habla con Ollama (https://ollama.com) corriendo
+     * en el mismo servidor/red interna, sin salir a internet y sin API key ni
+     * costo por token. $this->apiKey aquí se reutiliza como "host:puerto"
+     * (ej. "127.0.0.1:11434") para no tener que tocar el esquema de config; si
+     * viene vacío se asume el valor por defecto de Ollama en localhost.
+     */
+    private function preguntarOllama($systemPrompt, $mensaje) {
+        $modelo = OLLAMA_MODELO_DEFECTO;
+        $host = trim((string) $this->apiKey) ?: '127.0.0.1:11434';
+        if (preg_match('/^modelo=([^;]+);?(.*)$/', $host, $m)) { $modelo = $m[1]; $host = $m[2] ?: '127.0.0.1:11434'; }
+        $url = "http://{$host}/api/chat";
+        try {
+            $data = $this->curlJson($url, [], [
+                'model' => $modelo,
+                'messages' => [
+                    ['role' => 'system', 'content' => $systemPrompt],
+                    ['role' => 'user', 'content' => $mensaje],
+                ],
+                'stream' => false,
+            ]);
+        } catch (IAException $e) {
+            throw new IAException("No se pudo conectar con la IA local (Ollama) en {$host}. ¿Está corriendo 'ollama serve' en el servidor? Detalle: " . $e->getMessage());
+        }
+        return $data['message']['content'] ?? '';
+    }
 }
+
+if (!defined('OLLAMA_MODELO_DEFECTO')) define('OLLAMA_MODELO_DEFECTO', 'llama3.2');

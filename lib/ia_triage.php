@@ -74,12 +74,16 @@ function ia_triage_ticket(PDO $pdo, int $ticketId) {
 
     $client = null;
     $categoriaDetectada = ia_clasificar_determinista($ticket, $categorias);
-    if (!empty($config['api_key'])) {
+    $proveedor = $config['proveedor'] ?? 'anthropic';
+    // El proveedor 'local'/'ollama' no necesita api_key (habla con Ollama en
+    // la misma red, sin costo); los demás sí la requieren.
+    if (!empty($config['api_key']) || in_array($proveedor, ['local', 'ollama'], true)) {
         try {
-            $client = new IAClient($config['proveedor'] ?? 'anthropic', $config['api_key']);
+            $client = new IAClient($proveedor, $config['api_key'] ?? '');
             $categoriaDetectada = ia_clasificar_categoria($client, $ticket, $categorias);
         } catch (IAException $e) {
-            hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'IA_ERROR', $e->getMessage() . ' Se aplicó el agente local de respaldo.', 'IA', $ticketId);
+            $client = null;
+            hoja_vida_registrar($pdo, 'TICKET', (string) $ticketId, 'IA_ERROR', $e->getMessage() . ' Se aplicó el agente local de respaldo (reglas).', 'IA', $ticketId);
         }
     }
 

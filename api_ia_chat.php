@@ -72,13 +72,17 @@ $systemPrompt = "Eres el asistente general del software NAVISSI Inventario (Grup
     . "{$empleados} empleados activos, {$sedes} sedes activas. "
     . "Si te preguntan algo que requiere datos que no tienes aquí, sugiere en qué módulo del menú lo pueden ver.";
 
-if (($config['proveedor'] ?? '') === 'local' || empty($config['api_key'])) {
+// 'local'/'ollama' intenta primero la IA local real (Ollama, respuestas libres);
+// si Ollama no está corriendo en el servidor, cae al agente de reglas basado en
+// datos reales (respuesta_agente_local) - nunca deja al usuario sin respuesta.
+$esLocal = in_array($config['proveedor'] ?? '', ['local', 'ollama'], true);
+if (!$esLocal && empty($config['api_key'])) {
     echo json_encode(['respuesta'=>respuesta_agente_local($pdo,$pregunta,['tickets'=>(int)$ticketsAbiertos,'equipos'=>(int)$equipos,'agentes'=>$agentesActivos,'remotos'=>$remotos,'nombre'=>$u['nombre']??'']),'modo'=>'AGENTE_LOCAL'],JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 try {
-    $client = new IAClient($config['proveedor'] ?? 'anthropic', $config['api_key']);
+    $client = new IAClient($config['proveedor'] ?? 'anthropic', $config['api_key'] ?? '');
     $respuesta = $client->preguntar($systemPrompt, $pregunta);
     echo json_encode(['respuesta' => $respuesta]);
 } catch (IAException $e) {

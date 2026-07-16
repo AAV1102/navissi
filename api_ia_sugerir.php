@@ -46,14 +46,12 @@ $systemPrompt = "Eres el redactor técnico de TI de Navissi/Grupo 10Z. Tu trabaj
     . "No agregues encabezados ni firmas, solo el texto de la observación. Contexto del equipo: {$contextoEquipo}";
 
 try {
-    if (($config['proveedor'] ?? '') === 'local') {
-        $texto = trim(preg_replace('/\s+/', ' ', $borrador));
-        echo json_encode(['sugerencia' => "Movimiento {$tipo}: {$texto}. Equipo verificado contra el inventario NAVISSI."], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-    $client = new IAClient($config['proveedor'] ?? 'gemini', $config['api_key']);
+    $client = new IAClient($config['proveedor'] ?? 'gemini', $config['api_key'] ?? '');
     $respuesta = $client->preguntar($systemPrompt, "Tipo de movimiento: {$tipo}. Notas del técnico: {$borrador}");
     echo json_encode(['sugerencia' => trim($respuesta)]);
 } catch (IAException $e) {
-    echo json_encode(['error' => $e->getMessage()]);
+    // Sin conexión a la IA (local o remota): redacción mínima determinista para
+    // no dejar al técnico sin nada que guardar.
+    $texto = trim(preg_replace('/\s+/', ' ', $borrador));
+    echo json_encode(['sugerencia' => "Movimiento {$tipo}: {$texto}. Equipo verificado contra el inventario NAVISSI.", 'aviso' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }
