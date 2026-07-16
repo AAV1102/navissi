@@ -171,6 +171,10 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
 function sincronizar_correo_a_tickets(PDO $pdo): array {
     $creados = 0; $yaExistian = 0; $errores = [];
 
+    // Limpia avisos antiguos que quedaron en cola durante el bucle de rebotes.
+    // No se borran: quedan auditados como descartados y dejan de salir por correo.
+    $pdo->exec("UPDATE notificaciones_cola SET estado='DESCARTADA', proximo_intento_en=NULL, ultimo_error='Aviso automático retirado para evitar spam' WHERE estado IN ('PENDIENTE','ERROR') AND (lower(asunto) LIKE '%sla nivel%' OR lower(asunto) LIKE '%undeliverable%' OR lower(asunto) LIKE '%no se pudo entregar%')");
+
     if (ms365_configurado()) {
         $c = ms365_config();
         $gc = new GraphClient($c['tenant_id'], $c['client_id'], $c['client_secret']);
