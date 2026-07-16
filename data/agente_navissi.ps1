@@ -20,7 +20,10 @@ param(
     [switch]$EscanearRed
 )
 $agentToken = if (Test-Path $TokenFile) { (Get-Content $TokenFile -Raw).Trim() } else { "" }
-if (-not $agentToken) { Write-Output "ERROR: falta la credencial del agente. Descarga un instalador nuevo desde NAVISSI."; exit 1 }
+$logDir = "$env:ProgramData\NAVISSI"; if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Force -Path $logDir | Out-Null }
+$logFile = "$logDir\agente.log"
+function Log($texto) { $texto | Tee-Object -FilePath $logFile -Append }
+if (-not $agentToken) { Log "ERROR: falta la credencial del agente en $TokenFile. Ejecuta el instalador NAVISSI nuevamente."; exit 1 }
 $headersAgente = @{ Authorization = "Bearer $agentToken" }
 
 $cs = Get-CimInstance -ClassName Win32_ComputerSystem
@@ -141,7 +144,7 @@ try {
     Write-Output "OK: $($resp.accion) - id $($resp.id) - RustDesk ID: $rustdeskId - Parches reportados: $($parches.Count)"
     $reporteExitoso = $true
 } catch {
-    Write-Output "ERROR enviando el reporte: $($_.Exception.Message)"
+    Log "ERROR enviando el reporte: $($_.Exception.Message)"
 }
 
 # --- Network Discovery: barrido real del segmento local (ping + tabla ARP) ---
