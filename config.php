@@ -2862,6 +2862,29 @@ function e($v) {
     return htmlspecialchars((string) ($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+/** True si el usuario actual activó el "Modo edición" (editor en vivo) en esta sesión. Solo ADMIN/SUPER_ADMIN pueden activarlo. */
+function modo_edicion_activo(): bool {
+    return !empty($_SESSION['modo_edicion']) && tiene_rol(['ADMIN']);
+}
+
+/**
+ * Imprime un texto que se puede editar en vivo (estilo WordPress) cuando el
+ * Modo edición está activo: cualquier <h1>/<h3>/etc envuelto con editable()
+ * queda como contenteditable, y al perder el foco se guarda solo por AJAX a
+ * api_contenido_editable.php - sin recargar la página ni tocar código.
+ * $clave debe ser única en todo el sitio (ej. "dashboard.titulo").
+ */
+function editable(string $clave, string $textoDefecto): string {
+    static $cache = null;
+    if ($cache === null) {
+        try { $cache = db()->query("SELECT clave, valor FROM contenido_editable")->fetchAll(PDO::FETCH_KEY_PAIR); }
+        catch (Throwable $ex) { $cache = []; }
+    }
+    $texto = $cache[$clave] ?? $textoDefecto;
+    if (!modo_edicion_activo()) return e($texto);
+    return '<span class="navissi-editable" contenteditable="true" data-clave="' . e($clave) . '" data-defecto="' . e($textoDefecto) . '">' . e($texto) . '</span>';
+}
+
 function ms365_config(): array {
     $data = leer_config_json(MS365_CONFIG_PATH);
     return is_array($data) ? $data : ['tenant_id' => '', 'client_id' => '', 'client_secret' => ''];
