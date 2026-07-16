@@ -36,7 +36,7 @@ if errorlevel 1 (
 )
 
 set "SERVIDOR=<?= $base ?>"
-set "DESTINO=%ProgramData%\NAVISSI"
+set "DESTINO=C:\NAVISSI-Agent"
 set "SCRIPT=%DESTINO%\agente_navissi.ps1"
 set "REPORTAR=%DESTINO%\reportar_problema.ps1"
 set "TOKENFILE=%DESTINO%\agent.token"
@@ -77,27 +77,29 @@ $psArgsPlantilla = $rustdeskClave
     : "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%'";
 ?>
 echo [2/3] Ejecutando el agente por primera vez<?= $rustdeskClave ? ' (incluye control remoto)' : '' ?> ...
-powershell -ExecutionPolicy Bypass -Command "& '%SCRIPT%' <?= $psArgsPlantilla ?>"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%SCRIPT%' <?= $psArgsPlantilla ?>" > "%DESTINO%\primer_reporte.log" 2>&1
 if errorlevel 1 (
     echo ERROR: el equipo no pudo reportarse. No se crearon tareas automaticas.
-    echo La credencial queda disponible para reintentar en este mismo equipo.
+    echo Revisa el detalle en %DESTINO%\primer_reporte.log
+    type "%DESTINO%\primer_reporte.log"
     pause
     exit /b 1
 )
 
 echo [3/3] Programando las tareas automaticas con la cuenta SYSTEM ...
-schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell -ExecutionPolicy Bypass -Command \"& '%SCRIPT%' <?= $psArgsPlantilla ?>\"" /sc onstart /ru SYSTEM /rl highest /f >nul 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '%SCRIPT%' <?= $psArgsPlantilla ?> *>> '%DESTINO%\agent.log' 2>&1\"" /sc onstart /ru SYSTEM /rl highest /f >nul 2>&1
 if errorlevel 1 goto :task_error
-schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell -ExecutionPolicy Bypass -Command \"& '%SCRIPT%' <?= $psArgsPlantilla ?>\"" /sc minute /mo 5 /ru SYSTEM /rl highest /f >nul 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '%SCRIPT%' <?= $psArgsPlantilla ?> *>> '%DESTINO%\agent.log' 2>&1\"" /sc minute /mo 5 /ru SYSTEM /rl highest /f >nul 2>&1
 if errorlevel 1 goto :task_error
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Reportar problema a NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%REPORTAR%\" -Servidor \"%SERVIDOR%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Crear un ticket asociado automáticamente a este equipo';$s.Save()"
+powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Estado agente NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -NoExit -File \"%SCRIPT%\" -Servidor \"%SERVIDOR%\" -TokenFile \"%TOKENFILE%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Verificar el reporte del agente NAVISSI';$s.Save()"
 
 echo.
 echo ============================================
 echo   Listo. El agente ya reporto este equipo y
 echo   quedo programado para reportarse solo.
-echo   Este instalador se eliminara para proteger
-echo   la credencial incluida en su interior.
+echo   El agente quedo instalado en %DESTINO%
+echo   y seguira reportando automaticamente.
 echo ============================================
 pause
 start "" /b cmd /c del /f /q "%~f0"
