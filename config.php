@@ -138,7 +138,7 @@ function sincronizar_directores_operativos(PDO $pdo): void {
         ['Frank Jaramillo','direccionlogistica@navissi.com','Direccion de Logistica','DIRECTOR','$2y$10$tKTAaBrZ/kbf.jhCi4Xvx.rB1EHnyF4iwoCTnMGkmYzAvA7zy5jeO'],
         ['Ana Maria Gonzalez','ana.gonzalez@navissi.com','Direccion Comercial','DIRECTOR','$2y$10$EPObTDo1istUEVqFz/NEt.XCqNhm1herAN0FN5NZvR/jwi1XwpfJ.'],
         ['Kelly Gomez','kelly.gomez@navissi.com','Direccion Recursos Humanos','DIRECTOR','\$2y\$10\$SMeFFC9atcPKxmkxqQmS3.azKLHRIFK/dJUGUUv0nrm9dIm0VjlQe'],
-        ['Guillermo Arboleda','direccioncontable@navissi.com','Direccion de Contabilidad','DIRECTOR','\$2y\$10\$FSbPfKfDBXlns3egcRxcH.drXadG/if2qttbqq6MgfHvEFKRvyxI2'],
+        ['Guillermo Arboleda','direccioncontable@navissi.com','Direccion de Contabilidad','DIRECTOR','$2y$10$FSbPfKfDBXlns3egcRxcH.drXadG/if2qttbqq6MgfHvEFKRvyxI2'],
         ['Luz Espriella','analistacontable@navissi.com','Direccion de Contabilidad','ANALISTA','\$2y\$10\$v5OpThJJV8tmjDyB7NzoduDPrga1viod0H6oHPbSggJSWVFyCGo/G'],
         ['Dahiana Munera','auxiliarcontable1@navissi.com','Direccion de Contabilidad','ANALISTA','\$2y\$10\$1yo1SAijxgjS1acpP3oNIOYjDtHQR4PUvAPDBbTi9nbPNthHRdQUy'],
         ['Angie Acevedo','auxiliarcontable2@navissi.com','Direccion de Contabilidad','ANALISTA','\$2y\$10\$yZtoko5Q/vizDfCHK4.bAuDlDf96/6iBL/aHy0HrZ7x9xrymtVkw6'],
