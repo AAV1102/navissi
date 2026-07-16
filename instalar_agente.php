@@ -28,11 +28,14 @@ echo   Instalador del Agente de Inventario NAVISSI
 echo ============================================
 echo.
 
+rem Mantener el resultado visible y registrar cada paso para soporte.
+set "LOG=%TEMP%\navissi_instalador.log"
+echo [%date% %time%] Inicio >> "%LOG%"
 net session >nul 2>&1
 if errorlevel 1 (
     echo Se necesitan permisos de Windows para instalar el agente. Se solicitaran automaticamente...
-    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b 1
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs -Wait"
+    exit /b 0
 )
 
 set "SERVIDOR=<?= $base ?>"
@@ -48,7 +51,7 @@ set /p SEDE=Nombre de la sede/tienda de este equipo (ej. Molinos):
 <?php endif; ?>
 
 if not exist "%DESTINO%" mkdir "%DESTINO%"
-powershell -NoProfile -Command "$d=[Environment]::ExpandEnvironmentVariables('%DESTINO%');$f=[Environment]::ExpandEnvironmentVariables('%TOKENFILE%');New-Item -ItemType Directory -Force -Path $d -ErrorAction Stop | Out-Null;[IO.File]::WriteAllText($f,'<?= $tokenAgente ?>',[Text.Encoding]::ASCII)"
+powershell -NoProfile -Command "$ErrorActionPreference='Stop';$d=[Environment]::ExpandEnvironmentVariables('%DESTINO%');$f=[Environment]::ExpandEnvironmentVariables('%TOKENFILE%');New-Item -ItemType Directory -Force -Path $d | Out-Null;[IO.File]::WriteAllText($f,'<?= $tokenAgente ?>',[Text.Encoding]::ASCII);if(-not (Test-Path -LiteralPath $f)){throw 'No se pudo escribir la credencial'}" >> "%LOG%" 2>&1
 if errorlevel 1 goto :credential_error
 icacls "%TOKENFILE%" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F >nul 2>&1
 powershell -NoProfile -Command "if(-not (Test-Path -LiteralPath '%TOKENFILE%')){exit 1}"
@@ -63,7 +66,7 @@ exit /b 1
 
 echo.
 echo [1/3] Preparando el agente incluido en este instalador ...
-powershell -NoProfile -Command "[IO.File]::WriteAllBytes('%SCRIPT%',[Convert]::FromBase64String('<?= $agenteB64 ?>'));[IO.File]::WriteAllBytes('%REPORTAR%',[Convert]::FromBase64String('<?= $reportarB64 ?>'))"
+powershell -NoProfile -Command "$ErrorActionPreference='Stop';[IO.File]::WriteAllBytes('%SCRIPT%',[Convert]::FromBase64String('<?= $agenteB64 ?>'));[IO.File]::WriteAllBytes('%REPORTAR%',[Convert]::FromBase64String('<?= $reportarB64 ?>'))" >> "%LOG%" 2>&1
 if errorlevel 1 goto :download_error
 if not exist "%SCRIPT%" (
     echo ERROR: no se pudo descargar el agente. Revisa la conexion a internet/red y vuelve a intentar.
@@ -77,7 +80,7 @@ $psArgsPlantilla = $rustdeskClave
     : "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%'";
 ?>
 echo [2/3] Ejecutando el agente por primera vez<?= $rustdeskClave ? ' (incluye control remoto)' : '' ?> ...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%SCRIPT%' <?= $psArgsPlantilla ?>" > "%DESTINO%\primer_reporte.log" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" <?= $psArgsPlantilla ?> > "%DESTINO%\primer_reporte.log" 2>&1
 if errorlevel 1 (
     echo ERROR: el equipo no pudo reportarse. No se crearon tareas automaticas.
     echo Revisa el detalle en %DESTINO%\primer_reporte.log
@@ -87,9 +90,9 @@ if errorlevel 1 (
 )
 
 echo [3/3] Programando las tareas automaticas con la cuenta SYSTEM ...
-schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '%SCRIPT%' <?= $psArgsPlantilla ?> *>> '%DESTINO%\agent.log' 2>&1\"" /sc onstart /ru SYSTEM /rl highest /f >nul 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%SCRIPT%\" <?= $psArgsPlantilla ?>" /sc onstart /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
-schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& '%SCRIPT%' <?= $psArgsPlantilla ?> *>> '%DESTINO%\agent.log' 2>&1\"" /sc minute /mo 5 /ru SYSTEM /rl highest /f >nul 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%SCRIPT%\" <?= $psArgsPlantilla ?>" /sc minute /mo 5 /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Reportar problema a NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%REPORTAR%\" -Servidor \"%SERVIDOR%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Crear un ticket asociado automáticamente a este equipo';$s.Save()"
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Estado agente NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -NoExit -File \"%SCRIPT%\" -Servidor \"%SERVIDOR%\" -TokenFile \"%TOKENFILE%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Verificar el reporte del agente NAVISSI';$s.Save()"
