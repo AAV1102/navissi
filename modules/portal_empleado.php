@@ -183,7 +183,9 @@ try {
 } catch (\Throwable $e) { /* modulo de capacitacion aun no migrado en este entorno */ }
 
 $iniciales = mb_strtoupper(mb_substr($u['nombre'] ?? '?', 0, 1));
-layout_inicio('Mi Portal de Empleado', 'Dashboard', '../');
+$rolPortal = rol_efectivo();
+$tituloPortal = $rolPortal === 'DIRECTOR' ? 'Autogestión de Dirección' : ($rolPortal === 'COORDINADOR' ? 'Autogestión de Coordinación' : 'Mi Portal / Autogestión');
+layout_inicio($tituloPortal, 'Mi Portal de Empleado', '../');
 ?>
 <style>
 .pe-tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:2px solid var(--line);margin:18px 0 0;}

@@ -96,10 +96,16 @@ function badge_prioridad_dashboard($p) {
     return "<span class=\"badge {$cls}\">" . e($p) . "</span>";
 }
 
-layout_inicio('Pulso operativo', 'Dashboard');
+if ($rol === 'DIRECTOR') $tituloDashboard = 'Dashboard de Dirección';
+elseif ($rol === 'COORDINADOR') $tituloDashboard = 'Dashboard de Coordinación';
+elseif ($rol === 'ANALISTA') $tituloDashboard = 'Dashboard Analítico';
+elseif ($rol === 'RRHH') $tituloDashboard = 'Dashboard de Gestión Humana';
+elseif (in_array($rol, ['TI','ADMIN','SUPER_ADMIN'], true)) $tituloDashboard = 'Dashboard Técnico';
+else $tituloDashboard = 'Dashboard';
+layout_inicio($tituloDashboard, 'Dashboard');
 ?>
 <div class="page-kicker"><?= editable('dashboard.kicker', 'NAVISSI BACKSTAGE · CONTROL OPERATIVO') ?></div>
-<h1><?= editable('dashboard.titulo', 'Pulso operativo') ?></h1>
+<h1><?= editable('dashboard.titulo', $tituloDashboard) ?></h1>
 <p class="subtitle">
     <?php if ($vistaRRHH): ?>Resumen de Talento Humano: empleados, vacaciones y evaluaciones.
     <?php elseif ($vistaEjecutiva): ?>Resumen ejecutivo: equipos, personal, contratos y mesa de ayuda.
