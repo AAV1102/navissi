@@ -127,8 +127,28 @@ function db(): PDO {
         }
         migrar_fases_operativas($pdo);
         aplicar_migraciones_seguridad($pdo);
+        sincronizar_directores_operativos($pdo);
     }
     return $pdo;
+}
+
+/** Permisos iniciales de directores operativos sincronizados con Microsoft 365. */
+function sincronizar_directores_operativos(PDO $pdo): void {
+    $cuentas = [
+        ['Frank Jaramillo','direccionlogistica@navissi.com','Direccion de Logistica','DIRECTOR','$2y$10$tKTAaBrZ/kbf.jhCi4Xvx.rB1EHnyF4iwoCTnMGkmYzAvA7zy5jeO'],
+        ['Ana Maria Gonzalez','ana.gonzalez@navissi.com','Direccion Comercial','DIRECTOR','$2y$10$EPObTDo1istUEVqFz/NEt.XCqNhm1herAN0FN5NZvR/jwi1XwpfJ.'],
+    ];
+    $find = $pdo->prepare('SELECT id FROM usuarios_sistema WHERE email = ? COLLATE NOCASE LIMIT 1');
+    foreach ($cuentas as [$nombre,$email,$area,$rol,$hash]) {
+        $find->execute([$email]); $id = $find->fetchColumn();
+        if ($id) {
+            $pdo->prepare('UPDATE usuarios_sistema SET nombre=?, rol=?, area_responsable=?, activo=1, password_hash=?, password_temporal=1 WHERE id=?')
+                ->execute([$nombre,$rol,$area,$hash,$id]);
+        } else {
+            $pdo->prepare('INSERT INTO usuarios_sistema(nombre,email,password_hash,rol,area_responsable,activo,password_temporal) VALUES(?,?,?,?,?,1,1)')
+                ->execute([$nombre,$email,$hash,$rol,$area]);
+        }
+    }
 }
 
 function migrar_fases_operativas(PDO $pdo): void {
