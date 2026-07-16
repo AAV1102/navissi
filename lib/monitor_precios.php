@@ -37,6 +37,12 @@ function mp_detectar_tipo(string $url): array {
     if (str_contains($url, 'zara.com')) {
         return ['zara', 'Detectado: Zara (API interna)'];
     }
+    // Tennis (tns.us) es Shopify, pero su endpoint puede responder 403/429 a
+    // la sonda de detección.  No lo degradamos a JSON-LD: usamos el conector
+    // Shopify directamente, igual que el monitor local.
+    if (preg_match('~https?://([^/]*\.)?(tns\.us|tennis\.com\.co)(/|$)~i', $url)) {
+        return ['shopify', 'Detectado: Tennis (conector Shopify)'];
+    }
     if (preg_match('~(https?://[^/]+)(/collections/[^/?#]+)?~', $url, $m)) {
         $dominio = $m[1];
         $coleccion = $m[2] ?? '';
@@ -102,14 +108,18 @@ function mp_scrape_shopify(string $url): array {
  */
 function mp_scrape_zara(string $url): array {
     $cookieJar = sys_get_temp_dir() . '/navissi_mp_zara_' . uniqid() . '.txt';
-    mp_curl_get('https://www.zara.com/us/', [], $cookieJar);
+    // Mantener la sesión y simular navegación normal reduce falsos bloqueos.
+    mp_curl_get('https://www.zara.com/us/', ['Referer: https://www.zara.com/'], $cookieJar);
     usleep(300000);
 
     $categorias = [];
     if (preg_match('/-l(\d+)\.html/', $url, $mCat)) {
         $categorias[] = [(int) $mCat[1], 'categoría de la URL'];
     } else {
-        $r = mp_curl_get('https://www.zara.com/us/en/categories?ajax=true', [], $cookieJar);
+        $r = mp_curl_get('https://www.zara.com/us/en/categories?ajax=true', [
+            'Referer: https://www.zara.com/us/en/',
+            'X-Requested-With: XMLHttpRequest',
+        ], $cookieJar);
         if ($r['codigo'] !== 200 || !str_contains($r['tipo'], 'json')) {
             @unlink($cookieJar);
             throw new RuntimeException('Zara bloqueó la petición (protección anti-bots). Vuelve a intentarlo más tarde o pega la URL de una categoría específica (ej. mujer > camisas).');
@@ -131,7 +141,10 @@ function mp_scrape_zara(string $url): array {
     $filas = [];
     $vistos = [];
     foreach ($categorias as [$catId, $catNombre]) {
-        $r = mp_curl_get("https://www.zara.com/us/en/category/{$catId}/products?ajax=true", [], $cookieJar);
+        $r = mp_curl_get("https://www.zara.com/us/en/category/{$catId}/products?ajax=true", [
+            'Referer: https://www.zara.com/us/en/',
+            'X-Requested-With: XMLHttpRequest',
+        ], $cookieJar);
         if ($r['codigo'] !== 200) continue;
         $data = json_decode($r['body'], true);
         foreach (($data['productGroups'] ?? []) as $grupo) {
