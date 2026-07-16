@@ -94,6 +94,7 @@ layout_inicio('IA Multiagente', 'IA Multiagente', '../');
         <input type="hidden" name="accion" value="guardar_config">
         <div><label>Proveedor</label>
             <select name="proveedor">
+                <option value="local" <?= $c['proveedor']==='local'?'selected':'' ?>>NAVISSI Local (sin internet ni API)</option>
                 <option value="gemini" <?= $c['proveedor']==='gemini'?'selected':'' ?>>Google Gemini (gratis, sin tarjeta)</option>
                 <option value="anthropic" <?= $c['proveedor']==='anthropic'?'selected':'' ?>>Anthropic (Claude)</option>
                 <option value="openai" <?= $c['proveedor']==='openai'?'selected':'' ?>>OpenAI (GPT)</option>

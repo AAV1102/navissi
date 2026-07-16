@@ -15,7 +15,7 @@ $pdo = db();
 $configPath = private_path('ia_config.json');
 if (!file_exists($configPath)) { echo json_encode(['error' => 'IA no configurada.']); exit; }
 $config = leer_config_json($configPath);
-if (empty($config['api_key'])) { echo json_encode(['error' => 'IA no configurada.']); exit; }
+if (empty($config['api_key']) && ($config['proveedor'] ?? '') !== 'local') { echo json_encode(['error' => 'IA no configurada.']); exit; }
 
 $data = json_decode(file_get_contents('php://input'), true) ?: [];
 $serial = limpio($data['serial'] ?? null);
@@ -46,6 +46,11 @@ $systemPrompt = "Eres el redactor técnico de TI de Navissi/Grupo 10Z. Tu trabaj
     . "No agregues encabezados ni firmas, solo el texto de la observación. Contexto del equipo: {$contextoEquipo}";
 
 try {
+    if (($config['proveedor'] ?? '') === 'local') {
+        $texto = trim(preg_replace('/\s+/', ' ', $borrador));
+        echo json_encode(['sugerencia' => "Movimiento {$tipo}: {$texto}. Equipo verificado contra el inventario NAVISSI."], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     $client = new IAClient($config['proveedor'] ?? 'gemini', $config['api_key']);
     $respuesta = $client->preguntar($systemPrompt, "Tipo de movimiento: {$tipo}. Notas del técnico: {$borrador}");
     echo json_encode(['sugerencia' => trim($respuesta)]);

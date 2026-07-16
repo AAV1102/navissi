@@ -30,6 +30,22 @@ function respuesta_agente_local(PDO $pdo, string $pregunta, array $contexto): st
         return '¡Hola'.($nombre?' '.explode(' ',$nombre)[0]:'').'! 👋 Soy el asistente de NAVISSI. Puedo consultar datos reales y ayudarte a actuar. Puedes preguntarme, por ejemplo: “¿qué equipos necesitan atención?”, “muéstrame los tickets abiertos” o “¿cómo reporto un problema?”.';
     }
     if(preg_match('/^(GRACIAS|MUCHAS GRACIAS|OK|LISTO|ENTENDIDO)[!,. ]*$/u',$q)) return 'Con gusto. ¿Quieres que revisemos tickets, equipos, agentes, acceso remoto o automatizaciones?';
+    if (preg_match('/^(EQUIPOS?|COMPUTADORES?|PCS?|INVENTARIO)[!,. ]*$/u', $q)) {
+        return "Ahora mismo hay {$contexto['equipos']} equipos registrados; {$contexto['agentes']} reportaron en las últimas 24 horas y " . max(0, $contexto['equipos'] - $contexto['agentes']) . " requieren revisión. Puedes preguntarme por equipos sin agente, sin ubicación, parches o acceso remoto.";
+    }
+    if (str_contains($q,'SIN AGENTE') || str_contains($q,'DESCONECT')) {
+        $n=(int)$pdo->query("SELECT COUNT(*) FROM inventario WHERE ultima_conexion_agente IS NULL OR ultima_conexion_agente < datetime('now','-24 hours')")->fetchColumn();
+        return "Detecté {$n} equipos sin reporte del agente en las últimas 24 horas. Revisa Inventario → Agente de inventario para descargar el instalador y ver el último contacto.";
+    }
+    // Memoria local regenerativa: recupera artículos de conocimiento sin enviar datos a terceros.
+    $terminos = array_values(array_filter(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower(trim($pregunta),'UTF-8')), fn($w)=>mb_strlen($w)>=4));
+    if ($terminos) {
+        $cond=[]; $params=[];
+        foreach ($terminos as $i=>$term) { $cond[]="(LOWER(titulo) LIKE ? OR LOWER(contenido) LIKE ?)"; $params[]='%'.$term.'%'; $params[]='%'.$term.'%'; }
+        $stmt=$pdo->prepare('SELECT titulo, contenido FROM base_conocimiento WHERE '.implode(' OR ',$cond).' ORDER BY creado_en DESC LIMIT 1');
+        $stmt->execute($params); $kb=$stmt->fetch(PDO::FETCH_ASSOC);
+        if ($kb) return "Encontré una guía en la Base de Conocimiento: {$kb['titulo']}\n\n" . mb_substr(trim(strip_tags($kb['contenido'])),0,900);
+    }
     if(str_contains($q,'LOGIST')||str_contains($q,'BODEGA')){
         $sin=(int)$pdo->query("SELECT COUNT(*) FROM inventario WHERE trim(COALESCE(ubicacion_bodega,''))='' ")->fetchColumn();
         return "Logística está activa. Hay {$sin} equipos sin ubicación de bodega. Entra a Inventario y activos → Logística y Bodega para escanear seriales, mover equipos y consultar trazabilidad.";
@@ -56,7 +72,7 @@ $systemPrompt = "Eres el asistente general del software NAVISSI Inventario (Grup
     . "{$empleados} empleados activos, {$sedes} sedes activas. "
     . "Si te preguntan algo que requiere datos que no tienes aquí, sugiere en qué módulo del menú lo pueden ver.";
 
-if (empty($config['api_key'])) {
+if (($config['proveedor'] ?? '') === 'local' || empty($config['api_key'])) {
     echo json_encode(['respuesta'=>respuesta_agente_local($pdo,$pregunta,['tickets'=>(int)$ticketsAbiertos,'equipos'=>(int)$equipos,'agentes'=>$agentesActivos,'remotos'=>$remotos,'nombre'=>$u['nombre']??'']),'modo'=>'AGENTE_LOCAL'],JSON_UNESCAPED_UNICODE);
     exit;
 }
