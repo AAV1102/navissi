@@ -41,6 +41,7 @@ function nav_grupos() {
                 'modules/importar.php' => ['Importador universal', 'upload'],
                 'modules/exportar.php' => ['Exportador universal', 'file'],
                 'modules/agente_inventario.php' => ['Agente de inventario', 'zap'],
+                'modules/ordenes_agente.php' => ['Órdenes del agente', 'zap'],
                 'modules/acceso_remoto.php' => ['Acceso Remoto', 'zap'],
                 'modules/qr_equipos.php' => ['Códigos QR de Equipos', 'inventory'],
                 'modules/grupos_codigos.php' => ['Códigos Agrupados', 'inventory'],

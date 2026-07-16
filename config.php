@@ -341,6 +341,7 @@ function migrar_esquema(PDO $pdo) {
         if (!in_array($col, $columnasTicketsMesa, true)) $pdo->exec("ALTER TABLE tickets ADD COLUMN {$col} {$tipo}");
     }
     $pdo->exec("CREATE TABLE IF NOT EXISTS config_general (clave TEXT PRIMARY KEY, valor TEXT)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS agente_ordenes (id INTEGER PRIMARY KEY AUTOINCREMENT, serial_objetivo TEXT, tipo TEXT NOT NULL, parametros_json TEXT, estado TEXT DEFAULT 'PENDIENTE', solicitado_por TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP, iniciado_en TEXT, finalizado_en TEXT, resultado TEXT, error TEXT)");
     // Los tickets creados antes de la puesta en marcha del panel limpio quedan
     // disponibles en Historial, pero no contaminan la operación diaria.
     $pdo->exec("INSERT OR IGNORE INTO config_general(clave,valor) VALUES('HISTORIAL_TICKETS_MIGRADO','1')");
