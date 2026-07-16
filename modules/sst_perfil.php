@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
         $datos['fecha_nacimiento'] = limpio($_POST['fecha_nacimiento'] ?? null);
         $datos['numero_hijos'] = trim((string) ($_POST['numero_hijos'] ?? '')) === '' ? null : (int) $_POST['numero_hijos'];
         $datos['estrato_socioeconomico'] = trim((string) ($_POST['estrato_socioeconomico'] ?? '')) === '' ? null : (int) $_POST['estrato_socioeconomico'];
+        $datos['salario'] = trim((string) ($_POST['salario'] ?? '')) === '' ? null : (float) str_replace(',', '.', str_replace('.', '', $_POST['salario']));
         $datos['actualizado_por'] = $u['nombre'] ?? 'Sistema';
 
         $stmt = $pdo->prepare("SELECT id, completado_en FROM sst_perfil_sociodemografico WHERE documento = ?");
@@ -137,6 +138,7 @@ layout_inicio('SST - Perfil Sociodemográfico', 'SST - Perfil Sociodemográfico'
         <?php endforeach; ?>
         <div><label>Número de hijos</label><input type="number" name="numero_hijos" min="0" value="<?= e($perfilActivo['numero_hijos'] ?? '') ?>"></div>
         <div><label>Estrato socioeconómico</label><input type="number" name="estrato_socioeconomico" min="1" max="6" value="<?= e($perfilActivo['estrato_socioeconomico'] ?? '') ?>"></div>
+        <div><label>Salario</label><input type="number" name="salario" min="0" step="0.01" value="<?= e($perfilActivo['salario'] ?? ($empleadoVer['salario'] ?? '')) ?>" placeholder="Pendiente si no está diligenciado"></div>
 
         <div style="grid-column:1/-1;"><button type="submit"><?= icon('check') ?> Guardar perfil</button></div>
     </form>

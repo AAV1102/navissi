@@ -769,6 +769,8 @@ function migrar_esquema(PDO $pdo) {
         archivado_en TEXT
     )");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_sst_perfil_documento ON sst_perfil_sociodemografico (documento)");
+    $colsSst=array_column($pdo->query("PRAGMA table_info(sst_perfil_sociodemografico)")->fetchAll(PDO::FETCH_ASSOC),'name');
+    if(!in_array('salario',$colsSst,true))$pdo->exec("ALTER TABLE sst_perfil_sociodemografico ADD COLUMN salario REAL");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS monitor_precios_sitios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -927,6 +929,17 @@ function migrar_esquema(PDO $pdo) {
     $pdo->exec("CREATE TABLE IF NOT EXISTS etiquetas_menu (
         href TEXT PRIMARY KEY,
         etiqueta TEXT NOT NULL
+    )");
+
+    // Editor en vivo (estilo WordPress): guarda el texto editado de CUALQUIER
+    // etiqueta marcada con editable() en cualquier módulo - títulos, subtítulos,
+    // encabezados de panel, etc. Misma idea que etiquetas_menu pero de alcance
+    // general (no solo el menú lateral).
+    $pdo->exec("CREATE TABLE IF NOT EXISTS contenido_editable (
+        clave TEXT PRIMARY KEY,
+        valor TEXT NOT NULL,
+        actualizado_por TEXT,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
     // ---- Impresoras ----
