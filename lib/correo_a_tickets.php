@@ -72,8 +72,9 @@ function autoasignar_tecnico(PDO $pdo, ?string $area = null): ?string {
 }
 
 /** Envía al remitente original la confirmación de creación del ticket, con el técnico asignado si aplica. */
-function correo_notificar_creacion(string $para, string $paraNombre, int $ticketId, string $asunto, ?string $tecnico, string $estado = 'ABIERTO', ?string $departamento = null): void {
+function correo_notificar_creacion(PDO $pdo, string $para, string $paraNombre, int $ticketId, string $asunto, ?string $tecnico, string $estado = 'ABIERTO', ?string $departamento = null): void {
     if (!filter_var($para, FILTER_VALIDATE_EMAIL)) return;
+    if (correo_es_direccion_propia($pdo, $para)) return;
     if ($estado === 'RESUELTO POR IA') {
         $lineaTecnico = '<p>Nuestro agente virtual revisó el caso y envió una solución automática. El ticket quedó resuelto por IA.</p>';
     } elseif ($tecnico) {
@@ -105,8 +106,34 @@ function correo_notificar_tecnico_respaldo(PDO $pdo, int $ticketId, ?string $tec
 /** Rebotes automáticos (buzón lleno, dirección inexistente, etc.) no deben crear tickets - son ruido, no una solicitud real de un usuario. */
 function correo_es_rebote_automatico(string $remitente, string $asunto): bool {
     if (preg_match('/^(mailer-daemon|postmaster|mail delivery subsystem|no-?reply)/i', $remitente)) return true;
+    if (preg_match('/[<\s]?(mailer-daemon|postmaster)@/i', $remitente)) return true;
     if (preg_match('/^(undeliverable|non-?delivery|delivery status notification|mail delivery failed|returned mail|failure notice)/i', trim($asunto))) return true;
     return false;
+}
+
+/**
+ * Direcciones que el propio NAVISSI usa como remitente para sus notificaciones
+ * automáticas (confirmaciones de ticket, alertas de SLA, correos administrativos
+ * como el de credenciales, etc.). Cualquier correo que llegue con alguna de estas
+ * direcciones como remitente NUNCA debe convertirse en ticket ni recibir una
+ * respuesta automática - si se lee, es casi siempre una copia de un correo que
+ * el propio sistema mandó y que volvió a la bandeja por un reenvío/regla de
+ * Outlook, y responderle crea un ciclo infinito (ticket -> confirmación ->
+ * vuelve a la bandeja -> nuevo ticket -> nueva confirmación -> ...).
+ */
+function correo_direcciones_propias(PDO $pdo): array {
+    $direcciones = array_map('strtolower', obtener_buzones($pdo));
+    $remitenteConfigurado = strtolower(trim((string) (getenv('NAVISSI_CORREO_REMITENTE') ?: '')));
+    if ($remitenteConfigurado) $direcciones[] = $remitenteConfigurado;
+    $direcciones[] = 'mesadeayuda@navissi.com';
+    $direcciones[] = 'sistemas@navissi.com';
+    return array_values(array_unique(array_filter($direcciones)));
+}
+
+function correo_es_direccion_propia(PDO $pdo, string $direccion): bool {
+    $direccion = strtolower(trim($direccion));
+    if ($direccion === '') return false;
+    return in_array($direccion, correo_direcciones_propias($pdo), true);
 }
 
 /** Vincula automáticamente el ticket al inventario por serial/placa o por identidad del remitente. */
@@ -125,10 +152,13 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
     $stmt = $pdo->prepare("SELECT id FROM correos_a_tickets WHERE mensaje_id = ?");
     $stmt->execute([$mensajeId]);
     if ($stmt->fetchColumn()) return false;
-    // Nunca convertir en ticket un mensaje enviado por el mismo buzón que se
-    // está leyendo. Las confirmaciones y alertas internas podrían regresar a
-    // la bandeja y crear un ciclo infinito de tickets y respuestas.
-    $esMensajePropio = strcasecmp(trim($remitente), trim($buzon)) === 0;
+    // Nunca convertir en ticket un mensaje enviado por cualquiera de nuestras
+    // propias direcciones (no solo el buzón que se está leyendo en este momento -
+    // las notificaciones salen desde mesadeayuda@navissi.com y pueden llegar a
+    // cualquier buzón configurado). Las confirmaciones y alertas internas podrían
+    // regresar a la bandeja por un reenvío/regla y crear un ciclo infinito de
+    // tickets y respuestas.
+    $esMensajePropio = strcasecmp(trim($remitente), trim($buzon)) === 0 || correo_es_direccion_propia($pdo, $remitente);
     if ($esMensajePropio || correo_es_rebote_automatico($remitente, $asunto)) {
         // Se marca como procesado igual (para no revisarlo de nuevo cada vez) pero sin crear ticket.
         $pdo->prepare("INSERT INTO correos_a_tickets (mensaje_id, buzon, remitente, asunto, ticket_id) VALUES (?,?,?,?,NULL)")
@@ -162,7 +192,7 @@ function correo_crear_ticket_si_nuevo(PDO $pdo, string $mensajeId, string $buzon
     $estadoFinal = $pdo->prepare('SELECT estado,asignado_a,departamento FROM tickets WHERE id=?');
     $estadoFinal->execute([$ticketId]); $final = $estadoFinal->fetch(PDO::FETCH_ASSOC) ?: [];
     $tecnico = $final['asignado_a'] ?? null;
-    correo_notificar_creacion($remitente, $remitenteNombre, $ticketId, $asunto, $tecnico, $final['estado'] ?? 'ABIERTO', $final['departamento'] ?? null);
+    correo_notificar_creacion($pdo, $remitente, $remitenteNombre, $ticketId, $asunto, $tecnico, $final['estado'] ?? 'ABIERTO', $final['departamento'] ?? null);
     correo_notificar_tecnico_respaldo($pdo, (int) $ticketId, $tecnico, $asunto);
     return true;
 }

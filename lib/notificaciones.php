@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/whatsapp_client.php';
+require_once __DIR__ . '/correo_a_tickets.php';
 
 function notificaciones_config(): array {
     $base = [
@@ -100,7 +101,16 @@ function notificaciones_procesar(PDO $pdo, int $limite = 20): array {
             $ok = false;
             $error = 'Canal desactivado o sin configurar.';
             try {
-                if ($item['canal'] === 'CORREO' && $config['correo_habilitado']) {
+                // Punto único de despacho de correo: bloquea aquí CUALQUIER intento de
+                // notificar a una de nuestras propias direcciones (SLA, alertas,
+                // aprobaciones, lo que sea) - así no hace falta blindar cada productor
+                // de notificaciones por separado, y se corta de raíz el riesgo de que
+                // una notificación llegue de vuelta al mismo buzón que se lee para
+                // crear tickets y arranque un ciclo infinito.
+                if ($item['canal'] === 'CORREO' && correo_es_direccion_propia($pdo, (string) $item['destinatario'])) {
+                    $pdo->prepare("UPDATE notificaciones_cola SET estado='DESCARTADA',proximo_intento_en=NULL,ultimo_error='Descartada: el destinatario es una dirección propia de NAVISSI (evita ciclos de correo).' WHERE id=?")->execute([$item['id']]);
+                    continue;
+                } elseif ($item['canal'] === 'CORREO' && $config['correo_habilitado']) {
                     $ok = enviar_correo($item['destinatario'], $item['asunto'] ?: 'Notificación NAVISSI', plantilla_correo_html($item['asunto'] ?: 'Notificación NAVISSI', '<p>' . nl2br(e($item['contenido'])) . '</p>'));
                     if (!$ok) $error = 'SMTP no configurado o envío rechazado.';
                 } elseif ($item['canal'] === 'WHATSAPP' && $config['whatsapp_habilitado']) {
