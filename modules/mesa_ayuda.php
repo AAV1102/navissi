@@ -160,8 +160,8 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
 ?>
 <div style="display:flex; justify-content:space-between; align-items:start; gap:14px; flex-wrap:wrap;">
     <div>
-        <h1><?= icon('ticket', 'icon-lg') ?> Tickets</h1>
-        <p class="subtitle">Tickets de tiendas y oficina hacia TI - correo, WhatsApp, portal y creación manual, todo en un solo lugar.</p>
+        <h1><?= icon('ticket', 'icon-lg') ?> <?= editable('mesa_ayuda.titulo', 'Tickets') ?></h1>
+        <p class="subtitle"><?= editable('mesa_ayuda.subtitulo', 'Tickets de tiendas y oficina hacia TI - correo, WhatsApp, portal y creación manual, todo en un solo lugar.') ?></p>
     </div>
     <form method="post">
         <input type="hidden" name="accion" value="revisar_correo">

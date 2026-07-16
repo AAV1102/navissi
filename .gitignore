@@ -38,6 +38,8 @@ data/documentos/
 data/documentos_rrhh/
 data/desprendibles/
 data/CSV/
+data/base/
+*TEMP.php
 !data/documentos/.htaccess
 !data/desprendibles/.htaccess
 
