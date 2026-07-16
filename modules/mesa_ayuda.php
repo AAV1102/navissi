@@ -94,7 +94,7 @@ $busqueda = trim($_GET['q'] ?? '');
 
 $sql = "SELECT t.*, s.nombre AS sede_nombre,
         (SELECT COUNT(*) FROM tickets_comentarios c WHERE c.ticket_id = t.id) AS n_comentarios
-        FROM tickets t LEFT JOIN sedes s ON t.sede_id = s.id WHERE 1=1";
+        FROM tickets t LEFT JOIN sedes s ON t.sede_id = s.id WHERE COALESCE(t.archivado,0)=0";
 $params = [];
 if ($estadoFiltro !== '') { $sql .= " AND t.estado = :estado"; $params['estado'] = $estadoFiltro; }
 if ($prioridadFiltro !== '') { $sql .= " AND t.prioridad = :prioridad"; $params['prioridad'] = $prioridadFiltro; }

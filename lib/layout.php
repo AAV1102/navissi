@@ -13,6 +13,7 @@ function nav_grupos() {
             'icon' => 'ticket', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'COORDINADOR', 'RRHH', 'DIRECTOR'],
             'items' => [
                 'modules/mesa_ayuda.php' => ['Mesa de Ayuda', 'ticket'],
+                'modules/tickets_historial.php' => ['Historial de tickets', 'file'],
                 'modules/solicitudes.php' => ['Solicitudes de tiendas', 'store'],
                 'modules/buscador_universal.php' => ['Buscador Universal', 'search'],
                 'modules/base_conocimiento.php' => ['Base de Conocimiento', 'book'],

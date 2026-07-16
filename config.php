@@ -337,8 +337,14 @@ function migrar_esquema(PDO $pdo) {
     }
 
     $columnasTicketsMesa = array_column($pdo->query("PRAGMA table_info(tickets)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    foreach (['departamento'=>'TEXT','diagnostico_ia'=>'TEXT','confianza_ia'=>'INTEGER DEFAULT 0'] as $col=>$tipo) {
+    foreach (['departamento'=>'TEXT','diagnostico_ia'=>'TEXT','confianza_ia'=>'INTEGER DEFAULT 0','archivado'=>'INTEGER DEFAULT 0'] as $col=>$tipo) {
         if (!in_array($col, $columnasTicketsMesa, true)) $pdo->exec("ALTER TABLE tickets ADD COLUMN {$col} {$tipo}");
+    }
+    // Los tickets creados antes de la puesta en marcha del panel limpio quedan
+    // disponibles en Historial, pero no contaminan la operación diaria.
+    $pdo->exec("INSERT OR IGNORE INTO config_general(clave,valor) VALUES('HISTORIAL_TICKETS_MIGRADO','1')");
+    if ((int)$pdo->query("SELECT COUNT(*) FROM tickets WHERE COALESCE(archivado,0)=1")->fetchColumn()===0 && (int)$pdo->query("SELECT COUNT(*) FROM tickets")->fetchColumn()>0) {
+        $pdo->exec("UPDATE tickets SET archivado=1 WHERE COALESCE(archivado,0)=0");
     }
 
     // ---- Comercial: clientes comerciales + cotizaciones con items, relacionadas a
