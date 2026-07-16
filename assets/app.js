@@ -321,3 +321,38 @@
     inicializarWysiwyg();
     window.navissiWysiwygRefrescar = inicializarWysiwyg; // por si un panel se carga despues (ej. AJAX)
 })();
+
+// Editor en vivo (estilo WordPress): cualquier <span class="navissi-editable">
+// (impreso por la funcion editable() en config.php cuando el Modo edicion esta
+// activo) se guarda solo por AJAX al perder el foco, sin recargar la pagina.
+(function () {
+    function guardar(span) {
+        var clave = span.dataset.clave;
+        var valor = span.innerText.replace(/\n+$/, '');
+        var defecto = span.dataset.defecto || '';
+        fetch((window.NAVISSI_PREFIX || '') + 'api_contenido_editable.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clave: clave, valor: valor, defecto: defecto })
+        }).then(function (r) { return r.json(); }).then(function (r) {
+            span.classList.remove('navissi-editable-guardando');
+            span.classList.add(r && r.ok ? 'navissi-editable-guardado' : 'navissi-editable-error');
+            setTimeout(function () { span.classList.remove('navissi-editable-guardado', 'navissi-editable-error'); }, 1200);
+        }).catch(function () {
+            span.classList.remove('navissi-editable-guardando');
+            span.classList.add('navissi-editable-error');
+        });
+    }
+    document.querySelectorAll('.navissi-editable').forEach(function (span) {
+        var original = span.innerText;
+        span.addEventListener('blur', function () {
+            if (span.innerText === original) return;
+            original = span.innerText;
+            span.classList.add('navissi-editable-guardando');
+            guardar(span);
+        });
+        span.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); span.blur(); }
+        });
+    });
+})();

@@ -844,3 +844,11 @@ button:active, .btn:active { transform:none; }
 /* Fase 8 · contrato técnico y conexión autorizada Siesa */
 .siesa-contract{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:28px 30px;margin:18px 0;background:#0a0a0a;color:#fff;border-top:6px solid var(--gold-500)}.siesa-contract strong{display:block;margin:7px 0;font-family:var(--font-heading);font-size:34px}.siesa-contract p{margin:0;color:#c6beb8}.integration-checklist{counter-reset:siesa;list-style:none;margin:0;padding:0}.integration-checklist li{counter-increment:siesa;position:relative;padding:10px 8px 10px 43px;border-bottom:1px solid var(--line);font-size:12px}.integration-checklist li::before{content:counter(siesa,decimal-leading-zero);position:absolute;left:0;color:var(--accent-600);font-family:var(--font-heading);font-size:17px}.connection-modes{border-top:1px solid var(--line)}.connection-modes>div{display:grid;grid-template-columns:150px 1fr;gap:15px;padding:14px 0;border-bottom:1px solid var(--line)}.connection-modes strong{font-size:12px}.connection-modes span{color:var(--ink-500);font-size:11px}
 @media(max-width:620px){.siesa-contract{align-items:flex-start;flex-direction:column;padding:22px}.siesa-contract strong{font-size:27px}.connection-modes>div{grid-template-columns:1fr;gap:4px}}
+
+/* Editor en vivo (Modo edicion, estilo WordPress) - ver editable() en config.php */
+.navissi-editable{outline:2px dashed var(--gold-500,#c9a24b);outline-offset:3px;border-radius:3px;cursor:text;transition:background .15s}
+.navissi-editable:hover{background:rgba(201,162,75,.12)}
+.navissi-editable:focus{outline-style:solid;background:rgba(201,162,75,.18)}
+.navissi-editable-guardando{opacity:.6}
+.navissi-editable-guardado{outline-color:#1a7a37!important;background:rgba(26,122,55,.15)!important}
+.navissi-editable-error{outline-color:#b3392c!important;background:rgba(179,57,44,.15)!important}

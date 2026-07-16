@@ -354,6 +354,12 @@ $marcaHead = file_exists($marcaConfigPathHead) ? (json_decode(file_get_contents(
                 <div id="resultados-modulos" class="resultados-modulos" role="listbox" hidden></div>
             </div>
             <div class="topbar-user">
+                <?php if (tiene_rol(['ADMIN'])): ?>
+                <form method="post" action="<?= $prefix ?>api_modo_edicion.php" class="inline">
+                    <input type="hidden" name="volver" value="<?= e($_SERVER['REQUEST_URI'] ?? $prefix . 'index.php') ?>">
+                    <button type="submit" class="btn <?= modo_edicion_activo() ? '' : 'btn-secondary' ?> icon-btn" title="<?= modo_edicion_activo() ? 'Salir del modo edición' : 'Activar modo edición (editar textos en vivo, como WordPress)' ?>"><?= icon('type', 'icon') ?></button>
+                </form>
+                <?php endif; ?>
                 <?php if ($u['rol'] === 'SUPER_ADMIN'): ?>
                 <div class="ver-como-switch">
                     <button type="button" class="btn btn-secondary icon-btn" id="ver-como-trigger" aria-expanded="false" aria-controls="ver-como-panel" title="Ver como otro rol"><?= icon('sliders','icon') ?></button>
