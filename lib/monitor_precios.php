@@ -32,10 +32,13 @@ function mp_curl_get(string $url, array $headers = [], ?string $cookieJar = null
     return ['body' => $body, 'codigo' => $codigo, 'tipo' => $tipo];
 }
 
-/** Detecta el tipo de tienda: shopify, zara, o jsonld (generico). */
+/** Detecta el tipo de tienda: shopify, zara, aritzia, o jsonld (generico). */
 function mp_detectar_tipo(string $url): array {
     if (str_contains($url, 'zara.com')) {
         return ['zara', 'Detectado: Zara (API interna)'];
+    }
+    if (str_contains($url, 'aritzia.com')) {
+        return ['aritzia', 'Detectado: Aritzia (índice de búsqueda propio, precio lleno + descuento reales)'];
     }
     // Tennis (tns.us) es Shopify, pero su endpoint puede responder 403/429 a
     // la sonda de detección.  No lo degradamos a JSON-LD: usamos el conector
@@ -177,6 +180,86 @@ function mp_scrape_zara(string $url): array {
     return $filas;
 }
 
+const MP_ARITZIA_ALGOLIA_APP_ID = 'SONLJM8OH6';
+const MP_ARITZIA_ALGOLIA_API_KEY = '1455bca7c6c33e746a0f38beb28422e6'; // clave publica de solo-busqueda, embebida en cada carga de la pagina de Aritzia
+
+/**
+ * Aritzia usa Salesforce Commerce Cloud con proteccion anti-bots (Cloudflare)
+ * en las rutas normales de navegacion, asi que un scraper de pagina no
+ * funciona. El propio sitio consulta su indice de busqueda (Algolia) con una
+ * clave publica embebida en cada carga de pagina - se usa esa misma via.
+ * Trae precio lleno, precio con descuento y % de descuento reales.
+ * Nota: la clave publica de Algolia tiene un tope de 1000 resultados por
+ * consulta (restriccion de seguridad estandar de Algolia para claves de solo
+ * busqueda, no una limitacion de NAVISSI).
+ */
+function mp_scrape_aritzia(string $url): array {
+    if (!preg_match('~https?://[^/]+/(\w+)/~', $url, $m)) {
+        throw new RuntimeException('URL de Aritzia inválida.');
+    }
+    $alias = strtoupper($m[1]);
+    $indice = "production_ecommerce_aritzia__Aritzia_{$alias}__products__default";
+    $endpoint = "https://search-0.aritzia.com/1/indexes/{$indice}/query";
+    $headers = [
+        'X-Algolia-Application-Id: ' . MP_ARITZIA_ALGOLIA_APP_ID,
+        'X-Algolia-API-Key: ' . MP_ARITZIA_ALGOLIA_API_KEY,
+        'Content-Type: application/json',
+    ];
+    $filtro = null;
+    if (preg_match('~/en/([a-z0-9-]+)/?$~', rtrim($url, '/'), $mCat) && $mCat[1] !== '' && $mCat[1] !== 'en') {
+        $filtro = 'categories:' . $mCat[1];
+    }
+
+    $filas = [];
+    for ($pagina = 0; $pagina < 50; $pagina++) {
+        $body = ['query' => '', 'hitsPerPage' => 1000, 'page' => $pagina];
+        if ($filtro) $body['filters'] = $filtro;
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($body),
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        $respBody = curl_exec($ch);
+        $codigo = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($codigo !== 200) {
+            throw new RuntimeException('Aritzia rechazó la consulta al índice de búsqueda (HTTP ' . $codigo . ').');
+        }
+        $data = json_decode((string) $respBody, true);
+        $hits = $data['hits'] ?? [];
+        if (!$hits) break;
+
+        foreach ($hits as $h) {
+            $precioInfo = $h['price'] ?? [];
+            $precio = mp_num($precioInfo['min'] ?? null);
+            $antes = mp_num($precioInfo['max'] ?? null);
+            if ($antes !== null && $precio !== null && $antes <= $precio) $antes = null; // sin descuento real
+            $nombre = $h['c_displayName'] ?? ($h['name'] ?? '');
+            $slug = $h['slug'] ?? '';
+            $filas[] = [
+                'clave' => (string) ($h['objectID'] ?? $h['masterId'] ?? uniqid()),
+                'producto' => $nombre,
+                'variante' => $h['refinementColor'] ?? '',
+                'precio' => $precio,
+                'precio_antes' => $antes,
+                'descuento_pct' => $antes ? round(($antes - $precio) / $antes * 100, 1) : null,
+                'disponible' => !empty($h['orderable']) ? 1 : 0,
+                'url' => $slug ? 'https://www.aritzia.com/' . strtolower($alias) . '/en/product/' . $slug : $url,
+            ];
+        }
+        if (count($hits) < 1000) break;
+        usleep(300000);
+    }
+    if (!$filas) {
+        throw new RuntimeException('No se encontraron productos en el índice de búsqueda de Aritzia. Puede que hayan cambiado el nombre del índice o la clave pública.');
+    }
+    return $filas;
+}
+
 /** Generico: busca datos estructurados schema.org/Product (JSON-LD) en la pagina. */
 function mp_scrape_jsonld(string $url): array {
     $r = mp_curl_get($url);
@@ -231,7 +314,7 @@ function mp_scrape_jsonld(string $url): array {
 }
 
 function mp_escanear_sitio(PDO $pdo, array $sitio): array {
-    $scrapers = ['shopify' => 'mp_scrape_shopify', 'zara' => 'mp_scrape_zara', 'jsonld' => 'mp_scrape_jsonld'];
+    $scrapers = ['shopify' => 'mp_scrape_shopify', 'zara' => 'mp_scrape_zara', 'aritzia' => 'mp_scrape_aritzia', 'jsonld' => 'mp_scrape_jsonld'];
     $fn = $scrapers[$sitio['tipo']] ?? null;
     if (!$fn) throw new RuntimeException('Tipo de sitio desconocido.');
 
