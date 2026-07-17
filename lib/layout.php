@@ -132,6 +132,7 @@ function nav_grupos() {
             'items' => [
                 'modules/gastos_proveedor.php' => ['Gastos por Proveedor', 'dollar'],
                 'modules/conciliacion_bancaria.php' => ['Conciliación Bancaria', 'dollar'],
+                'modules/contabilidad_operativa.php' => ['Cierres y Programación de Pagos', 'dollar'],
             ],
         ],
         'Formularios y constructor' => [
