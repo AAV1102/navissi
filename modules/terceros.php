@@ -91,6 +91,15 @@ if (isset($_GET['exportar'])) {
 }
 
 $documentosRequeridos = ['RUT' => 'RUT', 'CERTIFICADO_BANCARIO' => 'Certificado bancario', 'CAMARA_COMERCIO' => 'Cámara de Comercio', 'CEDULA' => 'Cédula'];
+// Qué documentos tiene sentido pedir según el tipo de persona: Cámara de
+// Comercio solo existe para Jurídica, Cédula solo para Natural; RUT y
+// Certificado bancario aplican siempre. Con "Otro" se muestran todos por si acaso.
+$documentosPorPersona = [
+    'RUT' => ['NATURAL', 'JURIDICA', 'OTRO'],
+    'CERTIFICADO_BANCARIO' => ['NATURAL', 'JURIDICA', 'OTRO'],
+    'CAMARA_COMERCIO' => ['JURIDICA', 'OTRO'],
+    'CEDULA' => ['NATURAL', 'OTRO'],
+];
 // "Tipo de tercero" es general para toda la empresa (no solo compras): un
 // proveedor, un cliente, o un empleado que necesita quedar como tercero para
 // nómina/reembolsos, etc. Cualquier área puede solicitar cualquiera de estos.
@@ -168,10 +177,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
             $tipoPersona = limpio($_POST['tipo_persona_otro'] ?? null);
         }
         $tipoTercero = limpio($_POST['tipo_tercero'] ?? null) ?: 'PROVEEDOR';
-        // La categoría (tipo_proveedor) solo aplica cuando el tercero es un
-        // Proveedor - para Cliente/Empleado/Otro el campo se oculta en el
-        // formulario, así que aquí se descarta cualquier valor residual.
-        $tipoProveedor = $tipoTercero === 'PROVEEDOR' ? limpio($_POST['tipo_proveedor'] ?? null) : null;
+        // La categoría (tipo_proveedor) aplica para cualquier área y cualquier
+        // tipo de tercero/persona - no se restringe ni se descarta según esos
+        // otros campos.
+        $tipoProveedor = limpio($_POST['tipo_proveedor'] ?? null);
         $plazoPago = limpio($_POST['plazo_pago'] ?? null);
         if ($plazoPago === 'OTRO' && limpio($_POST['plazo_pago_otro'] ?? null)) {
             $plazoPago = limpio($_POST['plazo_pago_otro'] ?? null);
@@ -313,7 +322,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
                 <div><label>5. Actividad económica</label><input type="text" name="actividad_economica"></div>
                 <div><label>6. Teléfono</label><input type="text" name="telefono"></div>
                 <div><label>7. Correo</label><input type="email" name="correo"></div>
-                <div id="pe-campo-tipo-proveedor"><label>8. Categoría del proveedor</label>
+                <div><label>8. Categoría del proveedor</label>
                     <select name="tipo_proveedor">
                         <?php foreach ($tiposProveedor as $tp): ?><option><?= e($tp) ?></option><?php endforeach; ?>
                     </select>
@@ -328,7 +337,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
             <h4 style="margin-top:18px;">10. Adjuntar documentos</h4>
             <div class="grid-form">
                 <?php foreach ($documentosRequeridos as $clave => $etiqueta): ?>
-                <div><label><?= e($etiqueta) ?></label><input type="file" name="doc_<?= strtolower($clave) ?>" accept="application/pdf,image/jpeg,image/png"></div>
+                <div class="pe-campo-doc" data-personas="<?= e(implode(',', $documentosPorPersona[$clave] ?? [])) ?>"><label><?= e($etiqueta) ?></label><input type="file" name="doc_<?= strtolower($clave) ?>" accept="application/pdf,image/jpeg,image/png"></div>
                 <?php endforeach; ?>
             </div>
             <button type="submit" style="margin-top:14px;"><?= icon('send') ?> Enviar solicitud a Contabilidad</button>
@@ -422,20 +431,6 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
     botones.forEach(function (b) { b.addEventListener('click', function () { activar(b.dataset.target); }); });
     activar('<?= $resultadoConsulta && !$resultadoConsulta['tercero'] ? 'pe-legalizacion' : 'pe-consulta' ?>');
 
-    // Categoría de proveedor solo aplica cuando el tercero es Proveedor -
-    // para Cliente/Empleado/Otro se oculta (no se envía por si el navegador
-    // no soporta 'disabled' bien en submits, se limpia igual en servidor).
-    var selTipoTercero = document.getElementById('pe-sel-tipo-tercero');
-    var campoTipoProveedor = document.getElementById('pe-campo-tipo-proveedor');
-    function actualizarTipoProveedor() {
-        var esProveedor = selTipoTercero.value === 'PROVEEDOR';
-        campoTipoProveedor.style.display = esProveedor ? '' : 'none';
-    }
-    if (selTipoTercero && campoTipoProveedor) {
-        selTipoTercero.addEventListener('change', actualizarTipoProveedor);
-        actualizarTipoProveedor();
-    }
-
     // "Otro" en tipo de persona / plazo de pago habilita un campo de texto
     // para especificar el valor real en vez de quedarse con el genérico "Otro".
     function habilitarOtro(selectId, campoId) {
@@ -448,6 +443,24 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
     }
     habilitarOtro('pe-sel-tipo-persona', 'pe-campo-tipo-persona-otro');
     habilitarOtro('pe-sel-plazo-pago', 'pe-campo-plazo-otro');
+
+    // Documentos a adjuntar: se filtran según el tipo de persona (ej. Cédula
+    // solo para Natural, Cámara de Comercio solo para Jurídica). Categoría de
+    // proveedor y plazo de pago se mantienen visibles siempre, para cualquier
+    // área/tipo de tercero, tal como se pidió.
+    var selTipoPersonaDocs = document.getElementById('pe-sel-tipo-persona');
+    var camposDoc = document.querySelectorAll('.pe-campo-doc');
+    function actualizarDocumentos() {
+        var persona = selTipoPersonaDocs ? selTipoPersonaDocs.value : '';
+        camposDoc.forEach(function (campo) {
+            var aplica = (campo.dataset.personas || '').split(',').indexOf(persona) !== -1;
+            campo.style.display = aplica ? '' : 'none';
+        });
+    }
+    if (selTipoPersonaDocs) {
+        selTipoPersonaDocs.addEventListener('change', actualizarDocumentos);
+        actualizarDocumentos();
+    }
 })();
 </script>
 <?php layout_fin(); ?>
