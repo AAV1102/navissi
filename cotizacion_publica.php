@@ -17,17 +17,29 @@ $stmt->execute([$token]);
 $solicitud = $stmt->fetch(PDO::FETCH_ASSOC);
 $valido = $solicitud && $solicitud['estado'] === 'ABIERTA';
 
+// Trazabilidad: el proveedor consulta el estado de lo que ya envió con su NIT,
+// sin necesitar escribir por correo ni WhatsApp para preguntar "¿cómo va mi cotización?".
+$nitTrazabilidad = trim((string) ($_GET['nit'] ?? ''));
+$misCotizaciones = [];
+if ($solicitud && $nitTrazabilidad !== '') {
+    $stmtTraza = $pdo->prepare("SELECT r.*, (SELECT COUNT(*) FROM cotizaciones_adjuntos a WHERE a.respuesta_id = r.id) AS n_adjuntos
+        FROM cotizaciones_respuestas r WHERE r.solicitud_id = ? AND r.proveedor_nit = ? ORDER BY r.creado_en DESC");
+    $stmtTraza->execute([$solicitud['id'], $nitTrazabilidad]);
+    $misCotizaciones = $stmtTraza->fetchAll(PDO::FETCH_ASSOC);
+}
+
 $enviado = false;
 if ($valido && $_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_requerir();
     $nombre = limpio($_POST['proveedor_nombre'] ?? null);
-    if (!$nombre) {
-        $error = 'El nombre de la empresa/proveedor es obligatorio.';
+    $nit = limpio($_POST['proveedor_nit'] ?? null);
+    if (!$nombre || !$nit) {
+        $error = 'El nombre de la empresa/proveedor y el NIT/documento son obligatorios (el NIT lo necesitas después para consultar el estado).';
     } else {
         $pdo->prepare("INSERT INTO cotizaciones_respuestas (solicitud_id, proveedor_nombre, proveedor_nit, proveedor_contacto, proveedor_email, proveedor_telefono, valor_cotizado, validez_dias, observaciones)
             VALUES (?,?,?,?,?,?,?,?,?)")
             ->execute([
-                $solicitud['id'], $nombre, limpio($_POST['proveedor_nit'] ?? null), limpio($_POST['proveedor_contacto'] ?? null),
+                $solicitud['id'], $nombre, $nit, limpio($_POST['proveedor_contacto'] ?? null),
                 filter_var($_POST['proveedor_email'] ?? '', FILTER_VALIDATE_EMAIL) ?: null, limpio($_POST['proveedor_telefono'] ?? null),
                 is_numeric($_POST['valor_cotizado'] ?? null) ? (float) $_POST['valor_cotizado'] : null,
                 is_numeric($_POST['validez_dias'] ?? null) ? (int) $_POST['validez_dias'] : null,
@@ -75,8 +87,37 @@ if ($valido && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php elseif ($solicitud['estado'] !== 'ABIERTA'): ?>
     <div class="msg-error">Esta solicitud de cotización ya está cerrada y no acepta más propuestas. Contacta a Grupo 10Z SAS si crees que es un error.</div>
     <?php elseif ($enviado): ?>
-    <div class="msg-ok">¡Gracias, <?= e($_POST['proveedor_nombre'] ?? '') ?>! Tu cotización para "<strong><?= e($solicitud['titulo']) ?></strong>" quedó registrada. El equipo de Grupo 10Z la revisará y te contactará.</div>
+    <div class="msg-ok">¡Gracias, <?= e($_POST['proveedor_nombre'] ?? '') ?>! Tu cotización para "<strong><?= e($solicitud['titulo']) ?></strong>" quedó registrada.</div>
+    <p class="small">Guarda este link y tu NIT — puedes volver cuando quieras a consultar el estado, sin necesidad de escribirnos por correo o WhatsApp:</p>
+    <p><a href="cotizacion_publica.php?t=<?= e($token) ?>&nit=<?= e(urlencode($_POST['proveedor_nit'] ?? '')) ?>">Ver estado de mi cotización</a></p>
     <?php else: ?>
+
+    <?php if ($nitTrazabilidad !== ''): ?>
+    <div class="panel">
+        <h3><?= icon('log') ?> Estado de tus cotizaciones (NIT <?= e($nitTrazabilidad) ?>)</h3>
+        <?php if (!$misCotizaciones): ?>
+        <p class="small">No encontramos ninguna cotización enviada con ese NIT para esta solicitud.</p>
+        <?php else: ?>
+        <?php foreach ($misCotizaciones as $mc): ?>
+        <div style="padding:10px 0;border-bottom:1px solid var(--line);">
+            <span class="badge <?= $mc['estado']==='APROBADA'?'badge-activo':($mc['estado']==='RECHAZADA'?'badge-err':'badge-otro') ?>"><?= e($mc['estado']) ?></span>
+            <span class="small"> · enviada <?= e($mc['creado_en']) ?> · <?= (int) $mc['n_adjuntos'] ?> documento(s)</span>
+            <?php if ($mc['valor_cotizado']): ?><br><span class="small">Valor: $<?= number_format((float) $mc['valor_cotizado'], 0, ',', '.') ?> COP</span><?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="panel">
+        <h3><?= icon('search') ?> Consultar el estado de una cotización ya enviada</h3>
+        <form method="get" class="toolbar">
+            <input type="hidden" name="t" value="<?= e($token) ?>">
+            <input type="text" name="nit" value="<?= e($nitTrazabilidad) ?>" placeholder="Tu NIT / documento" style="min-width:220px">
+            <button type="submit">Consultar estado</button>
+        </form>
+    </div>
+
     <div class="panel">
         <h3><?= e($solicitud['titulo']) ?></h3>
         <?php if ($solicitud['descripcion']): ?><p class="small"><?= nl2br(e($solicitud['descripcion'])) ?></p><?php endif; ?>
@@ -89,7 +130,7 @@ if ($valido && $_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="hidden" name="token" value="<?= e($token) ?>">
             <div class="grid-form">
                 <div style="grid-column:span 2;"><label>Empresa / Proveedor *</label><input type="text" name="proveedor_nombre" required></div>
-                <div><label>NIT / Documento</label><input type="text" name="proveedor_nit"></div>
+                <div><label>NIT / Documento *</label><input type="text" name="proveedor_nit" required placeholder="Lo necesitas para consultar el estado después"></div>
                 <div><label>Persona de contacto</label><input type="text" name="proveedor_contacto"></div>
                 <div><label>Correo</label><input type="email" name="proveedor_email"></div>
                 <div><label>Teléfono</label><input type="text" name="proveedor_telefono"></div>
@@ -105,6 +146,7 @@ if ($valido && $_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     <?php endif; ?>
     <p class="small" style="margin-top:20px;">NAVISSI · Grupo 10Z SAS</p>
+
 </div>
 </body>
 </html>

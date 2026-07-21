@@ -20,6 +20,7 @@ function nav_grupos() {
                 'modules/respuestas_rapidas.php' => ['Respuestas Rápidas', 'zap'],
                 'modules/catalogo_servicios.php' => ['Catálogo de Servicios', 'inventory'],
                 'modules/cotizaciones.php' => ['Cotizaciones a Proveedores', 'dollar'],
+                'modules/terceros.php' => ['Consulta de Terceros', 'users'],
                 'modules/aprobaciones.php' => ['Solicitudes y Aprobaciones', 'check'],
                 'modules/categorias_tickets.php' => ['Categorías de Tickets', 'ticket'],
                 'modules/alertas.php' => ['Alertas', 'bell'],
@@ -134,7 +135,6 @@ function nav_grupos() {
                 'modules/gastos_proveedor.php' => ['Gastos por Proveedor', 'dollar'],
                 'modules/conciliacion_bancaria.php' => ['Conciliación Bancaria', 'dollar'],
                 'modules/contabilidad_operativa.php' => ['Cierres y Programación de Pagos', 'dollar'],
-                'modules/terceros.php' => ['Consulta de Terceros', 'users'],
             ],
         ],
         'Formularios y constructor' => [

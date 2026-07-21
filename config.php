@@ -555,6 +555,7 @@ function migrar_esquema(PDO $pdo) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nit_cc TEXT NOT NULL,
         tipo_persona TEXT,
+        tipo_tercero TEXT,
         nombre_completo TEXT NOT NULL,
         direccion TEXT,
         actividad_economica TEXT,
@@ -570,6 +571,11 @@ function migrar_esquema(PDO $pdo) {
         gestionado_en TEXT
     )");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_terceros_solicitudes_estado ON terceros_solicitudes(estado)");
+    // tipo_tercero se agregó después de crear la tabla la primera vez - migración segura para bases ya existentes.
+    $columnasTerceros = array_column($pdo->query("PRAGMA table_info(terceros_solicitudes)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('tipo_tercero', $columnasTerceros, true)) {
+        $pdo->exec("ALTER TABLE terceros_solicitudes ADD COLUMN tipo_tercero TEXT");
+    }
     $pdo->exec("CREATE TABLE IF NOT EXISTS terceros_solicitudes_adjuntos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         solicitud_id INTEGER NOT NULL REFERENCES terceros_solicitudes(id) ON DELETE CASCADE,

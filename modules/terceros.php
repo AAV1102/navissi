@@ -14,7 +14,15 @@ require_once __DIR__ . '/../lib/xlsx_reader.php';
 $pdo = db();
 $u = usuario_actual();
 $msg = null;
-$puedeGestionar = tiene_rol(['ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO']);
+// Consultar y solicitar creación es para toda la empresa: cualquier Director,
+// Coordinador, Analista o Empleado puede necesitar verificar/pedir un tercero
+// (ej. alguien hizo una compra y necesita la factura electrónica). Requiere
+// sesión iniciada (ya la exige layout_inicio más abajo), sin restricción de rol.
+// El maestro de Siesa (importar Excel, marcar creado/rechazado) es exclusivo
+// de Contabilidad: ADMIN/GERENCIA/CEO (ven todo) o cualquier persona cuya área
+// sea Dirección de Contabilidad, sin importar si es Director/Coordinador/Analista.
+$puedeGestionar = tiene_rol(['ADMIN', 'GERENCIA', 'CEO'])
+    || strcasecmp(trim((string) ($u['area_responsable'] ?? '')), 'Direccion de Contabilidad') === 0;
 
 function terceros_normalizar_codigo(string $v): string {
     // El Excel de Siesa trae el código con espacios de relleno (ancho fijo).
@@ -28,7 +36,7 @@ if (isset($_GET['exportar'])) {
     if (!tiene_rol(['ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO'])) { http_response_code(403); exit('No autorizado.'); }
     $formato = $_GET['exportar'];
     $filtroEstado = in_array($_GET['estado'] ?? '', ['PENDIENTE', 'CREADO_EN_SIESA', 'RECHAZADO'], true) ? $_GET['estado'] : null;
-    $sql = "SELECT nit_cc, tipo_persona, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, estado, creado_en FROM terceros_solicitudes";
+    $sql = "SELECT nit_cc, tipo_tercero, tipo_persona, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, estado, creado_en FROM terceros_solicitudes";
     $params = [];
     if ($filtroEstado) { $sql .= " WHERE estado = ?"; $params[] = $filtroEstado; }
     $sql .= " ORDER BY creado_en DESC";
@@ -68,8 +76,17 @@ if (isset($_GET['exportar'])) {
 }
 
 $documentosRequeridos = ['RUT' => 'RUT', 'CERTIFICADO_BANCARIO' => 'Certificado bancario', 'CAMARA_COMERCIO' => 'Cámara de Comercio', 'CEDULA' => 'Cédula'];
-$tiposProveedor = ['TELA', 'INSUMOS', 'PROCESOS', 'CONFECCIÓN'];
-$plazosPago = ['CONTADO', '10 DÍAS', '30 DÍAS', '60 DÍAS', '90 DÍAS'];
+// "Tipo de tercero" es general para toda la empresa (no solo compras): un
+// proveedor, un cliente, o un empleado que necesita quedar como tercero para
+// nómina/reembolsos, etc. Cualquier área puede solicitar cualquiera de estos.
+$tiposTercero = ['PROVEEDOR', 'CLIENTE', 'EMPLEADO', 'OTRO'];
+// Las categorías de proveedor ya no son una lista fija de un solo rubro (antes
+// era solo textil) - se toman las clases de proveedor que YA existen en el
+// maestro real importado de Siesa, más "OTRO" para lo que no encaje, así sirve
+// para cualquier área/rubro de la empresa automáticamente.
+$tiposProveedor = $pdo->query("SELECT DISTINCT desc_clase_proveedor FROM siesa_terceros WHERE desc_clase_proveedor IS NOT NULL AND desc_clase_proveedor != '' ORDER BY desc_clase_proveedor")->fetchAll(PDO::FETCH_COLUMN);
+$tiposProveedor[] = 'OTRO';
+$plazosPago = ['CONTADO', '1 DÍA', '8 DÍAS', '15 DÍAS', '30 DÍAS', '45 DÍAS', '60 DÍAS', '90 DÍAS', 'OTRO'];
 
 // ---- Importar/actualizar el maestro de terceros desde el Excel de Siesa ----
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'importar_terceros' && $puedeGestionar) {
@@ -124,11 +141,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
     if (!$nit || !$nombre) {
         $msg = ['error', 'El NIT/CC y el nombre completo son obligatorios.'];
     } else {
-        $pdo->prepare("INSERT INTO terceros_solicitudes (nit_cc, tipo_persona, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, solicitado_por)
-            VALUES (?,?,?,?,?,?,?,?,?,?)")
+        $pdo->prepare("INSERT INTO terceros_solicitudes (nit_cc, tipo_persona, tipo_tercero, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, solicitado_por)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)")
             ->execute([
                 terceros_normalizar_codigo($nit),
                 limpio($_POST['tipo_persona'] ?? null),
+                limpio($_POST['tipo_tercero'] ?? null) ?: 'PROVEEDOR',
                 $nombre,
                 limpio($_POST['direccion'] ?? null),
                 limpio($_POST['actividad_economica'] ?? null),
@@ -189,7 +207,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
 .pe-panel.activo{display:block;}
 </style>
 <h1><?= icon('users','icon-lg') ?> Consulta de Terceros y Legalización de Facturas</h1>
-<p class="subtitle">Verifica si un proveedor/tercero ya está creado en Siesa por su NIT o cédula; si no lo está, solicita su creación con los documentos de soporte.</p>
+<p class="subtitle">Para toda la empresa: cualquier área verifica si un proveedor, cliente o empleado ya está creado en Siesa por su NIT/CC (ej. antes de una compra, para pedir la factura electrónica) y, si no lo está, solicita su creación. La administración del maestro de Siesa (importar el Excel, marcar creado/rechazado) es exclusiva de Contabilidad.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
 <nav class="pe-tabs" id="pe-tabs">
@@ -235,6 +253,11 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="accion" value="crear_solicitud">
             <div class="grid-form">
+                <div><label>Tipo de tercero *</label>
+                    <select name="tipo_tercero" required>
+                        <?php foreach ($tiposTercero as $tt): ?><option value="<?= e($tt) ?>"><?= e(ucfirst(strtolower($tt))) ?></option><?php endforeach; ?>
+                    </select>
+                </div>
                 <div><label>1. NIT o CC *</label><input type="text" name="nit_cc" value="<?= e($nitConsultado) ?>" required></div>
                 <div><label>2. Tipo de persona</label>
                     <select name="tipo_persona">
@@ -282,9 +305,10 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
         </div>
         <?php endif; ?>
         <table>
-            <tr><th>NIT/CC</th><th>Nombre</th><th>Tipo proveedor</th><th>Plazo</th><th>Documentos</th><th>Estado</th><th>Solicitado por</th><th>Fecha</th><?php if ($puedeGestionar): ?><th></th><?php endif; ?></tr>
+            <tr><th>Tipo</th><th>NIT/CC</th><th>Nombre</th><th>Tipo proveedor</th><th>Plazo</th><th>Documentos</th><th>Estado</th><th>Solicitado por</th><th>Fecha</th><?php if ($puedeGestionar): ?><th></th><?php endif; ?></tr>
             <?php foreach ($solicitudes as $s): ?>
             <tr>
+                <td><?= e($s['tipo_tercero']) ?: 'Proveedor' ?></td>
                 <td><?= e($s['nit_cc']) ?></td>
                 <td><?= e($s['nombre_completo']) ?></td>
                 <td><?= e($s['tipo_proveedor']) ?: '—' ?></td>
@@ -303,7 +327,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
                 <?php endif; ?>
             </tr>
             <?php endforeach; ?>
-            <?php if (!$solicitudes): ?><tr><td colspan="9" class="small">Sin solicitudes todavía.</td></tr><?php endif; ?>
+            <?php if (!$solicitudes): ?><tr><td colspan="10" class="small">Sin solicitudes todavía.</td></tr><?php endif; ?>
         </table>
     </div>
 </div>
