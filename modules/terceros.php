@@ -95,11 +95,14 @@ $documentosRequeridos = ['RUT' => 'RUT', 'CERTIFICADO_BANCARIO' => 'Certificado 
 // proveedor, un cliente, o un empleado que necesita quedar como tercero para
 // nómina/reembolsos, etc. Cualquier área puede solicitar cualquiera de estos.
 $tiposTercero = ['PROVEEDOR', 'CLIENTE', 'EMPLEADO', 'OTRO'];
-// Las categorías de proveedor ya no son una lista fija de un solo rubro (antes
-// era solo textil) - se toman las clases de proveedor que YA existen en el
-// maestro real importado de Siesa, más "OTRO" para lo que no encaje, así sirve
-// para cualquier área/rubro de la empresa automáticamente.
-$tiposProveedor = $pdo->query("SELECT DISTINCT desc_clase_proveedor FROM siesa_terceros WHERE desc_clase_proveedor IS NOT NULL AND desc_clase_proveedor != '' ORDER BY desc_clase_proveedor")->fetchAll(PDO::FETCH_COLUMN);
+// Las categorías de proveedor parten de la lista base solicitada (Tela, Insumos,
+// Procesos, Confección) y se completan con las clases de proveedor que YA
+// existen en el maestro real importado de Siesa (si el maestro aún no se ha
+// importado, la lista base sigue apareciendo en vez de quedar vacía), más
+// "OTRO" al final para lo que no encaje en ninguna.
+$tiposProveedorBase = ['Tela', 'Insumos', 'Procesos', 'Confección'];
+$tiposProveedorSiesa = $pdo->query("SELECT DISTINCT desc_clase_proveedor FROM siesa_terceros WHERE desc_clase_proveedor IS NOT NULL AND desc_clase_proveedor != '' ORDER BY desc_clase_proveedor")->fetchAll(PDO::FETCH_COLUMN);
+$tiposProveedor = array_values(array_unique(array_merge($tiposProveedorBase, $tiposProveedorSiesa)));
 $tiposProveedor[] = 'OTRO';
 $plazosPago = ['CONTADO', '1 DÍA', '8 DÍAS', '15 DÍAS', '30 DÍAS', '45 DÍAS', '60 DÍAS', '90 DÍAS', 'OTRO'];
 
@@ -156,19 +159,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
     if (!$nit || !$nombre) {
         $msg = ['error', 'El NIT/CC y el nombre completo son obligatorios.'];
     } else {
+        // Cuando el usuario escoge "OTRO" en tipo de persona o plazo de pago, el
+        // select viene acompañado de un campo de texto (tipo_persona_otro /
+        // plazo_pago_otro) que reemplaza el valor genérico "OTRO" por lo que
+        // realmente escribió, para no perder el dato.
+        $tipoPersona = limpio($_POST['tipo_persona'] ?? null);
+        if ($tipoPersona === 'OTRO' && limpio($_POST['tipo_persona_otro'] ?? null)) {
+            $tipoPersona = limpio($_POST['tipo_persona_otro'] ?? null);
+        }
+        $tipoTercero = limpio($_POST['tipo_tercero'] ?? null) ?: 'PROVEEDOR';
+        // La categoría (tipo_proveedor) solo aplica cuando el tercero es un
+        // Proveedor - para Cliente/Empleado/Otro el campo se oculta en el
+        // formulario, así que aquí se descarta cualquier valor residual.
+        $tipoProveedor = $tipoTercero === 'PROVEEDOR' ? limpio($_POST['tipo_proveedor'] ?? null) : null;
+        $plazoPago = limpio($_POST['plazo_pago'] ?? null);
+        if ($plazoPago === 'OTRO' && limpio($_POST['plazo_pago_otro'] ?? null)) {
+            $plazoPago = limpio($_POST['plazo_pago_otro'] ?? null);
+        }
         $pdo->prepare("INSERT INTO terceros_solicitudes (nit_cc, tipo_persona, tipo_tercero, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, solicitado_por)
             VALUES (?,?,?,?,?,?,?,?,?,?,?)")
             ->execute([
                 terceros_normalizar_codigo($nit),
-                limpio($_POST['tipo_persona'] ?? null),
-                limpio($_POST['tipo_tercero'] ?? null) ?: 'PROVEEDOR',
+                $tipoPersona,
+                $tipoTercero,
                 $nombre,
                 limpio($_POST['direccion'] ?? null),
                 limpio($_POST['actividad_economica'] ?? null),
                 limpio($_POST['telefono'] ?? null),
                 filter_var($_POST['correo'] ?? '', FILTER_VALIDATE_EMAIL) ?: null,
-                limpio($_POST['tipo_proveedor'] ?? null),
-                limpio($_POST['plazo_pago'] ?? null),
+                $tipoProveedor,
+                $plazoPago,
                 $u['nombre'] ?? 'Sistema',
             ]);
         $solicitudId = (int) $pdo->lastInsertId();
@@ -275,32 +295,35 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
             <input type="hidden" name="accion" value="crear_solicitud">
             <div class="grid-form">
                 <div><label>Tipo de tercero *</label>
-                    <select name="tipo_tercero" required>
+                    <select name="tipo_tercero" id="pe-sel-tipo-tercero" required>
                         <?php foreach ($tiposTercero as $tt): ?><option value="<?= e($tt) ?>"><?= e(ucfirst(strtolower($tt))) ?></option><?php endforeach; ?>
                     </select>
                 </div>
                 <div><label>1. NIT o CC *</label><input type="text" name="nit_cc" value="<?= e($nitConsultado) ?>" required></div>
                 <div><label>2. Tipo de persona</label>
-                    <select name="tipo_persona">
+                    <select name="tipo_persona" id="pe-sel-tipo-persona">
                         <option value="NATURAL">Natural</option>
                         <option value="JURIDICA">Jurídica</option>
+                        <option value="OTRO">Otro</option>
                     </select>
                 </div>
+                <div id="pe-campo-tipo-persona-otro" style="display:none;"><label>Especifique el tipo de persona</label><input type="text" name="tipo_persona_otro"></div>
                 <div style="grid-column:span 2;"><label>3. Nombre completo / Razón social *</label><input type="text" name="nombre_completo" required></div>
                 <div style="grid-column:span 2;"><label>4. Dirección</label><input type="text" name="direccion"></div>
                 <div><label>5. Actividad económica</label><input type="text" name="actividad_economica"></div>
                 <div><label>6. Teléfono</label><input type="text" name="telefono"></div>
                 <div><label>7. Correo</label><input type="email" name="correo"></div>
-                <div><label>8. Tipo de proveedor</label>
+                <div id="pe-campo-tipo-proveedor"><label>8. Categoría del proveedor</label>
                     <select name="tipo_proveedor">
                         <?php foreach ($tiposProveedor as $tp): ?><option><?= e($tp) ?></option><?php endforeach; ?>
                     </select>
                 </div>
                 <div><label>9. Plazo de pago</label>
-                    <select name="plazo_pago">
+                    <select name="plazo_pago" id="pe-sel-plazo-pago">
                         <?php foreach ($plazosPago as $pp): ?><option><?= e($pp) ?></option><?php endforeach; ?>
                     </select>
                 </div>
+                <div id="pe-campo-plazo-otro" style="display:none;"><label>Especifique el plazo de pago</label><input type="text" name="plazo_pago_otro"></div>
             </div>
             <h4 style="margin-top:18px;">10. Adjuntar documentos</h4>
             <div class="grid-form">
@@ -398,6 +421,33 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
     }
     botones.forEach(function (b) { b.addEventListener('click', function () { activar(b.dataset.target); }); });
     activar('<?= $resultadoConsulta && !$resultadoConsulta['tercero'] ? 'pe-legalizacion' : 'pe-consulta' ?>');
+
+    // Categoría de proveedor solo aplica cuando el tercero es Proveedor -
+    // para Cliente/Empleado/Otro se oculta (no se envía por si el navegador
+    // no soporta 'disabled' bien en submits, se limpia igual en servidor).
+    var selTipoTercero = document.getElementById('pe-sel-tipo-tercero');
+    var campoTipoProveedor = document.getElementById('pe-campo-tipo-proveedor');
+    function actualizarTipoProveedor() {
+        var esProveedor = selTipoTercero.value === 'PROVEEDOR';
+        campoTipoProveedor.style.display = esProveedor ? '' : 'none';
+    }
+    if (selTipoTercero && campoTipoProveedor) {
+        selTipoTercero.addEventListener('change', actualizarTipoProveedor);
+        actualizarTipoProveedor();
+    }
+
+    // "Otro" en tipo de persona / plazo de pago habilita un campo de texto
+    // para especificar el valor real en vez de quedarse con el genérico "Otro".
+    function habilitarOtro(selectId, campoId) {
+        var sel = document.getElementById(selectId);
+        var campo = document.getElementById(campoId);
+        if (!sel || !campo) return;
+        function actualizar() { campo.style.display = sel.value === 'OTRO' ? '' : 'none'; }
+        sel.addEventListener('change', actualizar);
+        actualizar();
+    }
+    habilitarOtro('pe-sel-tipo-persona', 'pe-campo-tipo-persona-otro');
+    habilitarOtro('pe-sel-plazo-pago', 'pe-campo-plazo-otro');
 })();
 </script>
 <?php layout_fin(); ?>
