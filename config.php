@@ -518,6 +518,67 @@ function migrar_esquema(PDO $pdo) {
     )");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_gastos_proveedor_estado ON gastos_proveedor (estado)");
 
+    // ---- Contabilidad retail: cierres diarios de tiendas y programación de pagos ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cierres_tienda_contables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, sede_id INTEGER NOT NULL REFERENCES sedes(id) ON DELETE CASCADE,
+        fecha_cierre TEXT NOT NULL, ventas REAL DEFAULT 0, efectivo REAL DEFAULT 0, tarjetas REAL DEFAULT 0,
+        transferencias REAL DEFAULT 0, otros REAL DEFAULT 0, total_declarado REAL DEFAULT 0,
+        diferencia REAL DEFAULT 0, estado TEXT DEFAULT 'PENDIENTE', observaciones TEXT,
+        creado_por TEXT, revisado_por TEXT, revisado_en TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(sede_id, fecha_cierre)
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_cierres_contables_fecha ON cierres_tienda_contables(fecha_cierre, estado)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS programacion_pagos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, proveedor TEXT NOT NULL, nit TEXT, concepto TEXT NOT NULL,
+        factura TEXT, fecha_vencimiento TEXT NOT NULL, valor REAL NOT NULL DEFAULT 0, medio_pago TEXT DEFAULT 'TRANSFERENCIA',
+        estado TEXT DEFAULT 'PROGRAMADO', aprobado_por TEXT, aprobado_en TEXT, pagado_en TEXT,
+        observaciones TEXT, creado_por TEXT, creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_programacion_pagos_estado_fecha ON programacion_pagos(estado, fecha_vencimiento)");
+
+    // ---- Contabilidad: caché local del maestro de terceros de Siesa (se
+    // recarga importando el Excel que exporta Siesa) + solicitudes de
+    // legalización/creación de terceros nuevos que Siesa aún no tiene ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS siesa_terceros (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo TEXT NOT NULL UNIQUE,
+        razon_social TEXT,
+        clase_proveedor TEXT,
+        desc_clase_proveedor TEXT,
+        condicion_pago TEXT,
+        desc_condicion_pago TEXT,
+        estado TEXT,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_siesa_terceros_codigo ON siesa_terceros(codigo)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS terceros_solicitudes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nit_cc TEXT NOT NULL,
+        tipo_persona TEXT,
+        nombre_completo TEXT NOT NULL,
+        direccion TEXT,
+        actividad_economica TEXT,
+        telefono TEXT,
+        correo TEXT,
+        tipo_proveedor TEXT,
+        plazo_pago TEXT,
+        estado TEXT DEFAULT 'PENDIENTE',
+        observaciones TEXT,
+        solicitado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        gestionado_por TEXT,
+        gestionado_en TEXT
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_terceros_solicitudes_estado ON terceros_solicitudes(estado)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS terceros_solicitudes_adjuntos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        solicitud_id INTEGER NOT NULL REFERENCES terceros_solicitudes(id) ON DELETE CASCADE,
+        tipo_documento TEXT,
+        nombre_archivo TEXT,
+        ruta TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // ---- Logística: ubicación física dentro de la bodega ----
     $columnasInv = array_column($pdo->query("PRAGMA table_info(inventario)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     if (!in_array('ubicacion_bodega', $columnasInv, true)) {
