@@ -579,6 +579,56 @@ function migrar_esquema(PDO $pdo) {
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // ---- Portal público de cotizaciones: cualquier área de NAVISSI publica una
+    // solicitud de cotización con un link público; el proveedor externo (sin
+    // cuenta) sube su cotización + documentos; el área responsable revisa,
+    // aprueba/rechaza y queda todo el flujo/gestión documental bajo esa
+    // cotización (comentarios tipo bitácora, igual que en tickets). ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cotizaciones_solicitudes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT NOT NULL,
+        area_responsable TEXT NOT NULL,
+        descripcion TEXT,
+        fecha_limite TEXT,
+        token_publico TEXT NOT NULL UNIQUE,
+        estado TEXT DEFAULT 'ABIERTA',
+        creado_por TEXT,
+        responsable_asignado TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_cotizaciones_solicitudes_estado ON cotizaciones_solicitudes(estado, area_responsable)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cotizaciones_respuestas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        solicitud_id INTEGER NOT NULL REFERENCES cotizaciones_solicitudes(id) ON DELETE CASCADE,
+        proveedor_nombre TEXT NOT NULL,
+        proveedor_nit TEXT,
+        proveedor_contacto TEXT,
+        proveedor_email TEXT,
+        proveedor_telefono TEXT,
+        valor_cotizado REAL,
+        validez_dias INTEGER,
+        observaciones TEXT,
+        estado TEXT DEFAULT 'RECIBIDA',
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_cotizaciones_respuestas_solicitud ON cotizaciones_respuestas(solicitud_id)");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cotizaciones_adjuntos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        respuesta_id INTEGER NOT NULL REFERENCES cotizaciones_respuestas(id) ON DELETE CASCADE,
+        nombre_archivo TEXT,
+        ruta TEXT,
+        tipo_mime TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS cotizaciones_comentarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        solicitud_id INTEGER NOT NULL REFERENCES cotizaciones_solicitudes(id) ON DELETE CASCADE,
+        respuesta_id INTEGER REFERENCES cotizaciones_respuestas(id) ON DELETE CASCADE,
+        autor TEXT,
+        comentario TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // ---- Logística: ubicación física dentro de la bodega ----
     $columnasInv = array_column($pdo->query("PRAGMA table_info(inventario)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     if (!in_array('ubicacion_bodega', $columnasInv, true)) {

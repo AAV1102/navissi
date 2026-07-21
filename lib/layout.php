@@ -19,6 +19,7 @@ function nav_grupos() {
                 'modules/base_conocimiento.php' => ['Base de Conocimiento', 'book'],
                 'modules/respuestas_rapidas.php' => ['Respuestas Rápidas', 'zap'],
                 'modules/catalogo_servicios.php' => ['Catálogo de Servicios', 'inventory'],
+                'modules/cotizaciones.php' => ['Cotizaciones a Proveedores', 'dollar'],
                 'modules/aprobaciones.php' => ['Solicitudes y Aprobaciones', 'check'],
                 'modules/categorias_tickets.php' => ['Categorías de Tickets', 'ticket'],
                 'modules/alertas.php' => ['Alertas', 'bell'],

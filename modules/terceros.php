@@ -21,6 +21,52 @@ function terceros_normalizar_codigo(string $v): string {
     return trim(preg_replace('/\s+/', '', $v));
 }
 
+// ---- Exportar solicitudes pendientes en TXT/CSV/JSON (para subir a Siesa
+// manualmente, ya que NAVISSI no tiene conexión directa de escritura a Siesa) ----
+if (isset($_GET['exportar'])) {
+    requiere_login('../');
+    if (!tiene_rol(['ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO'])) { http_response_code(403); exit('No autorizado.'); }
+    $formato = $_GET['exportar'];
+    $filtroEstado = in_array($_GET['estado'] ?? '', ['PENDIENTE', 'CREADO_EN_SIESA', 'RECHAZADO'], true) ? $_GET['estado'] : null;
+    $sql = "SELECT nit_cc, tipo_persona, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, estado, creado_en FROM terceros_solicitudes";
+    $params = [];
+    if ($filtroEstado) { $sql .= " WHERE estado = ?"; $params[] = $filtroEstado; }
+    $sql .= " ORDER BY creado_en DESC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $nombreArchivo = 'terceros_solicitudes_' . date('Y-m-d');
+
+    if ($formato === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$nombreArchivo}.json\"");
+        echo json_encode($filas, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        exit;
+    }
+    if ($formato === 'csv') {
+        header('Content-Type: text/csv; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$nombreArchivo}.csv\"");
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel abra bien los acentos
+        if ($filas) fputcsv($out, array_keys($filas[0]), ';');
+        foreach ($filas as $f) fputcsv($out, $f, ';');
+        fclose($out);
+        exit;
+    }
+    if ($formato === 'txt') {
+        // Archivo plano de ancho fijo, separado por | - formato simple para
+        // importadores de Siesa que no aceptan CSV/Excel directamente.
+        header('Content-Type: text/plain; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$nombreArchivo}.txt\"");
+        foreach ($filas as $f) {
+            echo implode('|', array_map(fn($v) => str_replace('|', ' ', (string) ($v ?? '')), $f)), "\r\n";
+        }
+        exit;
+    }
+    http_response_code(400);
+    exit('Formato de exportación no soportado.');
+}
+
 $documentosRequeridos = ['RUT' => 'RUT', 'CERTIFICADO_BANCARIO' => 'Certificado bancario', 'CAMARA_COMERCIO' => 'Cámara de Comercio', 'CEDULA' => 'Cédula'];
 $tiposProveedor = ['TELA', 'INSUMOS', 'PROCESOS', 'CONFECCIÓN'];
 $plazosPago = ['CONTADO', '10 DÍAS', '30 DÍAS', '60 DÍAS', '90 DÍAS'];
@@ -226,6 +272,15 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
 <div class="pe-panel" id="pe-seguimiento">
     <div class="panel">
         <h3>Solicitudes <?= $puedeGestionar ? 'de creación de terceros' : 'que he enviado' ?></h3>
+        <?php if ($puedeGestionar): ?>
+        <p class="small">Como NAVISSI no tiene conexión directa de escritura a Siesa, exporta esta lista y súbela allá manualmente:</p>
+        <div class="toolbar" style="margin-bottom:14px;">
+            <a class="btn btn-secondary" href="?exportar=csv">CSV</a>
+            <a class="btn btn-secondary" href="?exportar=txt">TXT (plano, separado por |)</a>
+            <a class="btn btn-secondary" href="?exportar=json">JSON</a>
+            <a class="btn btn-secondary" href="?exportar=csv&estado=PENDIENTE">CSV — solo pendientes</a>
+        </div>
+        <?php endif; ?>
         <table>
             <tr><th>NIT/CC</th><th>Nombre</th><th>Tipo proveedor</th><th>Plazo</th><th>Documentos</th><th>Estado</th><th>Solicitado por</th><th>Fecha</th><?php if ($puedeGestionar): ?><th></th><?php endif; ?></tr>
             <?php foreach ($solicitudes as $s): ?>
