@@ -568,14 +568,32 @@ function migrar_esquema(PDO $pdo) {
         solicitado_por TEXT,
         creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
         gestionado_por TEXT,
-        gestionado_en TEXT
+        gestionado_en TEXT,
+        exportado_en TEXT,
+        exportado_por TEXT
     )");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_terceros_solicitudes_estado ON terceros_solicitudes(estado)");
-    // tipo_tercero se agregó después de crear la tabla la primera vez - migración segura para bases ya existentes.
+    // tipo_tercero y exportado_en/por se agregaron después de crear la tabla la
+    // primera vez - migración segura para bases ya existentes.
     $columnasTerceros = array_column($pdo->query("PRAGMA table_info(terceros_solicitudes)")->fetchAll(PDO::FETCH_ASSOC), 'name');
     if (!in_array('tipo_tercero', $columnasTerceros, true)) {
         $pdo->exec("ALTER TABLE terceros_solicitudes ADD COLUMN tipo_tercero TEXT");
     }
+    if (!in_array('exportado_en', $columnasTerceros, true)) {
+        $pdo->exec("ALTER TABLE terceros_solicitudes ADD COLUMN exportado_en TEXT");
+    }
+    if (!in_array('exportado_por', $columnasTerceros, true)) {
+        $pdo->exec("ALTER TABLE terceros_solicitudes ADD COLUMN exportado_por TEXT");
+    }
+    $pdo->exec("CREATE TABLE IF NOT EXISTS terceros_exportaciones_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        formato TEXT NOT NULL,
+        filtro_estado TEXT,
+        cantidad INTEGER NOT NULL DEFAULT 0,
+        ids_incluidos TEXT,
+        exportado_por TEXT,
+        exportado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
     $pdo->exec("CREATE TABLE IF NOT EXISTS terceros_solicitudes_adjuntos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         solicitud_id INTEGER NOT NULL REFERENCES terceros_solicitudes(id) ON DELETE CASCADE,

@@ -33,17 +33,32 @@ function terceros_normalizar_codigo(string $v): string {
 // manualmente, ya que NAVISSI no tiene conexión directa de escritura a Siesa) ----
 if (isset($_GET['exportar'])) {
     requiere_login('../');
-    if (!tiene_rol(['ADMIN', 'DIRECTOR', 'GERENCIA', 'CEO'])) { http_response_code(403); exit('No autorizado.'); }
+    if (!$puedeGestionar) { http_response_code(403); exit('No autorizado.'); }
     $formato = $_GET['exportar'];
     $filtroEstado = in_array($_GET['estado'] ?? '', ['PENDIENTE', 'CREADO_EN_SIESA', 'RECHAZADO'], true) ? $_GET['estado'] : null;
-    $sql = "SELECT nit_cc, tipo_tercero, tipo_persona, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, estado, creado_en FROM terceros_solicitudes";
+    $sql = "SELECT id, nit_cc, tipo_tercero, tipo_persona, nombre_completo, direccion, actividad_economica, telefono, correo, tipo_proveedor, plazo_pago, estado, creado_en, exportado_en, exportado_por FROM terceros_solicitudes";
     $params = [];
     if ($filtroEstado) { $sql .= " WHERE estado = ?"; $params[] = $filtroEstado; }
     $sql .= " ORDER BY creado_en DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $idsExportados = array_column($filas, 'id');
+    // Quita "id" del array antes de escribirlo al archivo - es un detalle interno
+    // de NAVISSI, no un dato que Siesa necesite en el import.
+    foreach ($filas as &$f) { unset($f['id']); }
+    unset($f);
     $nombreArchivo = 'terceros_solicitudes_' . date('Y-m-d');
+
+    // Marca cada solicitud incluida como exportada (con quién y cuándo) y deja
+    // un registro en el log de exportaciones - así queda claro qué ya se bajó
+    // para subir a Siesa y qué no, sin depender solo del filtro por estado.
+    if ($idsExportados) {
+        $marcador = $pdo->prepare("UPDATE terceros_solicitudes SET exportado_en = CURRENT_TIMESTAMP, exportado_por = ? WHERE id = ?");
+        foreach ($idsExportados as $idExp) { $marcador->execute([$u['nombre'] ?? 'Sistema', $idExp]); }
+    }
+    $pdo->prepare("INSERT INTO terceros_exportaciones_log (formato, filtro_estado, cantidad, ids_incluidos, exportado_por) VALUES (?,?,?,?,?)")
+        ->execute([$formato, $filtroEstado, count($idsExportados), implode(',', $idsExportados), $u['nombre'] ?? 'Sistema']);
 
     if ($formato === 'json') {
         header('Content-Type: application/json; charset=utf-8');
@@ -195,6 +210,9 @@ $misSolicitudes = $pdo->prepare("SELECT s.*, (SELECT COUNT(*) FROM terceros_soli
     FROM terceros_solicitudes s WHERE " . ($puedeGestionar ? '1=1' : 's.solicitado_por = ?') . " ORDER BY s.creado_en DESC LIMIT 100");
 $puedeGestionar ? $misSolicitudes->execute() : $misSolicitudes->execute([$u['nombre'] ?? '']);
 $solicitudes = $misSolicitudes->fetchAll(PDO::FETCH_ASSOC);
+$exportaciones = $puedeGestionar
+    ? $pdo->query("SELECT * FROM terceros_exportaciones_log ORDER BY exportado_en DESC LIMIT 100")->fetchAll(PDO::FETCH_ASSOC)
+    : [];
 
 layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
 ?>
@@ -214,7 +232,10 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
     <button type="button" class="pe-tab-btn" data-target="pe-consulta"><?= icon('search') ?> Consultar Tercero</button>
     <button type="button" class="pe-tab-btn" data-target="pe-legalizacion"><?= icon('file') ?> Legalización / Solicitud de Creación</button>
     <button type="button" class="pe-tab-btn" data-target="pe-seguimiento"><?= icon('log') ?> Seguimiento de Solicitudes <?= count($solicitudes) ? '(' . count($solicitudes) . ')' : '' ?></button>
-    <?php if ($puedeGestionar): ?><button type="button" class="pe-tab-btn" data-target="pe-importar"><?= icon('upload') ?> Importar maestro (Excel Siesa)</button><?php endif; ?>
+    <?php if ($puedeGestionar): ?>
+    <button type="button" class="pe-tab-btn" data-target="pe-importar"><?= icon('upload') ?> Importar maestro (Excel Siesa)</button>
+    <button type="button" class="pe-tab-btn" data-target="pe-exportlog"><?= icon('log') ?> Historial de exportaciones</button>
+    <?php endif; ?>
 </nav>
 
 <div class="pe-panel" id="pe-consulta">
@@ -305,7 +326,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
         </div>
         <?php endif; ?>
         <table>
-            <tr><th>Tipo</th><th>NIT/CC</th><th>Nombre</th><th>Tipo proveedor</th><th>Plazo</th><th>Documentos</th><th>Estado</th><th>Solicitado por</th><th>Fecha</th><?php if ($puedeGestionar): ?><th></th><?php endif; ?></tr>
+            <tr><th>Tipo</th><th>NIT/CC</th><th>Nombre</th><th>Tipo proveedor</th><th>Plazo</th><th>Documentos</th><th>Estado</th><th>Exportado</th><th>Solicitado por</th><th>Fecha</th><?php if ($puedeGestionar): ?><th></th><?php endif; ?></tr>
             <?php foreach ($solicitudes as $s): ?>
             <tr>
                 <td><?= e($s['tipo_tercero']) ?: 'Proveedor' ?></td>
@@ -315,6 +336,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
                 <td><?= e($s['plazo_pago']) ?: '—' ?></td>
                 <td><?= (int) $s['n_adjuntos'] ?>/4</td>
                 <td><span class="badge <?= $s['estado']==='CREADO_EN_SIESA'?'badge-activo':($s['estado']==='RECHAZADO'?'badge-err':'badge-otro') ?>"><?= e($s['estado']) ?></span></td>
+                <td class="small"><?= $s['exportado_en'] ? e($s['exportado_en']) . ' · ' . e($s['exportado_por']) : 'Nunca exportado' ?></td>
                 <td class="small"><?= e($s['solicitado_por']) ?></td>
                 <td class="small"><?= e($s['creado_en']) ?></td>
                 <?php if ($puedeGestionar): ?>
@@ -327,7 +349,7 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
                 <?php endif; ?>
             </tr>
             <?php endforeach; ?>
-            <?php if (!$solicitudes): ?><tr><td colspan="10" class="small">Sin solicitudes todavía.</td></tr><?php endif; ?>
+            <?php if (!$solicitudes): ?><tr><td colspan="11" class="small">Sin solicitudes todavía.</td></tr><?php endif; ?>
         </table>
     </div>
 </div>
@@ -342,6 +364,26 @@ layout_inicio('Consulta de Terceros', 'Consulta de Terceros', '../');
             <input type="file" name="archivo" accept=".xlsx" required>
             <button type="submit" style="margin-top:10px;"><?= icon('upload') ?> Importar</button>
         </form>
+    </div>
+</div>
+
+<div class="pe-panel" id="pe-exportlog">
+    <div class="panel">
+        <h3><?= icon('log') ?> Historial de exportaciones</h3>
+        <p class="small">Cada vez que alguien exporta solicitudes (TXT/CSV/JSON) para subirlas manualmente a Siesa queda un registro aquí, junto con cuáles solicitudes quedaron marcadas como "exportadas".</p>
+        <table>
+            <tr><th>Fecha</th><th>Formato</th><th>Filtro estado</th><th>Cantidad</th><th>Exportado por</th></tr>
+            <?php foreach ($exportaciones as $ex): ?>
+            <tr>
+                <td class="small"><?= e($ex['exportado_en']) ?></td>
+                <td><?= e(strtoupper($ex['formato'])) ?></td>
+                <td><?= e($ex['filtro_estado']) ?: 'Todos' ?></td>
+                <td><?= (int) $ex['cantidad'] ?></td>
+                <td class="small"><?= e($ex['exportado_por']) ?></td>
+            </tr>
+            <?php endforeach; ?>
+            <?php if (!$exportaciones): ?><tr><td colspan="5" class="small">Sin exportaciones todavía.</td></tr><?php endif; ?>
+        </table>
     </div>
 </div>
 <?php endif; ?>
