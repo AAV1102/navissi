@@ -21,22 +21,36 @@ $required = @('NAVISSI_FTP_HOST','NAVISSI_FTP_USER','NAVISSI_FTP_PASS','NAVISSI_
 foreach ($key in $required) { if (-not $DryRun -and [string]::IsNullOrWhiteSpace($cfg[$key])) { throw "Falta $key en .env.deploy.local" } }
 $FtpHost = $cfg['NAVISSI_FTP_HOST']; $FtpUser = $cfg['NAVISSI_FTP_USER']; $FtpPass = $cfg['NAVISSI_FTP_PASS']; $SiteHost = $cfg['NAVISSI_SITE_HOST']
 
-$stage = Join-Path $env:TEMP "navissi_stage_$(Get-Random)"
 $zipPath = Join-Path $env:TEMP "navissi_deploy_$(Get-Random).zip"
 try {
-    New-Item -ItemType Directory -Path $stage | Out-Null
     Write-Host '1/5 Empaquetando solo archivos versionados...' -ForegroundColor Cyan
     $files = @(git ls-files)
-    foreach ($relative in $files) {
-        if ($relative -in @('DEPLOY_HOSTING.ps1','DEPLOY_TODO.bat','.env.deploy.example')) { continue }
-        $source = Join-Path $src $relative
-        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
-        $destination = Join-Path $stage $relative
-        New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
-        Copy-Item -LiteralPath $source -Destination $destination -Force
-    }
     if ($DryRun) { Write-Host "DryRun OK: $($files.Count) entradas versionadas evaluadas." -ForegroundColor Green; return }
-    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -CompressionLevel Optimal -Force
+    # Compress-Archive guarda las entradas con separador '\' en este equipo, y
+    # ZipArchive de PHP en Linux NO lo interpreta como subcarpeta (el estandar
+    # ZIP exige '/') - eso hacia que TODO archivo dentro de una subcarpeta
+    # (modules/, lib/, assets/, etc.) terminara como un archivo suelto con un
+    # backslash literal en el nombre, en la raiz del hosting, en vez de
+    # extraerse en su carpeta real. Se arma el zip a mano con System.IO.Compression
+    # forzando '/' en cada nombre de entrada, usando las rutas relativas de git
+    # (que ya vienen con '/').
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
+    $zipStream = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::Create)
+    $archive = New-Object System.IO.Compression.ZipArchive($zipStream, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($relative in $files) {
+            if ($relative -in @('DEPLOY_HOSTING.ps1', 'DEPLOY_TODO.bat', '.env.deploy.example')) { continue }
+            $source = Join-Path $src $relative
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
+            $entryName = $relative -replace '\\', '/'
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $source, $entryName, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+        }
+    } finally {
+        $archive.Dispose()
+        $zipStream.Dispose()
+    }
     $zipName = Split-Path $zipPath -Leaf
     $ftpUrl = "ftp://$FtpHost/public_html/"
     Write-Host '2/5 Subiendo por FTP (el hosting no tiene certificado SSL valido; ver nota en preflight_deploy.ps1)...' -ForegroundColor Cyan
@@ -66,7 +80,6 @@ if (!is_file(`$zipFile) || `$zip->open(`$zipFile) !== true) { http_response_code
     # 550 cuando el archivo ya fue eliminado, aunque el deploy haya sido exitoso.
     Write-Host "5/5 Listo. Verifica http://$SiteHost" -ForegroundColor Green
 } finally {
-    Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
     if ($unzipPath) { Remove-Item -LiteralPath $unzipPath -Force -ErrorAction SilentlyContinue }
 }
