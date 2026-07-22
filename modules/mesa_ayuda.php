@@ -7,6 +7,35 @@ $pdo = db();
 $msg = null;
 $dirAdjuntos = tickets_adjuntos_dir();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['accion'] ?? '', ['bulk_eliminar', 'bulk_asignar', 'bulk_estado'], true)) {
+    $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+    if (!$ids) {
+        $msg = ['error', 'No seleccionaste ningún ticket.'];
+    } else {
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        if ($_POST['accion'] === 'bulk_eliminar') {
+            $pdo->prepare("DELETE FROM tickets WHERE id IN ($marcadores)")->execute($ids);
+            $msg = ['ok', count($ids) . ' ticket(s) eliminado(s).'];
+        } elseif ($_POST['accion'] === 'bulk_asignar') {
+            $tecnico = limpio($_POST['tecnico'] ?? null);
+            if (!$tecnico) {
+                $msg = ['error', 'Escribe el nombre del técnico.'];
+            } else {
+                $pdo->prepare("UPDATE tickets SET asignado_a = ? WHERE id IN ($marcadores)")->execute(array_merge([$tecnico], $ids));
+                $msg = ['ok', count($ids) . " ticket(s) asignado(s) a {$tecnico}."];
+            }
+        } elseif ($_POST['accion'] === 'bulk_estado') {
+            $nuevoEstado = in_array($_POST['nuevo_estado'] ?? '', ['ABIERTO', 'EN PROCESO', 'RESUELTO POR IA', 'CERRADO'], true) ? $_POST['nuevo_estado'] : null;
+            if (!$nuevoEstado) {
+                $msg = ['error', 'Elige un estado válido.'];
+            } else {
+                $pdo->prepare("UPDATE tickets SET estado = ? WHERE id IN ($marcadores)")->execute(array_merge([$nuevoEstado], $ids));
+                $msg = ['ok', count($ids) . " ticket(s) actualizado(s) a {$nuevoEstado}."];
+            }
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'revisar_correo') {
     // Refresco manual, obligatorio y visible: el usuario dispara la revision
     // de buzones el mismo desde Mesa de Ayuda (no solo desde un cron externo
@@ -245,12 +274,14 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
     <?php if ($estadoFiltro || $prioridadFiltro || $busqueda): ?><a class="btn btn-secondary" href="mesa_ayuda.php">Limpiar</a><?php endif; ?>
 </form>
 
+<form method="post" id="form-bulk-tickets">
+<input type="hidden" name="accion" id="bulk-accion" value="">
 <div class="tabla-toolbar">
     <label class="small chk-todos"><input type="checkbox" id="chk-todos-tickets"> Seleccionar todo</label>
     <span class="tabla-toolbar-acciones small">
-        <button type="button" class="link-btn" disabled><?= icon('trash') ?> Eliminar</button>
-        <button type="button" class="link-btn" disabled><?= icon('users') ?> Asignar ticket</button>
-        <button type="button" class="link-btn" disabled><?= icon('check') ?> Establecer estado</button>
+        <button type="button" class="link-btn" id="btn-bulk-eliminar" disabled><?= icon('trash') ?> Eliminar</button>
+        <button type="button" class="link-btn" id="btn-bulk-asignar" disabled><?= icon('users') ?> Asignar ticket</button>
+        <button type="button" class="link-btn" id="btn-bulk-estado" disabled><?= icon('check') ?> Establecer estado</button>
     </span>
     <span class="small" style="margin-left:auto;">Mostrando <?= count($tickets) ?> de <?= count($tickets) ?> tickets</span>
 </div>
@@ -263,7 +294,6 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
             <th>SLA</th>
             <th>Técnico asignado</th>
             <th>Prioridad</th>
-            <th>Estado de actividad</th>
             <th>Estado</th>
         </tr>
     </thead>
@@ -273,7 +303,7 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
         $iniciales = $t['asignado_a'] ? strtoupper(mb_substr($t['asignado_a'], 0, 1)) : '?';
     ?>
         <tr onclick="window.location='ticket_detalle.php?id=<?= (int)$t['id'] ?>'" style="cursor:pointer;">
-            <td onclick="event.stopPropagation()"><input type="checkbox" class="chk-ticket"></td>
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="chk-ticket" name="ids[]" value="<?= (int) $t['id'] ?>"></td>
             <td>
                 <div style="display:flex; gap:10px; align-items:flex-start;">
                     <span class="avatar-sq"><?= e($iniciales) ?></span>
@@ -292,15 +322,53 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
             <td><span class="avatar-mini"><?= e($iniciales) ?></span> <?= e($t['asignado_a']) ?: 'Sin asignar' ?></td>
             <td><?= badge_prioridad($t['prioridad']) ?></td>
             <td><?= badge_estado($t['estado']) ?></td>
-            <td><span class="link-estado"><?= e($t['estado']) ?> <?= icon('chevron-down') ?></span></td>
         </tr>
     <?php endforeach; ?>
-    <?php if (!$tickets): ?><tr><td colspan="7" style="padding:30px;text-align:center;" class="small">No hay tickets con ese filtro.</td></tr><?php endif; ?>
+    <?php if (!$tickets): ?><tr><td colspan="6" style="padding:30px;text-align:center;" class="small">No hay tickets con ese filtro.</td></tr><?php endif; ?>
     </tbody>
 </table>
+</form>
 <script>
-document.getElementById('chk-todos-tickets')?.addEventListener('change', function () {
-    document.querySelectorAll('.chk-ticket').forEach(c => c.checked = this.checked);
-});
+(function () {
+    var chkTodos = document.getElementById('chk-todos-tickets');
+    var chks = document.querySelectorAll('.chk-ticket');
+    var btns = [document.getElementById('btn-bulk-eliminar'), document.getElementById('btn-bulk-asignar'), document.getElementById('btn-bulk-estado')];
+    var form = document.getElementById('form-bulk-tickets');
+    var accionInput = document.getElementById('bulk-accion');
+
+    function actualizarBotones() {
+        var haySeleccion = Array.from(chks).some(function (c) { return c.checked; });
+        btns.forEach(function (b) { b.disabled = !haySeleccion; });
+    }
+    chkTodos?.addEventListener('change', function () {
+        chks.forEach(function (c) { c.checked = this.checked; }.bind(this));
+        actualizarBotones();
+    });
+    chks.forEach(function (c) { c.addEventListener('change', actualizarBotones); });
+
+    document.getElementById('btn-bulk-eliminar')?.addEventListener('click', function () {
+        if (!confirm('¿Eliminar los tickets seleccionados? Esta acción no se puede deshacer.')) return;
+        accionInput.value = 'bulk_eliminar';
+        form.submit();
+    });
+    document.getElementById('btn-bulk-asignar')?.addEventListener('click', function () {
+        var tecnico = prompt('¿A quién asignar los tickets seleccionados?');
+        if (!tecnico) return;
+        var campo = document.createElement('input');
+        campo.type = 'hidden'; campo.name = 'tecnico'; campo.value = tecnico;
+        form.appendChild(campo);
+        accionInput.value = 'bulk_asignar';
+        form.submit();
+    });
+    document.getElementById('btn-bulk-estado')?.addEventListener('click', function () {
+        var estado = prompt('Nuevo estado (ABIERTO, EN PROCESO, RESUELTO POR IA, CERRADO):');
+        if (!estado) return;
+        var campo = document.createElement('input');
+        campo.type = 'hidden'; campo.name = 'nuevo_estado'; campo.value = estado.toUpperCase();
+        form.appendChild(campo);
+        accionInput.value = 'bulk_estado';
+        form.submit();
+    });
+})();
 </script>
 <?php layout_fin(); ?>

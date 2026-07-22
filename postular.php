@@ -2,6 +2,11 @@
 // Formulario público de postulación a vacantes - sin necesidad de cuenta en NAVISSI.
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/icons.php';
+// Arranca la sesión ANTES de imprimir cualquier HTML - csrf_token() la
+// necesita para fijar la cookie, y eso falla en silencio si ya se enviaron
+// bytes de HTML antes de llamarla (mismo bug encontrado y corregido antes
+// en cotizacion_publica.php).
+iniciar_sesion_segura();
 $pdo = db();
 $vacanteId = (int) ($_GET['vacante'] ?? 0);
 $enviado = false;

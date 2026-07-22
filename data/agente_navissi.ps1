@@ -129,6 +129,19 @@ try {
     Write-Output "AVISO: no se pudo leer el software instalado: $($_.Exception.Message)"
 }
 
+# Reinicio pendiente real: se revisan las mismas claves de registro que usa
+# Windows Update / WSUS para saber si un equipo necesita reiniciar - no es un
+# valor inventado, es exactamente lo que Windows ya sabe internamente.
+$reinicioPendiente = $false
+try {
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') { $reinicioPendiente = $true }
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') { $reinicioPendiente = $true }
+    $pendingRename = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name 'PendingFileRenameOperations' -ErrorAction SilentlyContinue
+    if ($pendingRename) { $reinicioPendiente = $true }
+} catch {
+    Write-Output "AVISO: no se pudo verificar reinicio pendiente: $($_.Exception.Message)"
+}
+
 # Parches de Windows realmente instalados (Get-HotFix es rapido y no requiere
 # admin; da KB, descripcion y fecha real de instalacion - datos genuinos, no
 # simulados).
@@ -161,6 +174,7 @@ $payload = @{
     ip_local           = $ipLocal
     rustdesk_id        = $rustdeskId
     rustdesk_password  = $rustdeskPassword
+    reinicio_pendiente = if ($reinicioPendiente) { 1 } else { 0 }
     parches            = $parches
     software           = $softwareInstalado
 } | ConvertTo-Json -Depth 4

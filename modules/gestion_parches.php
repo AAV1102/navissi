@@ -35,7 +35,7 @@ $porEquipo = $pdo->query("SELECT i.id, i.serial, i.marca, i.modelo, i.asignado_a
     GROUP BY i.id ORDER BY total_parches ASC, i.serial")->fetchAll(PDO::FETCH_ASSOC);
 
 $pctParcheo = $totalEquipos > 0 ? round(($equiposConReporte / $totalEquipos) * 100) : 0;
-$pendienteReinicio = 0; // no hay señal de reinicio pendiente desde el agente todavía
+$pendienteReinicio = (int) $pdo->query("SELECT COUNT(*) FROM inventario WHERE estado='ACTIVO' AND reinicio_pendiente = 1")->fetchColumn();
 $fallidos = (int) $pdo->query("SELECT COUNT(*) FROM parches_equipo WHERE tipo = 'FALLIDO'")->fetchColumn();
 
 layout_inicio('Gestión de Parches', 'Gestión de Parches', '../');

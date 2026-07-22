@@ -41,6 +41,9 @@ foreach ($camposOpcionales as $origen => $destino) {
 }
 if (!empty($data['rustdesk_id'])) $campos['rustdesk_id'] = limpio($data['rustdesk_id']);
 if (!empty($data['rustdesk_password'])) $campos['rustdesk_password'] = limpio($data['rustdesk_password']);
+// isset (no !empty): 0 es un valor real y valido - significa que YA NO hay
+// reinicio pendiente, y hay que poder pasar de 1 a 0 en un reporte posterior.
+if (isset($data['reinicio_pendiente'])) $campos['reinicio_pendiente'] = $data['reinicio_pendiente'] ? 1 : 0;
 if ($sedeId) $campos['sede_id'] = $sedeId;
 
 if ($existente) {

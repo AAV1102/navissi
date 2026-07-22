@@ -79,7 +79,7 @@ layout_inicio('Vacantes', 'Vacantes', '../');
             </select>
         </form>
     </div>
-    <p class="small">Enlace para postulantes: <code><?= 'postular.php?vacante=' . (int)$v['id'] ?></code> · <?= count($cands) ?> candidato(s)</p>
+    <p class="small">Enlace para postulantes: <a href="<?= '../postular.php?vacante=' . (int)$v['id'] ?>" target="_blank"><?= e(navissi_url_publica('postular.php?vacante=' . (int)$v['id'])) ?></a> · <?= count($cands) ?> candidato(s)</p>
 
     <?php if ($cands): ?>
     <table>
