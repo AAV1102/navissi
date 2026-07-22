@@ -13,9 +13,15 @@ $sedeBatch=$sede?preg_replace('/[\r\n"&|<>^%!]/','',$sede):null;$pdo=db();$sedeI
 $agenteB64=base64_encode((string)file_get_contents(__DIR__.'/data/agente_navissi.ps1'));
 $reportarB64=base64_encode((string)file_get_contents(__DIR__.'/data/reportar_problema.ps1'));
 
+// El servidor de RustDesk (hbbs/hbbr) vive en un equipo de la oficina, NO en
+// donde corre este PHP - por eso NO se auto-detecta (gethostbyname del propio
+// proceso daba la IP del hosting compartido cuando NAVISSI vive en internet,
+// rompiendo el control remoto). Un ADMIN/TI lo configura una sola vez desde
+// este mismo módulo (ver rustdesk_config_leer/guardar en config.php).
 $serverPubKeyPath = __DIR__ . '/rustdesk-server/id_ed25519.pub';
-$rustdeskClave = file_exists($serverPubKeyPath) ? trim(file_get_contents($serverPubKeyPath)) : null;
-$rustdeskServidor = $rustdeskClave ? gethostbyname(gethostname()) : null;
+$rustdeskServidorConfigurado = trim((string) (rustdesk_config_leer()['servidor'] ?? ''));
+$rustdeskClave = ($rustdeskServidorConfigurado !== '' && file_exists($serverPubKeyPath)) ? trim(file_get_contents($serverPubKeyPath)) : null;
+$rustdeskServidor = $rustdeskClave ? $rustdeskServidorConfigurado : null;
 
 header('Content-Type: application/octet-stream; charset=utf-8');
 header('Content-Disposition: attachment; filename="instalar_agente_navissi.bat"');

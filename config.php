@@ -2451,6 +2451,22 @@ function navissi_url_publica(string $ruta = ''): string {
     return (navissi_es_https() ? 'https' : 'http') . '://' . $host . '/' . ltrim($ruta, '/');
 }
 
+// La IP/dominio publico del servidor RustDesk (hbbs/hbbr, self-hosted en la
+// oficina) NO se puede adivinar desde el proceso PHP: cuando NAVISSI corre en
+// el hosting compartido, gethostbyname(gethostname()) devuelve la IP del
+// propio hosting (nada que ver con el equipo de la oficina que corre
+// hbbs.exe/hbbr.exe). Por eso es un dato que un ADMIN/TI configura a mano una
+// vez (IP publica fija o dominio DDNS del router de la oficina).
+function rustdesk_config_leer(): array {
+    $ruta = private_path('rustdesk_config.json');
+    if (!is_file($ruta)) return ['servidor' => ''];
+    $datos = json_decode((string) file_get_contents($ruta), true);
+    return is_array($datos) ? $datos : ['servidor' => ''];
+}
+function rustdesk_config_guardar(string $servidor): void {
+    file_put_contents(private_path('rustdesk_config.json'), json_encode(['servidor' => trim($servidor)]));
+}
+
 function csrf_token(): string {
     iniciar_sesion_segura();
     if (empty($_SESSION['_csrf'])) $_SESSION['_csrf'] = bin2hex(random_bytes(32));

@@ -3,7 +3,12 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 $msg=null;if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['accion']??'')==='revocar'&&tiene_rol(['ADMIN','TI'])){$pdo->prepare("UPDATE agentes_tokens SET activo=0 WHERE id=?")->execute([(int)$_POST['id']]);$msg=['ok','Credencial revocada.'];}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar_rustdesk' && tiene_rol(['ADMIN', 'TI'])) {
+    rustdesk_config_guardar((string) ($_POST['rustdesk_servidor'] ?? ''));
+    $msg = ['ok', 'Servidor RustDesk actualizado. Los próximos instaladores que generes ya lo incluirán.'];
+}
 $base = rtrim(navissi_url_publica(), '/');
+$rustdeskServidorGuardado = trim((string) (rustdesk_config_leer()['servidor'] ?? ''));
 
 $ultimos = $pdo->query("SELECT * FROM inventario WHERE fuente = 'Agente automático' ORDER BY actualizado_en DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
 $tokensAgente=$pdo->query("SELECT a.*,s.nombre sede_nombre FROM agentes_tokens a LEFT JOIN sedes s ON s.id=a.sede_id ORDER BY a.id DESC LIMIT 30")->fetchAll(PDO::FETCH_ASSOC);$sedesAgente=$pdo->query("SELECT nombre FROM sedes WHERE estado='ACTIVO' ORDER BY nombre")->fetchAll(PDO::FETCH_COLUMN);
@@ -30,9 +35,26 @@ layout_inicio('Agente de Inventario', 'Agente de inventario', '../');
     <p class="small" style="margin-top:10px;">Descarga e instala el agente en todos los equipos que quieras supervisar.</p>
 </div>
 
+<?php if (tiene_rol(['ADMIN', 'TI'])): ?>
+<div class="panel" style="border-left:4px solid <?= $rustdeskServidorGuardado ? 'var(--ok-line)' : 'var(--err-line, #d9534f)' ?>;">
+    <h3><?= icon('sliders') ?> Servidor de control remoto (RustDesk)</h3>
+    <?php if (!$rustdeskServidorGuardado): ?>
+    <div class="msg-error">Sin configurar: los instaladores que generes NO incluirán control remoto hasta que pongas aquí la IP pública o dominio del equipo de la oficina donde corre <code>hbbs.exe</code>/<code>hbbr.exe</code> (carpeta <code>rustdesk-server/</code>). El reporte de inventario funciona igual sin esto.</div>
+    <?php else: ?>
+    <p class="small">Servidor configurado: <code><?= e($rustdeskServidorGuardado) ?></code>. Los próximos instaladores lo usarán para configurar el control remoto de cada equipo.</p>
+    <?php endif; ?>
+    <form method="post" class="toolbar" style="margin-top:8px;">
+        <input type="hidden" name="accion" value="guardar_rustdesk">
+        <input type="text" name="rustdesk_servidor" value="<?= e($rustdeskServidorGuardado) ?>" placeholder="Ej: 190.xx.xx.xx o rustdesk.grupo10z.com.co" style="min-width:320px">
+        <button type="submit"><?= icon('check') ?> Guardar</button>
+    </form>
+    <p class="small" style="margin-top:8px;">Debe ser una dirección alcanzable desde internet (IP pública fija o un dominio DDNS) con los puertos 21115-21119 (TCP/UDP) redirigidos en el router hacia el equipo que corre el servidor RustDesk.</p>
+</div>
+<?php endif; ?>
+
 <div class="panel" style="border-left:4px solid var(--accent-600);">
     <h3><?= icon('zap') ?> Instalador de un clic (recomendado)</h3>
-    <p class="small">Descarga un <code>.bat</code> que hace todo solo: instala el agente, reporta inventario cada cinco minutos, configura RustDesk cuando esté disponible y deja en el escritorio el acceso <strong>Reportar problema a NAVISSI</strong>.</p>
+    <p class="small">Descarga un <code>.bat</code> que hace todo solo: instala el agente, reporta inventario cada cinco minutos<?= $rustdeskServidorGuardado ? ', configura RustDesk' : ' (sin control remoto hasta configurar el servidor RustDesk arriba)' ?> y deja en el escritorio el acceso <strong>Reportar problema a NAVISSI</strong>.</p>
     <form method="get" action="../instalar_agente.php" class="toolbar" style="margin-top:10px;">
         <select name="sede" required style="min-width:280px"><option value="">Selecciona la sede</option><?php foreach($sedesAgente as $sn):?><option><?=e($sn)?></option><?php endforeach;?></select>
         <button type="submit"><?= icon('upload') ?> Descargar instalar_agente_navissi.bat</button>
