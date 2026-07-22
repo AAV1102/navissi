@@ -734,6 +734,7 @@ table { border-radius:0; }
 th, td { padding:10px 12px; font-size:12px; }
 th { position:sticky; top:0; z-index:2; background:var(--ink-900); font-size:9.5px; letter-spacing:.09em; font-weight:750; }
 tbody tr:nth-child(even) td { background:#fcfaf7; }
+:root[data-theme="dark"] tbody tr:nth-child(even) td { background: var(--bg); }
 tbody tr:hover td, table.tabla-viva tr:not(:first-child):hover td { background:#f9e5e3 !important; }
 
 /* Controles: rectos, explícitos, con estados visibles. */
