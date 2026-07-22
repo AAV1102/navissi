@@ -131,6 +131,7 @@ layout_inicio($eq['serial'] ?: 'Equipo', 'Inventario', '../');
         <input type="hidden" name="accion" value="orden_actualizaciones">
         <button type="submit"><?= icon('upload') ?> Buscar e instalar actualizaciones de Windows</button>
     </form>
+    <a class="btn btn-secondary" href="ordenes_agente.php?serial=<?= urlencode($eq['serial']) ?>"><?= icon('zap') ?> Instalar/actualizar programa o activar licencia</a>
 </div>
 <?php endif; ?>
 

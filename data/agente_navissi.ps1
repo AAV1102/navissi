@@ -209,6 +209,19 @@ if ($EscanearRed -and $ipLocal) {
     }
 }
 
+# winget (Windows Package Manager) esta empaquetado como app de Microsoft
+# Store y normalmente solo aparece en el PATH del usuario que inicio sesion -
+# como el agente corre como SYSTEM (tarea programada), se busca el .exe real
+# directamente dentro de WindowsApps en vez de asumir que "winget" esta en el
+# PATH. Si no aparece (equipo viejo sin App Installer actualizado), se avisa
+# con un error claro en vez de fallar en silencio.
+function Buscar-Winget {
+    $candidato = Get-ChildItem "$env:ProgramFiles\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\winget.exe" -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $candidato) { $candidato = (Get-Command winget.exe -ErrorAction SilentlyContinue).Source }
+    return $candidato
+}
+
 # --- Órdenes centralizadas autorizadas desde NAVISSI ---
 try {
     $ordenes = Invoke-RestMethod -Uri "$Servidor/api_agente_ordenes.php" -Method Post -Headers $headersAgente -Body (@{accion='consultar';serial=$bios.SerialNumber}|ConvertTo-Json) -ContentType 'application/json; charset=utf-8'
@@ -242,6 +255,39 @@ try {
                     Start-Process -FilePath 'cmd.exe' -ArgumentList "/c `"$cmdDesinstalar`" /S /silent /quiet /verysilent" -Wait
                 }
                 $resultado = "Se envio la desinstalacion de '$nombreBuscado'. Verifica en el proximo reporte si desaparecio del listado."
+            } elseif($orden.tipo -eq 'INSTALL_WINGET' -and $orden.parametros.id_winget) {
+                $winget = Buscar-Winget
+                if (-not $winget) { throw 'winget (App Installer) no esta disponible en este equipo. Instala "App Installer" desde Microsoft Store o actualizalo.' }
+                $idPaquete = $orden.parametros.id_winget
+                $salida = & $winget install --id $idPaquete --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity 2>&1 | Out-String
+                if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) { throw "winget devolvio error ($LASTEXITCODE): $salida" }
+                $resultado = "Instalado con winget ('$idPaquete'). Salida: " + ($salida.Trim() -replace '\s+', ' ').Substring(0, [Math]::Min(300, $salida.Trim().Length))
+            } elseif($orden.tipo -eq 'UPGRADE_WINGET') {
+                $winget = Buscar-Winget
+                if (-not $winget) { throw 'winget (App Installer) no esta disponible en este equipo. Instala "App Installer" desde Microsoft Store o actualizalo.' }
+                $idPaquete = $orden.parametros.id_winget
+                $argsWinget = if ($idPaquete) { @('upgrade','--id',$idPaquete,'--exact') } else { @('upgrade','--all') }
+                $argsWinget += @('--silent','--accept-package-agreements','--accept-source-agreements','--disable-interactivity')
+                $salida = & $winget @argsWinget 2>&1 | Out-String
+                if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) { throw "winget devolvio error ($LASTEXITCODE): $salida" }
+                $resultado = "Actualizado con winget" + $(if ($idPaquete) { " ('$idPaquete')" } else { " (todos los paquetes)" }) + ". Salida: " + ($salida.Trim() -replace '\s+', ' ').Substring(0, [Math]::Min(300, $salida.Trim().Length))
+            } elseif($orden.tipo -eq 'ACTIVATE_WINDOWS' -and $orden.parametros.clave -match '^([A-Z0-9]{5}-){4}[A-Z0-9]{5}$') {
+                # slmgr es el activador oficial de Windows - se usa la clave de
+                # producto tal cual, sin construir ni adivinar nada mas.
+                $claveW = $orden.parametros.clave
+                $salidaIpk = & cscript.exe //nologo "$env:SystemRoot\System32\slmgr.vbs" /ipk $claveW 2>&1 | Out-String
+                $salidaAto = & cscript.exe //nologo "$env:SystemRoot\System32\slmgr.vbs" /ato 2>&1 | Out-String
+                $resultado = "Activacion de Windows: $($salidaAto.Trim())"
+            } elseif($orden.tipo -eq 'ACTIVATE_OFFICE' -and $orden.parametros.clave -match '^([A-Z0-9]{5}-){4}[A-Z0-9]{5}$') {
+                # ospp.vbs es el activador oficial de Office - su ruta cambia segun
+                # version/arquitectura, se busca la instalacion real en vez de
+                # asumir una ruta fija.
+                $ospp = Get-ChildItem "$env:ProgramFiles\Microsoft Office\Office*\ospp.vbs", "${env:ProgramFiles(x86)}\Microsoft Office\Office*\ospp.vbs" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+                if (-not $ospp) { throw 'No se encontro ospp.vbs - Office no parece estar instalado en este equipo o es una version sin activacion por volumen.' }
+                $claveO = $orden.parametros.clave
+                $salidaIpk = & cscript.exe //nologo $ospp /inpkey:$claveO 2>&1 | Out-String
+                $salidaAto = & cscript.exe //nologo $ospp /act 2>&1 | Out-String
+                $resultado = "Activacion de Office: $($salidaAto.Trim())"
             } else { throw 'Tipo de orden no permitido.' }
         } catch { $estado='FALLIDA';$errorOrden=$_.Exception.Message }
         $body=@{accion='resultado';serial=$bios.SerialNumber;orden_id=$orden.id;estado=$estado;resultado=$resultado;error=$errorOrden}|ConvertTo-Json
