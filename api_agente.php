@@ -79,4 +79,18 @@ if (!empty($data['parches']) && is_array($data['parches'])) {
     }
 }
 
-echo json_encode(['ok' => true, 'accion' => $accion, 'id' => $inventarioId, 'parches_recibidos' => $parchesRecibidos]);
+// Programas instalados (registro de Windows) reportados por el agente —
+// upsert por nombre, sin duplicar en cada reporte cada 5 minutos.
+$softwareRecibido = 0;
+if (!empty($data['software']) && is_array($data['software'])) {
+    $stmtSoftware = $pdo->prepare("INSERT INTO equipos_software (inventario_id, nombre, version, editor)
+        VALUES (?,?,?,?)
+        ON CONFLICT(inventario_id, nombre) DO UPDATE SET version=excluded.version, editor=excluded.editor, reportado_en=CURRENT_TIMESTAMP");
+    foreach ($data['software'] as $s) {
+        if (empty($s['nombre'])) continue;
+        $stmtSoftware->execute([$inventarioId, limpio($s['nombre']), limpio($s['version'] ?? null), limpio($s['editor'] ?? null)]);
+        $softwareRecibido++;
+    }
+}
+
+echo json_encode(['ok' => true, 'accion' => $accion, 'id' => $inventarioId, 'parches_recibidos' => $parchesRecibidos, 'software_recibido' => $softwareRecibido]);

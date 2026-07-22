@@ -104,6 +104,31 @@ if (Test-Path $rustdeskExe) {
     }
 }
 
+# Programas instalados de verdad: se leen las mismas claves de registro que usa
+# el Panel de control > Programas y caracteristicas (32 y 64 bits), no requiere
+# admin. Se descartan entradas sin nombre (parches/componentes del sistema que
+# tambien viven ahi) para quedarse solo con software real.
+$softwareInstalado = @()
+try {
+    $rutasUninstall = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $vistos = @{}
+    foreach ($ruta in $rutasUninstall) {
+        Get-ItemProperty -Path $ruta -ErrorAction SilentlyContinue | ForEach-Object {
+            $nombre = $_.DisplayName
+            if ($nombre -and -not $vistos.ContainsKey($nombre)) {
+                $vistos[$nombre] = $true
+                $softwareInstalado += @{ nombre = $nombre; version = $_.DisplayVersion; editor = $_.Publisher }
+            }
+        }
+    }
+} catch {
+    Write-Output "AVISO: no se pudo leer el software instalado: $($_.Exception.Message)"
+}
+
 # Parches de Windows realmente instalados (Get-HotFix es rapido y no requiere
 # admin; da KB, descripcion y fecha real de instalacion - datos genuinos, no
 # simulados).
@@ -136,12 +161,13 @@ $payload = @{
     rustdesk_id        = $rustdeskId
     rustdesk_password  = $rustdeskPassword
     parches            = $parches
+    software           = $softwareInstalado
 } | ConvertTo-Json -Depth 4
 
 $reporteExitoso = $false
 try {
     $resp = Invoke-RestMethod -Uri "$Servidor/api_agente.php" -Method Post -Headers $headersAgente -Body $payload -ContentType "application/json; charset=utf-8"
-    Write-Output "OK: $($resp.accion) - id $($resp.id) - RustDesk ID: $rustdeskId - Parches reportados: $($parches.Count)"
+    Write-Output "OK: $($resp.accion) - id $($resp.id) - RustDesk ID: $rustdeskId - Parches reportados: $($parches.Count) - Programas reportados: $($softwareInstalado.Count)"
     $reporteExitoso = $true
 } catch {
     Log "ERROR enviando el reporte: $($_.Exception.Message)"

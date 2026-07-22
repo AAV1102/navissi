@@ -1556,6 +1556,19 @@ function migrar_esquema(PDO $pdo) {
         UNIQUE(inventario_id, kb)
     )");
 
+    // Programas instalados reportados por el agente (registro de Windows,
+    // Uninstall de 32 y 64 bits) - permite ver que software real tiene cada
+    // equipo, no solo sus specs de hardware.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS equipos_software (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        inventario_id INTEGER REFERENCES inventario(id) ON DELETE CASCADE,
+        nombre TEXT NOT NULL,
+        version TEXT,
+        editor TEXT,
+        reportado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(inventario_id, nombre)
+    )");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS sla_politicas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
@@ -2017,6 +2030,15 @@ function migrar_esquema(PDO $pdo) {
             estado TEXT DEFAULT 'INSTALADO',
             reportado_en TEXT DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(inventario_id, kb)
+        );
+        CREATE TABLE IF NOT EXISTS equipos_software (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inventario_id INTEGER REFERENCES inventario(id) ON DELETE CASCADE,
+            nombre TEXT NOT NULL,
+            version TEXT,
+            editor TEXT,
+            reportado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(inventario_id, nombre)
         );
         CREATE TABLE IF NOT EXISTS sla_politicas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

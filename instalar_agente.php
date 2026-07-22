@@ -102,9 +102,18 @@ if errorlevel 1 (
 )
 
 echo [3/3] Programando las tareas automaticas con la cuenta SYSTEM ...
-schtasks /create /tn "NAVISSI Agente Inventario" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File %SCRIPT% <?= $psArgsPlantilla ?>" /sc onstart /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
+rem Se lanza via un .vbs con WScript.Shell.Run(...,0,False) en vez de invocar
+rem powershell.exe directamente desde la tarea programada - eso evita que se
+rem asome/parpadee una ventana de consola cada vez que corre (cada 5 minutos),
+rem que era muy molesto para el usuario del equipo.
+set "LANZADOR=%DESTINO%\lanzador_agente.vbs"
+(
+echo Set sh = CreateObject("WScript.Shell"^)
+echo sh.Run "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ""%SCRIPT%"" <?= $psArgsPlantilla ?>", 0, False
+) > "%LANZADOR%"
+schtasks /create /tn "NAVISSI Agente Inventario" /tr "wscript.exe //B %LANZADOR%" /sc onstart /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
-schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File %SCRIPT% <?= $psArgsPlantilla ?>" /sc minute /mo 5 /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
+schtasks /create /tn "NAVISSI Agente Inventario (cada 5 minutos)" /tr "wscript.exe //B %LANZADOR%" /sc minute /mo 5 /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Reportar problema a NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%REPORTAR%\" -Servidor \"%SERVIDOR%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Crear un ticket asociado automáticamente a este equipo';$s.Save()"
 powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut([Environment]::GetFolderPath('CommonDesktopDirectory')+'\Estado agente NAVISSI.lnk');$s.TargetPath='powershell.exe';$s.Arguments='-NoProfile -ExecutionPolicy Bypass -NoExit -File \"%SCRIPT%\" -Servidor \"%SERVIDOR%\" -TokenFile \"%TOKENFILE%\"';$s.WorkingDirectory='%DESTINO%';$s.Description='Verificar el reporte del agente NAVISSI';$s.Save()"
