@@ -1427,6 +1427,20 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // Salida de equipo a proveedor externo (reparacion/revision): un solo
+    // formato pero necesita 3 firmas reales (Gestion Humana, TI, proveedor
+    // que se lo lleva) en vez de la firma unica que usan los demas tipos de
+    // movimiento - se guardan como firma2/firma3 encima de la firma_* que
+    // ya existia (que queda para Gestion Humana).
+    $columnasMov = array_column($pdo->query("PRAGMA table_info(movimientos_equipos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    foreach (['firma2_nombre' => 'TEXT', 'firma2_documento' => 'TEXT', 'firma2_fecha' => 'TEXT', 'firma2_ip' => 'TEXT',
+              'firma3_nombre' => 'TEXT', 'firma3_documento' => 'TEXT', 'firma3_fecha' => 'TEXT', 'firma3_ip' => 'TEXT',
+              'devuelto_en' => 'TEXT', 'devuelto_por' => 'TEXT'] as $col => $tipoCol) {
+        if (!in_array($col, $columnasMov, true)) {
+            $pdo->exec("ALTER TABLE movimientos_equipos ADD COLUMN {$col} {$tipoCol}");
+        }
+    }
+
     // Carpeta de Gestión Documental "personal": si RRHH la marca con el
     // documento de un empleado especifico, ese empleado ve sus archivos
     // automaticamente en su Portal de Autogestion (ej. desprendibles/

@@ -17,6 +17,7 @@ function tipos_movimiento(): array {
         'RENTING' => 'Renting / Leasing',
         'BODEGA' => 'Ingreso a bodega',
         'BAJA' => 'Baja definitiva',
+        'SALIDA_PROVEEDOR' => 'Salida a proveedor (reparación/revisión)',
     ];
 }
 
@@ -62,6 +63,14 @@ function campos_por_tipo(string $tipo): array {
             'motivo_baja' => 'Motivo de la baja',
             'disposicion_final' => 'Disposición final (chatarrización, donación, venta...)',
         ],
+        'SALIDA_PROVEEDOR' => [
+            'proveedor_empresa' => 'Empresa proveedora',
+            'proveedor_nombre' => 'Nombre de quien retira el equipo',
+            'proveedor_documento' => 'Documento de quien retira',
+            'proveedor_telefono' => 'Teléfono de contacto',
+            'motivo_salida' => 'Motivo (falla reportada / revisión solicitada)',
+            'fecha_estimada_retorno' => 'Fecha estimada de retorno',
+        ],
         default => [],
     };
 }
@@ -76,6 +85,7 @@ function titulo_formato(string $tipo): string {
         'NUEVO' => 'FORMATO DE INGRESO DE EQUIPO NUEVO',
         'BODEGA' => 'FORMATO DE INGRESO A BODEGA',
         'BAJA' => 'FORMATO DE BAJA DE EQUIPO',
+        'SALIDA_PROVEEDOR' => 'FORMATO DE SALIDA DE EQUIPO A PROVEEDOR (REPARACIÓN/REVISIÓN)',
         default => "FORMATO DE {$tipo}",
     };
 }

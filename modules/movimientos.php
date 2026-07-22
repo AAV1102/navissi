@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
         // Cada tipo refleja su efecto real en el estado del equipo en Inventario.
         $estadoNuevo = match ($tipo) {
             'BAJA' => 'DADO DE BAJA', 'PRESTAMO' => 'PRESTAMO', 'REPOTENCIAMIENTO' => 'EN REPARACION',
-            'BODEGA' => 'EN BODEGA', 'DEVOLUCION' => 'EN BODEGA', default => 'ACTIVO',
+            'BODEGA' => 'EN BODEGA', 'DEVOLUCION' => 'EN BODEGA', 'SALIDA_PROVEEDOR' => 'EN REPARACION', default => 'ACTIVO',
         };
         if ($tipo === 'ASIGNACION' || $tipo === 'NUEVO') {
             $pdo->prepare("UPDATE inventario SET asignado_a = ?, estado = ?, actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")
