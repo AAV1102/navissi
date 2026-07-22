@@ -28,10 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
             if ($eq = $stmtEq->fetch(PDO::FETCH_ASSOC)) $equipoDescripcion = trim($eq['marca'] . ' ' . $eq['modelo']);
         }
 
-        $pdo->prepare("INSERT INTO actas_equipos (tipo, empleado_documento, empleado_nombre, equipo_serial, equipo_descripcion, accesorios, estado_equipo, observaciones, creado_por) VALUES (?,?,?,?,?,?,?,?,?)")
+        $pazYSalvo = ($tipo === 'DEVOLUCION' || $tipo === 'BAJA') && !empty($_POST['paz_y_salvo']) ? 1 : 0;
+        $autorizaDescuento = ($tipo === 'DEVOLUCION' || $tipo === 'BAJA') && !empty($_POST['autoriza_descuento']) ? 1 : 0;
+        $montoDescuento = $autorizaDescuento && is_numeric($_POST['monto_descuento'] ?? null) ? (float) $_POST['monto_descuento'] : null;
+        $pdo->prepare("INSERT INTO actas_equipos (tipo, empleado_documento, empleado_nombre, equipo_serial, equipo_descripcion, accesorios, estado_equipo, observaciones, creado_por, paz_y_salvo, autoriza_descuento, monto_descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
             ->execute([$tipo, $empleadoDoc, $empleadoNombre, $serial, $equipoDescripcion,
                 limpio($_POST['accesorios'] ?? null), limpio($_POST['estado_equipo'] ?? null),
-                limpio($_POST['observaciones'] ?? null), $u['nombre']]);
+                limpio($_POST['observaciones'] ?? null), $u['nombre'], $pazYSalvo, $autorizaDescuento, $montoDescuento]);
         $msg = ['ok', 'Acta creada. Ahora hay que firmarla (por TI/quien entrega y por el empleado).'];
     }
 }
@@ -75,6 +78,12 @@ layout_inicio('Actas de Equipos', 'Actas de Equipos', '../');
         <input type="text" name="accesorios" style="width:100%;margin-bottom:10px;" placeholder="Cargador, mouse, maletín...">
         <label>Observaciones</label>
         <textarea name="observaciones" rows="2" style="width:100%;padding:8px;border:1px solid #d3dae3;border-radius:6px;font-family:inherit;margin-bottom:10px;"></textarea>
+        <div id="clausula-paz-salvo" hidden style="border:1px dashed var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
+            <p class="small" style="margin-top:0;"><strong>Cláusula de retiro:</strong> si el empleado devuelve todo en buen estado, marca "Paz y salvo". Si falta algo o hay daños, autoriza el descuento correspondiente por nómina o liquidación.</p>
+            <label><input type="checkbox" name="paz_y_salvo" value="1" id="chk-paz-salvo"> El empleado queda en paz y salvo (devolvió todo en buen estado)</label><br>
+            <label><input type="checkbox" name="autoriza_descuento" value="1" id="chk-autoriza-descuento"> Autoriza el descuento por nómina/liquidación (no está en paz y salvo)</label>
+            <div id="campo-monto-descuento" hidden style="margin-top:6px;"><label>Monto a descontar</label><input type="number" name="monto_descuento" step="0.01" placeholder="Valor en pesos"></div>
+        </div>
         <button type="submit"><?= icon('check') ?> Crear acta</button>
     </form>
 </div>
@@ -95,10 +104,34 @@ layout_inicio('Actas de Equipos', 'Actas de Equipos', '../');
         <td>
             <?= $a['firma_entrega'] ? '<span class="badge badge-activo">Entrega firmada</span>' : '<span class="badge badge-warn">Falta firma entrega</span>' ?><br>
             <?= $a['firma_empleado'] ? '<span class="badge badge-activo">Empleado firmó</span>' : '<span class="badge badge-warn">Falta firma empleado</span>' ?>
+            <?php if (in_array($a['tipo'], ['DEVOLUCION', 'BAJA'], true)): ?><br>
+                <?php if ($a['paz_y_salvo']): ?><span class="badge badge-activo">Paz y salvo</span>
+                <?php elseif ($a['autoriza_descuento']): ?><span class="badge badge-err">Descuento autorizado</span>
+                <?php else: ?><span class="badge badge-otro">Sin definir</span><?php endif; ?>
+            <?php endif; ?>
         </td>
         <td><a href="acta_equipo_firmar.php?id=<?= (int)$a['id'] ?>">Ver / Firmar</a></td>
     </tr>
     <?php endforeach; ?>
     <?php if (!$actas): ?><tr><td colspan="6" class="small">Sin actas registradas.</td></tr><?php endif; ?>
 </table>
+<script>
+(function () {
+    var selTipo = document.querySelector('select[name="tipo"]');
+    var clausula = document.getElementById('clausula-paz-salvo');
+    var chkPaz = document.getElementById('chk-paz-salvo');
+    var chkDescuento = document.getElementById('chk-autoriza-descuento');
+    var campoMonto = document.getElementById('campo-monto-descuento');
+    function actualizar() {
+        clausula.hidden = !['DEVOLUCION', 'BAJA'].includes(selTipo.value);
+    }
+    selTipo.addEventListener('change', actualizar);
+    actualizar();
+    chkPaz.addEventListener('change', function () { if (this.checked) chkDescuento.checked = false; campoMonto.hidden = true; });
+    chkDescuento.addEventListener('change', function () {
+        if (this.checked) chkPaz.checked = false;
+        campoMonto.hidden = !this.checked;
+    });
+})();
+</script>
 <?php layout_fin(); ?>

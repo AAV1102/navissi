@@ -3,10 +3,18 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 $id = (int) ($_GET['id'] ?? 0);
+$codigoBuscado = trim((string) ($_GET['codigo'] ?? ''));
 
-$stmt = $pdo->prepare("SELECT e.*, s.nombre AS sede_nombre FROM empleados e LEFT JOIN sedes s ON e.sede_id = s.id WHERE e.id = ?");
-$stmt->execute([$id]);
+if ($id) {
+    $stmt = $pdo->prepare("SELECT e.*, s.nombre AS sede_nombre FROM empleados e LEFT JOIN sedes s ON e.sede_id = s.id WHERE e.id = ?");
+    $stmt->execute([$id]);
+} else {
+    // Búsqueda por código único (expediente unificado) - la misma ficha, otra puerta de entrada.
+    $stmt = $pdo->prepare("SELECT e.*, s.nombre AS sede_nombre FROM empleados e LEFT JOIN sedes s ON e.sede_id = s.id WHERE e.codigo_empleado = ?");
+    $stmt->execute([$codigoBuscado]);
+}
 $emp = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($emp) $id = (int) $emp['id'];
 
 if (!$emp) {
     layout_inicio('Empleado no encontrado', 'RRHH', '../');
@@ -42,6 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
                 $pdo->prepare("UPDATE empleados SET email = ? WHERE id = ?")->execute([$correoAcceso, $emp['id']]);
                 $emp['email'] = $correoAcceso;
             }
+            // El Portal de Autogestión se habilita justo cuando se le crea el acceso -
+            // antes de tener cuenta no tiene sentido que aparezca habilitado.
+            $pdo->prepare("UPDATE empleados SET portal_habilitado = 1 WHERE id = ?")->execute([$emp['id']]);
+            $emp['portal_habilitado'] = 1;
             $base = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
             $html = plantilla_correo_html(
                 'Tu cuenta de NAVISSI está lista',
@@ -123,11 +135,46 @@ $stmt = $pdo->prepare("SELECT * FROM desprendibles WHERE empleado_documento = ? 
 $stmt->execute([$emp['documento']]);
 $desprendibles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Proceso de selección del que viene (si fue contratado desde Vacantes)
+$procesoSeleccion = null;
+$citasProceso = [];
+$documentosProceso = [];
+if ($emp['candidato_id']) {
+    $stmt = $pdo->prepare("SELECT c.*, v.titulo AS vacante_titulo FROM candidatos c JOIN vacantes v ON v.id = c.vacante_id WHERE c.id = ?");
+    $stmt->execute([$emp['candidato_id']]);
+    $procesoSeleccion = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($procesoSeleccion) {
+        $stmt = $pdo->prepare("SELECT * FROM candidatos_citas WHERE candidato_id = ? ORDER BY fecha_hora DESC");
+        $stmt->execute([$emp['candidato_id']]);
+        $citasProceso = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT * FROM candidatos_documentos WHERE candidato_id = ? ORDER BY creado_en DESC");
+        $stmt->execute([$emp['candidato_id']]);
+        $documentosProceso = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+// Documentos de ingreso/contratación (contrato, afiliaciones) con firma y OneDrive
+$stmt = $pdo->prepare("SELECT * FROM documentos_rrhh WHERE empleado_documento = ? ORDER BY creado_en DESC");
+$stmt->execute([$emp['documento']]);
+$documentosIngreso = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Dotación / elementos asignados (actas de equipos: entregas, devoluciones, paz y salvo)
+$stmt = $pdo->prepare("SELECT * FROM actas_equipos WHERE empleado_documento = ? ORDER BY creado_en DESC");
+$stmt->execute([$emp['documento']]);
+$actasEquipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Movimientos de equipos (préstamo, asignación, devolución, baja, etc.)
+$stmt = $pdo->prepare("SELECT m.*, i.serial, i.marca, i.modelo FROM movimientos_equipos m LEFT JOIN inventario i ON i.id = m.inventario_id WHERE m.destinatario_documento = ? OR m.destinatario = ? ORDER BY m.creado_en DESC LIMIT 10");
+$stmt->execute([$emp['documento'], $emp['nombres']]);
+$movimientosEquipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 layout_inicio($emp['nombres'], 'RRHH', '../');
 ?>
 <p class="small"><a href="rrhh.php">← Volver a RRHH</a></p>
 <h1><?= icon('users','icon-lg') ?> <?= e($emp['nombres']) ?> <span class="badge <?= $emp['estado']==='ACTIVO'?'badge-activo':'badge-otro' ?>"><?= e($emp['estado']) ?></span></h1>
-<p class="subtitle"><?= e($emp['cargo']) ?> · <?= e($emp['area']) ?> · <?= e($emp['sede_nombre']) ?></p>
+<p class="subtitle">Código <strong><?= e($emp['codigo_empleado']) ?: 'Sin asignar' ?></strong> · <?= e($emp['cargo']) ?> · <?= e($emp['area']) ?> · <?= e($emp['sede_nombre']) ?> ·
+    <span class="badge <?= $emp['portal_habilitado'] ? 'badge-activo' : 'badge-otro' ?>"><?= $emp['portal_habilitado'] ? 'Portal Autogestión habilitado' : 'Portal Autogestión no habilitado' ?></span>
+</p>
 
 <div class="cards">
     <div class="card"><div class="num"><?= count($equipos) ?></div><div class="label">Equipos asignados</div></div>
@@ -167,6 +214,85 @@ layout_inicio($emp['nombres'], 'RRHH', '../');
     <a class="btn" style="margin-top:10px;" href="certificado_laboral.php?documento=<?= urlencode($emp['documento']) ?>" target="_blank">📄 Certificado laboral</a>
     <a class="btn btn-secondary" style="margin-top:10px;" href="rrhh_certificados.php?documento=<?= urlencode($emp['documento']) ?>">💰 Desprendibles (<?= count($desprendibles) ?>)</a>
     <a class="btn btn-secondary" style="margin-top:10px;" href="hoja_vida.php?tipo=EMPLEADO&id=<?= urlencode($emp['documento']) ?>">📋 Hoja de vida completa</a>
+</div>
+
+<?php if ($procesoSeleccion): ?>
+<div class="panel">
+    <h3><?= icon('briefcase') ?> Proceso de selección del que viene</h3>
+    <p class="small">Vacante: <strong><?= e($procesoSeleccion['vacante_titulo']) ?></strong> · <a href="candidato_detalle.php?id=<?= (int) $procesoSeleccion['id'] ?>">Ver proceso completo →</a></p>
+    <?php if ($citasProceso): ?>
+    <table>
+        <tr><th>Etapa</th><th>Fecha</th><th>Modalidad</th><th>Estado</th></tr>
+        <?php foreach ($citasProceso as $c): ?>
+        <tr><td><?= e($c['etapa']) ?></td><td class="small"><?= e($c['fecha_hora']) ?></td><td><?= e($c['modalidad']) ?></td><td><span class="badge badge-otro"><?= e($c['estado']) ?></span></td></tr>
+        <?php endforeach; ?>
+    </table>
+    <?php endif; ?>
+    <?php if ($documentosProceso): ?>
+    <p class="small" style="margin-top:8px;"><strong>Documentos del proceso:</strong>
+        <?php foreach ($documentosProceso as $d): ?>
+        <a href="descargar_documento_candidato.php?id=<?= (int) $d['id'] ?>" target="_blank"><?= e($d['nombre_archivo']) ?></a><?= $d !== end($documentosProceso) ? ', ' : '' ?>
+        <?php endforeach; ?>
+    </p>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
+<div class="panel">
+    <h3><?= icon('file') ?> Documentos de ingreso y contratación (<?= count($documentosIngreso) ?>)</h3>
+    <p class="small">Contrato, afiliaciones y demás documentos de vinculación — firma electrónica y respaldo en OneDrive/SharePoint. <a href="rrhh_documentos.php?empleado=<?= urlencode($emp['documento']) ?>">Gestionar documentos de ingreso →</a></p>
+    <?php if ($documentosIngreso): ?>
+    <table>
+        <tr><th>Tipo</th><th>Archivo</th><th>Firma</th><th>OneDrive</th><th>Fecha</th></tr>
+        <?php foreach ($documentosIngreso as $d): ?>
+        <tr>
+            <td><?= e($d['tipo']) ?></td>
+            <td><?= e($d['nombre_archivo']) ?></td>
+            <td><span class="badge <?= $d['estado_firma']==='FIRMADO'?'badge-activo':'badge-otro' ?>"><?= e($d['estado_firma']) ?></span><?= $d['firmado_por'] ? ' · ' . e($d['firmado_por']) : '' ?></td>
+            <td><?php if ($d['onedrive_url']): ?><a href="<?= e($d['onedrive_url']) ?>" target="_blank">Ver en OneDrive</a><?php else: ?>—<?php endif; ?></td>
+            <td class="small"><?= e($d['creado_en']) ?></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+    <?php else: ?><p class="small">Sin documentos de ingreso cargados todavía.</p><?php endif; ?>
+</div>
+
+<div class="panel">
+    <h3><?= icon('inventory') ?> Dotación y elementos asignados (<?= count($actasEquipos) ?>)</h3>
+    <p class="small">Actas de entrega/devolución de equipos y dotación de TI, firmadas digitalmente. Al retirarse, la devolución debe quedar con paz y salvo o con la autorización de descuento correspondiente. <a href="actas_equipos.php">Gestionar actas →</a></p>
+    <?php if ($actasEquipos): ?>
+    <table>
+        <tr><th>Tipo</th><th>Elemento</th><th>Firmas</th><th>Paz y salvo</th><th>Fecha</th><th></th></tr>
+        <?php foreach ($actasEquipos as $a): ?>
+        <tr>
+            <td><?= e($a['tipo']) ?></td>
+            <td><?= e($a['equipo_descripcion']) ?: '—' ?> <?= $a['equipo_serial'] ? '· ' . e($a['equipo_serial']) : '' ?></td>
+            <td class="small"><?= $a['firma_entrega'] ? '✓ Entrega' : '— Entrega' ?> · <?= $a['firma_empleado'] ? '✓ Empleado' : '— Empleado' ?></td>
+            <td>
+                <?php if ($a['tipo'] === 'DEVOLUCION' || $a['tipo'] === 'BAJA'): ?>
+                    <?php if ($a['paz_y_salvo']): ?><span class="badge badge-activo">Paz y salvo</span>
+                    <?php elseif ($a['autoriza_descuento']): ?><span class="badge badge-err">Descuento autorizado<?= $a['monto_descuento'] ? ': $' . number_format((float) $a['monto_descuento'], 0, ',', '.') : '' ?></span>
+                    <?php else: ?><span class="badge badge-otro">Pendiente definir</span><?php endif; ?>
+                <?php else: ?>—<?php endif; ?>
+            </td>
+            <td class="small"><?= e($a['creado_en']) ?></td>
+            <td><a href="acta_equipo_firmar.php?id=<?= (int) $a['id'] ?>">Ver</a></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+    <?php else: ?><p class="small">Sin actas registradas.</p><?php endif; ?>
+</div>
+
+<div class="panel">
+    <h3><?= icon('arrow-right') ?> Movimientos de equipos (<?= count($movimientosEquipos) ?>)</h3>
+    <?php if ($movimientosEquipos): ?>
+    <table>
+        <tr><th>Tipo</th><th>Equipo</th><th>Fecha</th></tr>
+        <?php foreach ($movimientosEquipos as $m): ?>
+        <tr><td><span class="badge badge-otro"><?= e($m['tipo']) ?></span></td><td><?= e($m['marca']) ?> <?= e($m['modelo']) ?> <?= $m['serial'] ? '· ' . e($m['serial']) : '' ?></td><td class="small"><?= e($m['creado_en']) ?></td></tr>
+        <?php endforeach; ?>
+    </table>
+    <?php else: ?><p class="small">Sin movimientos registrados.</p><?php endif; ?>
 </div>
 
 <?php if ($camposDef): ?>

@@ -1397,6 +1397,56 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // Código único por empleado (sirve para todo lo demás: expediente unificado,
+    // dotación, trazabilidad) + bandera de si su Portal de Autogestión ya está
+    // habilitado + el candidato de reclutamiento del que viene, si aplica.
+    $columnasEmpleados = array_column($pdo->query("PRAGMA table_info(empleados)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasEmpleados = ['codigo_empleado' => 'TEXT', 'portal_habilitado' => 'INTEGER DEFAULT 0', 'candidato_id' => 'INTEGER'];
+    foreach ($nuevasEmpleados as $col => $tipo) {
+        if (!in_array($col, $columnasEmpleados, true)) {
+            $pdo->exec("ALTER TABLE empleados ADD COLUMN {$col} {$tipo}");
+        }
+    }
+    // Códigos para empleados que ya existian antes de este cambio - se generan
+    // una sola vez, en orden de id, formato EMP-00001.
+    $pdo->exec("UPDATE empleados SET codigo_empleado = 'EMP-' || substr('00000' || id, -5) WHERE codigo_empleado IS NULL OR codigo_empleado = ''");
+
+    // Cláusula de paz y salvo / autorización de descuento en las actas de
+    // devolución de equipos (para cuando alguien se retira/renuncia y no
+    // devuelve algo, o lo devuelve dañado).
+    $columnasActas = array_column($pdo->query("PRAGMA table_info(actas_equipos)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasActas = ['paz_y_salvo' => 'INTEGER DEFAULT 0', 'autoriza_descuento' => 'INTEGER DEFAULT 0', 'monto_descuento' => 'REAL', 'firma_clausula' => 'TEXT', 'firmado_clausula_en' => 'TEXT'];
+    foreach ($nuevasActas as $col => $tipo) {
+        if (!in_array($col, $columnasActas, true)) {
+            $pdo->exec("ALTER TABLE actas_equipos ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
+    // ---- Proceso de selección: citas y documentos de cada etapa ----
+    $pdo->exec("CREATE TABLE IF NOT EXISTS candidatos_citas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        candidato_id INTEGER NOT NULL REFERENCES candidatos(id) ON DELETE CASCADE,
+        etapa TEXT NOT NULL,
+        fecha_hora TEXT,
+        modalidad TEXT DEFAULT 'VIRTUAL',
+        link_reunion TEXT,
+        lugar TEXT,
+        estado TEXT DEFAULT 'PENDIENTE',
+        notas TEXT,
+        creado_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS candidatos_documentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        candidato_id INTEGER NOT NULL REFERENCES candidatos(id) ON DELETE CASCADE,
+        etapa TEXT NOT NULL,
+        tipo TEXT,
+        nombre_archivo TEXT,
+        ruta TEXT,
+        subido_por TEXT,
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS importador_carpeta_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         archivo TEXT NOT NULL,

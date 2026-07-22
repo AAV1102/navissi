@@ -41,11 +41,39 @@ foreach ($vacantes as $v) {
     $candidatosPorVacante[$v['id']] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Informe de contrataciones: cuánto y cada cuánto se contrata gente por este
+// proceso (candidato_id IS NOT NULL = vino de un proceso de selección real,
+// no de una carga manual de nómina antigua).
+$contratacionesPorMes = $pdo->query("SELECT substr(fecha_ingreso, 1, 7) AS mes, COUNT(*) AS total
+    FROM empleados WHERE candidato_id IS NOT NULL AND fecha_ingreso IS NOT NULL
+    GROUP BY mes ORDER BY mes DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);
+$totalContratadosProceso = (int) $pdo->query("SELECT COUNT(*) FROM empleados WHERE candidato_id IS NOT NULL")->fetchColumn();
+$promedioDiasProceso = $pdo->query("SELECT AVG(julianday(e.fecha_ingreso) - julianday(c.creado_en))
+    FROM empleados e JOIN candidatos c ON c.id = e.candidato_id WHERE e.fecha_ingreso IS NOT NULL")->fetchColumn();
+
 layout_inicio('Vacantes', 'Vacantes', '../');
 ?>
 <h1><?= icon('briefcase','icon-lg') ?> Reclutamiento y Selección</h1>
 <p class="subtitle">Publica vacantes y da seguimiento a los candidatos que aplican.</p>
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
+
+<div class="cards">
+    <div class="card"><div class="num"><?= $totalContratadosProceso ?></div><div class="label">Contratados vía este proceso</div></div>
+    <div class="card"><div class="num"><?= $promedioDiasProceso ? round($promedioDiasProceso) : '—' ?></div><div class="label">Días promedio de postulación a contratación</div></div>
+    <div class="card"><div class="num"><?= count(array_filter($vacantes, fn($v) => $v['estado'] === 'ABIERTA')) ?></div><div class="label">Vacantes abiertas ahora</div></div>
+</div>
+
+<?php if ($contratacionesPorMes): ?>
+<div class="panel">
+    <h3><?= icon('log') ?> Contrataciones por mes (últimos 12 meses con datos)</h3>
+    <table>
+        <tr><th>Mes</th><th>Contratados</th></tr>
+        <?php foreach ($contratacionesPorMes as $cm): ?>
+        <tr><td><?= e($cm['mes']) ?></td><td><?= (int) $cm['total'] ?></td></tr>
+        <?php endforeach; ?>
+    </table>
+</div>
+<?php endif; ?>
 
 <div class="panel">
     <h3>Nueva vacante</h3>
@@ -83,25 +111,14 @@ layout_inicio('Vacantes', 'Vacantes', '../');
 
     <?php if ($cands): ?>
     <table>
-        <tr><th>Candidato</th><th>Contacto</th><th>CV</th><th>Estado</th><th>Notas</th><th></th></tr>
+        <tr><th>Candidato</th><th>Contacto</th><th>CV</th><th>Etapa del proceso</th><th></th></tr>
         <?php foreach ($cands as $c): ?>
         <tr>
             <td><?= e($c['nombre']) ?></td>
             <td class="small"><?= e($c['email']) ?><?= $c['celular'] ? '<br>' . e($c['celular']) : '' ?></td>
             <td><?php if ($c['cv_ruta']): ?><a href="descargar_cv.php?id=<?= (int)$c['id'] ?>" target="_blank">Ver CV</a><?php else: ?><span class="small">—</span><?php endif; ?></td>
-            <td>
-                <form method="post" class="inline">
-                    <input type="hidden" name="accion" value="cambiar_estado_candidato"><input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
-                    <input type="hidden" name="notas" value="<?= e($c['notas'] ?? '') ?>">
-                    <select name="estado" onchange="this.form.requestSubmit()">
-                        <?php foreach (['RECIBIDO','EN_REVISION','ENTREVISTA','RECHAZADO','CONTRATADO'] as $s): ?>
-                        <option value="<?= $s ?>" <?= $c['estado']===$s?'selected':'' ?>><?= ucfirst(strtolower(str_replace('_',' ',$s))) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
-            </td>
-            <td class="small"><?= e($c['notas'] ?? '') ?: '—' ?></td>
-            <td class="small"><?= e($c['creado_en']) ?></td>
+            <td><span class="badge <?= $c['estado']==='CONTRATADO'?'badge-activo':($c['estado']==='RECHAZADO'?'badge-err':'badge-otro') ?>"><?= e(ucfirst(strtolower(str_replace('_',' ',$c['estado'])))) ?></span></td>
+            <td><a href="candidato_detalle.php?id=<?= (int)$c['id'] ?>">Gestionar proceso →</a></td>
         </tr>
         <?php endforeach; ?>
     </table>
