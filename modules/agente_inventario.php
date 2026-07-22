@@ -100,19 +100,20 @@ layout_inicio('Agente de Inventario', 'Agente de inventario', '../');
 <div class="panel">
     <h3>Últimos equipos reportados por el agente (<?= count($ultimos) ?>)</h3>
     <table>
-        <tr><th>Serial</th><th>Usuario</th><th>Marca/Modelo</th><th>SO</th><th>RAM</th><th>Disco</th><th>Actualizado</th></tr>
+        <tr><th>Equipo</th><th>Usuario</th><th>Marca/Modelo</th><th>SO</th><th>RAM</th><th>Disco</th><th>Actualizado</th><th></th></tr>
         <?php foreach ($ultimos as $u): ?>
         <tr>
-            <td><?= e($u['serial']) ?></td>
+            <td><?= e($u['hostname'] ?: $u['serial']) ?></td>
             <td><?= e($u['asignado_a']) ?></td>
             <td><?= e($u['marca']) ?> <?= e($u['modelo']) ?></td>
             <td><?= e($u['sistema_operativo']) ?></td>
             <td><?= e($u['memoria']) ?></td>
             <td><?= e($u['almacenamiento']) ?></td>
             <td class="small"><?= e($u['actualizado_en']) ?></td>
+            <td><a class="link-btn" href="detalle_equipo.php?serial=<?= urlencode($u['serial']) ?>">Ver todo</a></td>
         </tr>
         <?php endforeach; ?>
-        <?php if (!$ultimos): ?><tr><td colspan="7" class="small">Todavía no se ha ejecutado el agente en ningún equipo.</td></tr><?php endif; ?>
+        <?php if (!$ultimos): ?><tr><td colspan="8" class="small">Todavía no se ha ejecutado el agente en ningún equipo.</td></tr><?php endif; ?>
     </table>
 </div>
 <?php layout_fin(); ?>

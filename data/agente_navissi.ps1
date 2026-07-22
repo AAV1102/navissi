@@ -148,6 +148,7 @@ try {
 
 $payload = @{
     serial             = $bios.SerialNumber
+    hostname           = $env:COMPUTERNAME
     usuario_windows    = $env:USERNAME
     tipo               = if ($cs.PCSystemType -eq 2) { "PORTATIL" } else { "ESCRITORIO" }
     marca              = $cs.Manufacturer
@@ -219,6 +220,28 @@ try {
                 if($updates.Count -gt 0){$down=$session.CreateUpdateDownloader();$down.Updates=$updates;$null=$down.Download();$inst=$session.CreateUpdateInstaller();$inst.Updates=$updates;$r=$inst.Install();$resultado="Actualizaciones instaladas: $($updates.Count). Resultado: $($r.ResultCode)"}else{$resultado='No había actualizaciones pendientes.'}
             } elseif($orden.tipo -eq 'INSTALLER_URL' -and $orden.parametros.url -match '^https://') {
                 $tmp="$env:TEMP\navissi_orden_$($orden.id).exe";$argsInst=if($orden.parametros.argumentos){$orden.parametros.argumentos}else{'/quiet'};Invoke-WebRequest -UseBasicParsing -Uri $orden.parametros.url -OutFile $tmp;Start-Process -FilePath $tmp -ArgumentList $argsInst -Wait;Remove-Item $tmp -Force -ErrorAction SilentlyContinue;$resultado='Instalador ejecutado correctamente.'
+            } elseif($orden.tipo -eq 'UNINSTALL_SOFTWARE' -and $orden.parametros.nombre) {
+                # Busca el programa por su nombre exacto en las mismas claves de
+                # Uninstall que se leen para el inventario de software, y usa el
+                # UninstallString real que Windows ya conoce para ese programa -
+                # no se inventa ningun comando, se reutiliza el que el propio
+                # instalador del programa registro.
+                $nombreBuscado = $orden.parametros.nombre
+                $entrada = $null
+                foreach ($ruta in @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*')) {
+                    $entrada = Get-ItemProperty -Path $ruta -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq $nombreBuscado } | Select-Object -First 1
+                    if ($entrada) { break }
+                }
+                if (-not $entrada -or -not $entrada.UninstallString) { throw "No se encontro '$nombreBuscado' instalado en este equipo (puede que ya se haya desinstalado)." }
+                $cmdDesinstalar = $entrada.UninstallString
+                if ($cmdDesinstalar -match 'msiexec') {
+                    $codigoProducto = if ($cmdDesinstalar -match '(\{[0-9A-Fa-f\-]+\})') { $matches[1] } else { $null }
+                    if (-not $codigoProducto) { throw 'No se pudo identificar el codigo del producto MSI.' }
+                    Start-Process -FilePath 'msiexec.exe' -ArgumentList "/X$codigoProducto /quiet /norestart" -Wait
+                } else {
+                    Start-Process -FilePath 'cmd.exe' -ArgumentList "/c `"$cmdDesinstalar`" /S /silent /quiet /verysilent" -Wait
+                }
+                $resultado = "Se envio la desinstalacion de '$nombreBuscado'. Verifica en el proximo reporte si desaparecio del listado."
             } else { throw 'Tipo de orden no permitido.' }
         } catch { $estado='FALLIDA';$errorOrden=$_.Exception.Message }
         $body=@{accion='resultado';serial=$bios.SerialNumber;orden_id=$orden.id;estado=$estado;resultado=$resultado;error=$errorOrden}|ConvertTo-Json

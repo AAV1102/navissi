@@ -33,7 +33,7 @@ $existente = $stmt->fetch(PDO::FETCH_ASSOC);
 $camposOpcionales = [
     'usuario_windows' => 'asignado_a', 'tipo' => 'tipo', 'marca' => 'marca', 'modelo' => 'modelo',
     'sistema_operativo' => 'sistema_operativo', 'procesador' => 'procesador', 'memoria' => 'memoria',
-    'almacenamiento' => 'almacenamiento', 'ip_local' => 'ip_local',
+    'almacenamiento' => 'almacenamiento', 'ip_local' => 'ip_local', 'hostname' => 'hostname',
 ];
 $campos = ['ultima_conexion_agente' => gmdate('Y-m-d H:i:s')]; // UTC, igual que CURRENT_TIMESTAMP de SQLite
 foreach ($camposOpcionales as $origen => $destino) {

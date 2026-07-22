@@ -1390,7 +1390,7 @@ function migrar_esquema(PDO $pdo) {
     $pdo->exec("UPDATE usuarios_sistema SET rol = 'SUPER_ADMIN' WHERE email = 'admin@navissi.com' AND rol = 'ADMIN'");
 
     $columnasInventario = array_column($pdo->query("PRAGMA table_info(inventario)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    $nuevasInventario = ['rustdesk_id' => 'TEXT', 'rustdesk_password' => 'TEXT', 'ip_local' => 'TEXT', 'ultima_conexion_agente' => 'TEXT', 'asignado_documento' => 'TEXT'];
+    $nuevasInventario = ['rustdesk_id' => 'TEXT', 'rustdesk_password' => 'TEXT', 'ip_local' => 'TEXT', 'ultima_conexion_agente' => 'TEXT', 'asignado_documento' => 'TEXT', 'hostname' => 'TEXT'];
     foreach ($nuevasInventario as $col => $tipo) {
         if (!in_array($col, $columnasInventario, true)) {
             $pdo->exec("ALTER TABLE inventario ADD COLUMN {$col} {$tipo}");
