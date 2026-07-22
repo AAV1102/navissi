@@ -13,6 +13,18 @@ $sedeBatch=$sede?preg_replace('/[\r\n"&|<>^%!]/','',$sede):null;$pdo=db();$sedeI
 $agenteB64=base64_encode((string)file_get_contents(__DIR__.'/data/agente_navissi.ps1'));
 $reportarB64=base64_encode((string)file_get_contents(__DIR__.'/data/reportar_problema.ps1'));
 
+// Arma el bloque "(echo TROZO1\r\necho TROZO2\r\n...) > archivo.b64" como un
+// solo string en PHP, NO como plantilla con foreach linea por linea: cerrar y
+// reabrir la etiqueta de PHP en cada vuelta del bucle hacia que cada iteracion
+// perdiera su salto de linea, uniendo TODOS los "echo" en una sola linea
+// gigante (mas de 17.000 caracteres) que cmd.exe descarta en silencio por
+// exceder su limite de 8191 caracteres por linea - por eso el instalador
+// "no hacia nada": nunca llegaba a copiar el agente real.
+function navissi_bat_bloque_b64(string $b64, string $archivoDestino): string {
+    $lineas = array_map(fn($trozo) => 'echo ' . $trozo, str_split($b64, 4000));
+    return '(' . implode("\r\n", $lineas) . ') > "' . $archivoDestino . '"';
+}
+
 // El servidor de RustDesk (hbbs/hbbr) vive en un equipo de la oficina, NO en
 // donde corre este PHP - por eso NO se auto-detecta (gethostbyname del propio
 // proceso daba la IP del hosting compartido cuando NAVISSI vive en internet,
@@ -87,8 +99,23 @@ exit /b 1
 
 echo.
 echo [1/3] Preparando el agente incluido en este instalador ...
-powershell -NoProfile -Command "$ErrorActionPreference='Stop';[IO.File]::WriteAllBytes('%SCRIPT%',[Convert]::FromBase64String('<?= $agenteB64 ?>'));[IO.File]::WriteAllBytes('%REPORTAR%',[Convert]::FromBase64String('<?= $reportarB64 ?>'))" >> "%LOG%" 2>&1
+rem El agente se guarda como base64 en un archivo aparte, en trozos de menos
+rem de 4000 caracteres por linea "echo >>". Antes se armaba una sola linea
+rem "powershell -Command" con TODO el base64 junto (mas de 20.000 caracteres) -
+rem cmd.exe descarta en silencio cualquier linea de mas de 8191 caracteres, asi
+rem que esa copia nunca pasaba y el instalador no hacia nada, sin ningun error
+rem visible. Dividido en trozos chicos, cada linea queda muy por debajo del limite.
+set "AGENTE_B64=%DESTINO%\agente.b64"
+set "REPORTAR_B64=%DESTINO%\reportar.b64"
+if exist "%AGENTE_B64%" del /f /q "%AGENTE_B64%"
+if exist "%REPORTAR_B64%" del /f /q "%REPORTAR_B64%"
+<?= navissi_bat_bloque_b64($agenteB64, '%AGENTE_B64%') ?>
+
+<?= navissi_bat_bloque_b64($reportarB64, '%REPORTAR_B64%') ?>
+
+powershell -NoProfile -Command "$ErrorActionPreference='Stop';$b64=(Get-Content '%AGENTE_B64%' -Raw) -replace '\s','';[IO.File]::WriteAllBytes('%SCRIPT%',[Convert]::FromBase64String($b64));$b64r=(Get-Content '%REPORTAR_B64%' -Raw) -replace '\s','';[IO.File]::WriteAllBytes('%REPORTAR%',[Convert]::FromBase64String($b64r))" >> "%LOG%" 2>&1
 if errorlevel 1 goto :download_error
+del /f /q "%AGENTE_B64%" "%REPORTAR_B64%" >nul 2>&1
 if not exist "%SCRIPT%" (
     echo ERROR: no se pudo descargar el agente. Revisa la conexion a internet/red y vuelve a intentar.
     pause
@@ -102,12 +129,23 @@ if not exist "%SCRIPT%" (
 // Docker ni acceso al router para abrir puertos. Es menos privado que el
 // self-hosted (el tráfico pasa por servidores de RustDesk), pero es real y
 // funciona de inmediato.
-$psArgsPlantilla = $rustdeskClave
-    ? "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%' -InstalarRustDesk -RustDeskServidor '{$rustdeskServidor}' -RustDeskClave '{$rustdeskClave}'"
-    : "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%' -InstalarRustDesk";
+// IMPORTANTE: powershell.exe -File recibe sus argumentos con el parseo nativo
+// de Windows (CommandLineToArgvW), que NO le quita comillas simples - solo
+// dobles. Envolver %SERVIDOR%/%SEDE%/%TOKENFILE% con comillas simples (como
+// se hacia antes) hacia que PowerShell recibiera el valor CON las comillas
+// simples incluidas como texto literal (ej. TokenFile = "'C:\...\agent.token'"),
+// asi que Test-Path nunca encontraba el archivo real y el agente jamas se
+// reportaba - el instalador fallaba en silencio en el primer paso real.
+// $psArgsCmd usa comillas dobles normales (para la linea de comando directa);
+// $psArgsVbs usa comillas dobles DUPLICADAS (para ir dentro del string de
+// WScript.Shell.Run, que ya usa comillas dobles como delimitador propio).
+$rustdeskExtraCmd = $rustdeskClave ? " -RustDeskServidor \"{$rustdeskServidor}\" -RustDeskClave \"{$rustdeskClave}\"" : '';
+$rustdeskExtraVbs = $rustdeskClave ? " -RustDeskServidor \"\"{$rustdeskServidor}\"\" -RustDeskClave \"\"{$rustdeskClave}\"\"" : '';
+$psArgsCmd = "-Servidor \"%SERVIDOR%\" -Sede \"%SEDE%\" -TokenFile \"%TOKENFILE%\" -InstalarRustDesk{$rustdeskExtraCmd}";
+$psArgsVbs = "-Servidor \"\"%SERVIDOR%\"\" -Sede \"\"%SEDE%\"\" -TokenFile \"\"%TOKENFILE%\"\" -InstalarRustDesk{$rustdeskExtraVbs}";
 ?>
 echo [2/3] Ejecutando el agente por primera vez (incluye control remoto<?= $rustdeskClave ? '' : ' via servidor publico de RustDesk' ?>) ...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" <?= $psArgsPlantilla ?> > "%DESTINO%\primer_reporte.log" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" <?= $psArgsCmd ?> > "%DESTINO%\primer_reporte.log" 2>&1
 if errorlevel 1 (
     echo ERROR: el equipo no pudo reportarse. No se crearon tareas automaticas.
     echo Revisa el detalle en %DESTINO%\primer_reporte.log
@@ -124,7 +162,7 @@ rem que era muy molesto para el usuario del equipo.
 set "LANZADOR=%DESTINO%\lanzador_agente.vbs"
 (
 echo Set sh = CreateObject("WScript.Shell"^)
-echo sh.Run "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ""%SCRIPT%"" <?= $psArgsPlantilla ?>", 0, False
+echo sh.Run "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File ""%SCRIPT%"" <?= $psArgsVbs ?>", 0, False
 ) > "%LANZADOR%"
 schtasks /create /tn "NAVISSI Agente Inventario" /tr "wscript.exe //B %LANZADOR%" /sc onstart /ru SYSTEM /rl highest /f >> "%LOG%" 2>&1
 if errorlevel 1 goto :task_error
