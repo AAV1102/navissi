@@ -27,6 +27,32 @@ $camposSelect = [
     'estado_civil' => ['label' => 'Estado civil', 'opciones' => ['Soltero', 'Casado', 'Unión libre', 'Divorciado', 'Viudo']],
 ];
 
+// Autorreporte de salud - "¿Cuáles de las siguientes molestias ha sentido con
+// frecuencia en los últimos 6 meses?" (encuesta real de SST de la empresa).
+$sintomasSalud = [
+    'dolor_cabeza' => 'Dolor de cabeza',
+    'dolor_cuello_espalda_cintura' => 'Dolor de cuello, espalda y cintura',
+    'dolores_musculares' => 'Dolores musculares',
+    'dificultad_movimiento' => 'Dificultad para algún movimiento',
+    'tos_frecuente' => 'Tos frecuente',
+    'dificultad_respiratoria' => 'Dificultad respiratoria',
+    'gastritis_ulcera' => 'Gastritis, úlcera',
+    'otras_alteraciones_digestivas' => 'Otras alteraciones del funcionamiento digestivo',
+    'alteraciones_sueno' => 'Alteraciones del sueño (insomnio, somnolencia)',
+    'dificultad_concentrarse' => 'Dificultad para concentrarse',
+    'mal_genio' => 'Mal genio',
+    'nerviosismo' => 'Nerviosismo',
+    'cansancio_mental' => 'Cansancio mental',
+    'palpitaciones' => 'Palpitaciones',
+    'dolor_pecho_angina' => 'Dolor en el pecho (angina)',
+    'cambios_visuales' => 'Cambios visuales',
+    'cansancio_ardor_visual' => 'Cansancio, fatiga, ardor o disconfor visual',
+    'pitos_oidos' => 'Pitos o ruidos continuos o intermitentes en los oídos',
+    'dificultad_oir' => 'Dificultad para oír',
+    'cansancio_permanente' => 'Sensación permanente de cansancio',
+    'alteraciones_piel' => 'Alteraciones en la piel',
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar') {
     $documento = $puedeGestionar ? limpio($_POST['documento'] ?? null) : $miDocumento;
     if (!$documento) {
@@ -55,6 +81,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guard
         hoja_vida_registrar($pdo, 'EMPLEADO', $documento, $existente ? 'SST_ACTUALIZADO' : 'SST_DILIGENCIADO', 'Perfil sociodemográfico / SST', $u['nombre'] ?? 'Sistema', null);
         $msg = ['ok', 'Perfil guardado.'];
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar_salud') {
+    $documento = $puedeGestionar ? limpio($_POST['documento'] ?? null) : $miDocumento;
+    if ($documento) {
+        $datosSalud = ['documento' => $documento];
+        foreach (array_keys($sintomasSalud) as $c) $datosSalud[$c] = !empty($_POST["sintoma_{$c}"]) ? 1 : 0;
+        $datosSalud['otras_no_anotadas'] = limpio($_POST['otras_no_anotadas'] ?? null);
+        $datosSalud['actualizado_por'] = $u['nombre'] ?? 'Sistema';
+        $cols = implode(', ', array_keys($datosSalud));
+        $marcadores = implode(', ', array_map(fn($k) => ":$k", array_keys($datosSalud)));
+        $actualizaciones = implode(', ', array_map(fn($k) => "$k = excluded.$k", array_keys($datosSalud)));
+        $pdo->prepare("INSERT INTO sst_perfil_salud ({$cols}, actualizado_en) VALUES ({$marcadores}, CURRENT_TIMESTAMP)
+            ON CONFLICT(documento) DO UPDATE SET {$actualizaciones}, actualizado_en = CURRENT_TIMESTAMP")
+            ->execute($datosSalud);
+        hoja_vida_registrar($pdo, 'EMPLEADO', $documento, 'SST_SALUD_ACTUALIZADA', 'Autorreporte de síntomas (últimos 6 meses)', $u['nombre'] ?? 'Sistema', null);
+        $msg = ['ok', 'Autorreporte de salud guardado.'];
+    }
 }
 
 // --- Vista: gestión (RRHH/ADMIN) o autogestión (el propio empleado) ---
@@ -70,6 +112,12 @@ if ($documentoVer) {
     $stmt = $pdo->prepare("SELECT * FROM empleados WHERE documento = ? LIMIT 1");
     $stmt->execute([$documentoVer]);
     $empleadoVer = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+$saludActiva = null;
+if ($documentoVer) {
+    $stmt = $pdo->prepare("SELECT * FROM sst_perfil_salud WHERE documento = ?");
+    $stmt->execute([$documentoVer]);
+    $saludActiva = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 $listado = [];
@@ -144,6 +192,26 @@ layout_inicio('SST - Perfil Sociodemográfico', 'SST - Perfil Sociodemográfico'
     </form>
     <?php endif; ?>
 </div>
+
+<?php if (!$perfilActivo || !$perfilActivo['archivado_en']): ?>
+<div class="panel">
+    <h3><?= icon('shield') ?> Autorreporte de salud</h3>
+    <p class="subtitle">¿Cuáles de las siguientes molestias ha sentido con frecuencia en los últimos seis (6) meses? Márcalas y actualízalas cuando quieras — esta información la usa SST para prevención, no para evaluar tu desempeño.</p>
+    <form method="post">
+        <input type="hidden" name="accion" value="guardar_salud">
+        <?php if ($puedeGestionar): ?><input type="hidden" name="documento" value="<?= e($documentoVer) ?>"><?php endif; ?>
+        <div class="grid-form">
+            <?php foreach ($sintomasSalud as $campo => $label): ?>
+            <div><label><input type="checkbox" name="sintoma_<?= $campo ?>" value="1" <?= !empty($saludActiva[$campo]) ? 'checked' : '' ?>> <?= e($label) ?></label></div>
+            <?php endforeach; ?>
+        </div>
+        <label>Otras alteraciones no anotadas</label>
+        <input type="text" name="otras_no_anotadas" style="width:100%;margin-bottom:10px;" value="<?= e($saludActiva['otras_no_anotadas'] ?? '') ?>">
+        <?php if ($saludActiva): ?><p class="small">Última actualización: <?= e($saludActiva['actualizado_en']) ?> por <?= e($saludActiva['actualizado_por']) ?>.</p><?php endif; ?>
+        <button type="submit"><?= icon('check') ?> Guardar autorreporte de salud</button>
+    </form>
+</div>
+<?php endif; ?>
 <?php elseif (!$puedeGestionar): ?>
 <div class="panel"><p class="small">No se encontró tu documento vinculado a un empleado — pide a RRHH que lo verifique.</p></div>
 <?php endif; ?>

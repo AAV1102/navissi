@@ -1441,6 +1441,38 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // Autorreporte de condiciones de salud (SST) - "En los ultimos 6 meses,
+    // ¿ha sentido...?". Separado de sst_perfil_sociodemografico a proposito:
+    // es informacion de salud mas sensible todavia, y así se puede filar el
+    // acceso mas fino en el futuro si hace falta sin tocar la otra tabla.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sst_perfil_salud (
+        documento TEXT PRIMARY KEY,
+        dolor_cabeza INTEGER DEFAULT 0,
+        dolor_cuello_espalda_cintura INTEGER DEFAULT 0,
+        dolores_musculares INTEGER DEFAULT 0,
+        dificultad_movimiento INTEGER DEFAULT 0,
+        tos_frecuente INTEGER DEFAULT 0,
+        dificultad_respiratoria INTEGER DEFAULT 0,
+        gastritis_ulcera INTEGER DEFAULT 0,
+        otras_alteraciones_digestivas INTEGER DEFAULT 0,
+        alteraciones_sueno INTEGER DEFAULT 0,
+        dificultad_concentrarse INTEGER DEFAULT 0,
+        mal_genio INTEGER DEFAULT 0,
+        nerviosismo INTEGER DEFAULT 0,
+        cansancio_mental INTEGER DEFAULT 0,
+        palpitaciones INTEGER DEFAULT 0,
+        dolor_pecho_angina INTEGER DEFAULT 0,
+        cambios_visuales INTEGER DEFAULT 0,
+        cansancio_ardor_visual INTEGER DEFAULT 0,
+        pitos_oidos INTEGER DEFAULT 0,
+        dificultad_oir INTEGER DEFAULT 0,
+        cansancio_permanente INTEGER DEFAULT 0,
+        alteraciones_piel INTEGER DEFAULT 0,
+        otras_no_anotadas TEXT,
+        actualizado_por TEXT,
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // Facturas de compra / cotizaciones / otros soportes adjuntos a un
     // formato de movimiento de equipo (compra, renting, salida a proveedor...).
     $pdo->exec("CREATE TABLE IF NOT EXISTS movimientos_documentos (
