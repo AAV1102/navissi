@@ -501,7 +501,7 @@ form.inline { display:inline; }
 .ticket-row .t-meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .conv-bubble { max-width:80%; padding:11px 14px; border-radius:14px; margin-bottom:10px; font-size:13.5px; line-height:1.45; }
 .conv-bubble.mine { background:var(--navy-800); color:#fff; margin-left:auto; border-bottom-right-radius:4px; }
-.conv-bubble.theirs { background:#fff; border:1px solid var(--line); border-bottom-left-radius:4px; }
+.conv-bubble.theirs { background:var(--card); color:var(--ink-700); border:1px solid var(--line); border-bottom-left-radius:4px; }
 .conv-bubble.system { background:transparent; border:1px dashed var(--line); color:var(--ink-500); font-size:12px; max-width:100%; text-align:center; }
 
 /* ============ Toolbar + tabla estilo Atera (checkbox, acciones masivas, "Mostrando X de Y") ============ */
@@ -604,7 +604,7 @@ table.tabla-tickets .t-title { font-weight:600; color:var(--ink-900); font-size:
 .org-columna { min-width:220px; max-width:220px; flex-shrink:0; }
 .org-departamento { background:var(--bg); font-weight:600; border-left:3px solid var(--accent-600); }
 .org-empleado { font-size:13px; padding:8px 12px; }
-.conv-bubble.ia { background:#eefaf4; border:1px solid var(--ok-line); border-bottom-left-radius:4px; }
+.conv-bubble.ia { background:var(--ok-bg); color:var(--ok-fg); border:1px solid var(--ok-line); border-bottom-left-radius:4px; }
 .conv-meta { font-size:11px; color:var(--ink-500); margin-bottom:3px; font-weight:600; }
 
 @media (max-width: 900px) {
