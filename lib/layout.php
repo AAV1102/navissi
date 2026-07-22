@@ -35,7 +35,7 @@ function nav_grupos() {
         ],
         'Inventario y activos' => [
             'icon' => 'inventory', 'roles' => ['SUPER_ADMIN', 'GERENCIA', 'CEO', 'ADMIN', 'TI', 'DIRECTOR', 'COORDINADOR', 'ANALISTA'],
-            'areas' => ['Direccion de Tecnologia', 'Direccion de Logistica'],
+            'areas' => ['Direccion de Tecnologia', 'Direccion de Logistica', 'Direccion de Infraestructura'],
             'items' => [
                 'modules/inventario.php' => ['Inventario', 'inventory'],
                 'modules/movimientos.php' => ['Movimientos', 'arrow-right'],
@@ -76,8 +76,8 @@ function nav_grupos() {
             ],
         ],
         'Automatización e IA' => [
-            'icon' => 'robot', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
-            'areas' => ['Direccion de Tecnologia'],
+            'icon' => 'robot', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'DIRECTOR'],
+            'areas' => ['Direccion de Tecnologia', 'Direccion de Infraestructura'],
             'items' => [
                 'modules/inteligencia_operativa.php' => ['Inteligencia Operativa', 'dashboard'],
                 'modules/retail_inteligencia.php' => ['Inventario Retail', 'inventory'],
@@ -106,8 +106,8 @@ function nav_grupos() {
             ],
         ],
         'Canales y Microsoft 365' => [
-            'icon' => 'cloud', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI'],
-            'areas' => ['Direccion de Tecnologia'],
+            'icon' => 'cloud', 'roles' => ['GERENCIA', 'CEO', 'ADMIN', 'TI', 'DIRECTOR'],
+            'areas' => ['Direccion de Tecnologia', 'Direccion de Infraestructura'],
             'items' => [
                 'modules/identidades.php' => ['Gobierno de Identidades', 'users'],
                 'modules/microsoft365.php' => ['Microsoft 365', 'cloud'],
