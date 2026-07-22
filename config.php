@@ -1441,6 +1441,18 @@ function migrar_esquema(PDO $pdo) {
         }
     }
 
+    // Facturas de compra / cotizaciones / otros soportes adjuntos a un
+    // formato de movimiento de equipo (compra, renting, salida a proveedor...).
+    $pdo->exec("CREATE TABLE IF NOT EXISTS movimientos_documentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        movimiento_id INTEGER NOT NULL,
+        tipo TEXT NOT NULL DEFAULT 'OTRO',
+        nombre_archivo TEXT,
+        ruta TEXT NOT NULL,
+        subido_por TEXT,
+        subido_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // Carpeta de Gestión Documental "personal": si RRHH la marca con el
     // documento de un empleado especifico, ese empleado ve sus archivos
     // automaticamente en su Portal de Autogestion (ej. desprendibles/

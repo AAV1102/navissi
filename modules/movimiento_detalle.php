@@ -12,43 +12,65 @@ function movimiento_serial(PDO $pdo, int $inventarioId): ?string {
     return $stmt->fetchColumn() ?: null;
 }
 
-$etiquetasFirmaProveedor = [
-    'firma' => 'Directora de Gestión Humana',
-    'firma2' => 'Responsable TI (entrega el equipo)',
-    'firma3' => 'Proveedor (quien retira el equipo)',
-];
+$stmtTipo = $pdo->prepare("SELECT inventario_id, tipo FROM movimientos_equipos WHERE id = ?");
+$stmtTipo->execute([$id]);
+$mvActual = $stmtTipo->fetch(PDO::FETCH_ASSOC);
+$firmantes = $mvActual ? firmantes_por_tipo($mvActual['tipo']) : ['firma' => 'Firma de aceptación'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'firmar') {
     $nombreFirma = limpio($_POST['firma_nombre'] ?? null);
     $docFirma = limpio($_POST['firma_documento'] ?? null);
-    $slot = in_array($_POST['slot'] ?? 'firma', ['firma', 'firma2', 'firma3'], true) ? $_POST['slot'] : 'firma';
+    $slot = in_array($_POST['slot'] ?? 'firma', array_keys($firmantes), true) ? $_POST['slot'] : 'firma';
     if ($nombreFirma) {
         $pdo->prepare("UPDATE movimientos_equipos SET {$slot}_nombre=?, {$slot}_documento=?, {$slot}_fecha=CURRENT_TIMESTAMP, {$slot}_ip=? WHERE id=?")
             ->execute([$nombreFirma, $docFirma, $_SERVER['REMOTE_ADDR'] ?? 'local', $id]);
-        $stmt = $pdo->prepare("SELECT inventario_id, tipo FROM movimientos_equipos WHERE id = ?");
-        $stmt->execute([$id]);
-        $mv = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($mv) {
-            $serial = movimiento_serial($pdo, $mv['inventario_id']);
+        if ($mvActual) {
+            $serial = movimiento_serial($pdo, $mvActual['inventario_id']);
             if ($serial) {
-                $rolFirma = $mv['tipo'] === 'SALIDA_PROVEEDOR' ? ($etiquetasFirmaProveedor[$slot] ?? $slot) : null;
-                hoja_vida_registrar($pdo, 'EQUIPO', $serial, 'FORMATO_FIRMADO', trim("{$mv['tipo']} firmado por {$nombreFirma}" . ($rolFirma ? " ({$rolFirma})" : '')), $nombreFirma);
+                $rolFirma = $firmantes[$slot] ?? $slot;
+                hoja_vida_registrar($pdo, 'EQUIPO', $serial, 'FORMATO_FIRMADO', "{$mvActual['tipo']} firmado por {$nombreFirma} ({$rolFirma})", $nombreFirma);
             }
         }
         $msg = ['ok', 'Firma registrada. Queda con nombre, documento, fecha/hora e IP como evidencia.'];
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'marcar_devuelto') {
     $u = usuario_actual();
-    $stmt = $pdo->prepare("SELECT inventario_id, tipo, firma_nombre, firma2_nombre, firma3_nombre FROM movimientos_equipos WHERE id = ?");
+    $slotsRequeridos = array_keys($firmantes);
+    $stmt = $pdo->prepare("SELECT * FROM movimientos_equipos WHERE id = ?");
     $stmt->execute([$id]);
     $mv = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($mv && $mv['tipo'] === 'SALIDA_PROVEEDOR' && $mv['firma_nombre'] && $mv['firma2_nombre'] && $mv['firma3_nombre']) {
+    $todasFirmadas = $mv && array_reduce($slotsRequeridos, fn($ok, $s) => $ok && !empty($mv["{$s}_nombre"]), true);
+    if ($mv && tipo_permite_regreso($mv['tipo']) && $todasFirmadas) {
         $pdo->prepare("UPDATE movimientos_equipos SET devuelto_en = CURRENT_TIMESTAMP, devuelto_por = ? WHERE id = ?")
             ->execute([$u['nombre'] ?? 'Sistema', $id]);
         $pdo->prepare("UPDATE inventario SET estado = 'ACTIVO', actualizado_en = CURRENT_TIMESTAMP WHERE id = ?")->execute([$mv['inventario_id']]);
         $serial = movimiento_serial($pdo, $mv['inventario_id']);
-        if ($serial) hoja_vida_registrar($pdo, 'EQUIPO', $serial, 'REGRESO_PROVEEDOR', "El equipo volvió del proveedor (formato #{$id}).", $u['nombre'] ?? 'Sistema');
-        $msg = ['ok', 'Equipo marcado como recibido de vuelta del proveedor. Vuelve a estar ACTIVO en Inventario.'];
+        if ($serial) hoja_vida_registrar($pdo, 'EQUIPO', $serial, 'REGRESO_EQUIPO', "El equipo regresó (formato #{$id}, {$mv['tipo']}).", $u['nombre'] ?? 'Sistema');
+        $msg = ['ok', 'Equipo marcado como recibido de vuelta. Vuelve a estar ACTIVO en Inventario.'];
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'subir_documento') {
+    $tipoDoc = in_array($_POST['tipo_doc'] ?? '', ['FACTURA', 'COTIZACION', 'OTRO'], true) ? $_POST['tipo_doc'] : 'OTRO';
+    if (empty($_FILES['documento']['tmp_name']) || !is_uploaded_file($_FILES['documento']['tmp_name'])) {
+        $msg = ['error', 'Selecciona un archivo.'];
+    } else {
+        $tamano = (int) ($_FILES['documento']['size'] ?? 0);
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['documento']['tmp_name']) ?: '';
+        $permitidos = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png',
+            'application/vnd.ms-excel' => 'xls', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+            'application/msword' => 'doc', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx'];
+        if ($tamano <= 0 || $tamano > 15 * 1024 * 1024 || !isset($permitidos[$mime])) {
+            $msg = ['error', 'Archivo inválido: debe ser PDF, Word, Excel o imagen, máximo 15MB.'];
+        } else {
+            $dir = __DIR__ . '/../data/movimientos_documentos';
+            if (!is_dir($dir)) mkdir($dir, 0777, true);
+            $rutaGuardada = bin2hex(random_bytes(18)) . '.' . $permitidos[$mime];
+            if (move_uploaded_file($_FILES['documento']['tmp_name'], $dir . '/' . $rutaGuardada)) {
+                $u = usuario_actual();
+                $pdo->prepare("INSERT INTO movimientos_documentos (movimiento_id, tipo, nombre_archivo, ruta, subido_por) VALUES (?,?,?,?,?)")
+                    ->execute([$id, $tipoDoc, basename($_FILES['documento']['name']), $rutaGuardada, $u['nombre'] ?? 'Sistema']);
+                $msg = ['ok', 'Documento adjuntado.'];
+            }
+        }
     }
 }
 
@@ -65,6 +87,10 @@ if (!$m) {
 }
 
 $detalles = json_decode($m['detalles_json'] ?? '[]', true) ?: [];
+$stmtDocs = $pdo->prepare("SELECT * FROM movimientos_documentos WHERE movimiento_id = ? ORDER BY id DESC");
+$stmtDocs->execute([$id]);
+$documentos = $stmtDocs->fetchAll(PDO::FETCH_ASSOC);
+$etiquetasDoc = ['FACTURA' => 'Factura de compra', 'COTIZACION' => 'Cotización', 'OTRO' => 'Otro documento'];
 
 layout_inicio('Movimiento #' . $id, 'Movimientos', '../');
 ?>
@@ -89,9 +115,8 @@ layout_inicio('Movimiento #' . $id, 'Movimientos', '../');
         <tr><th>Observaciones</th><td colspan="3"><?= nl2br(e($m['observaciones'])) ?: '—' ?></td></tr>
     </table>
 
-    <?php if ($m['tipo'] === 'SALIDA_PROVEEDOR'): ?>
-    <h3 style="margin-top:24px;"><?= icon('key') ?> Firmas requeridas (Gestión Humana, TI y proveedor)</h3>
-    <?php foreach ($etiquetasFirmaProveedor as $slot => $etiqueta): ?>
+    <h3 style="margin-top:24px;"><?= icon('key') ?> Firma<?= count($firmantes) > 1 ? 's requeridas' : ' electrónica' ?></h3>
+    <?php foreach ($firmantes as $slot => $etiqueta): ?>
     <div class="panel" style="margin-bottom:10px;">
         <strong><?= e($etiqueta) ?></strong>
         <?php if ($m["{$slot}_nombre"]): ?>
@@ -114,37 +139,45 @@ layout_inicio('Movimiento #' . $id, 'Movimientos', '../');
     </div>
     <?php endforeach; ?>
 
-    <?php if ($m['devuelto_en']): ?>
-    <div class="msg-ok" style="margin-top:10px;"><?= icon('check') ?> El equipo ya volvió del proveedor — recibido por <?= e($m['devuelto_por']) ?> el <?= e($m['devuelto_en']) ?>. Vuelve a estar ACTIVO en Inventario.</div>
-    <?php elseif ($m['firma_nombre'] && $m['firma2_nombre'] && $m['firma3_nombre']): ?>
-    <form method="post" class="no-print" style="margin-top:14px;">
-        <input type="hidden" name="accion" value="marcar_devuelto">
-        <button type="submit"><?= icon('arrow-right') ?> Marcar equipo como recibido de vuelta del proveedor</button>
-    </form>
-    <?php else: ?>
-    <p class="small" style="margin-top:10px;">El equipo queda con estado <strong>EN REPARACIÓN</strong> hasta que se firmen las 3 firmas y se confirme el regreso.</p>
+    <?php
+    $slotsRequeridos = array_keys($firmantes);
+    $todasFirmadas = array_reduce($slotsRequeridos, fn($ok, $s) => $ok && !empty($m["{$s}_nombre"]), true);
+    ?>
+    <?php if (tipo_permite_regreso($m['tipo'])): ?>
+        <?php if ($m['devuelto_en']): ?>
+        <div class="msg-ok" style="margin-top:10px;"><?= icon('check') ?> El equipo ya volvió — recibido por <?= e($m['devuelto_por']) ?> el <?= e($m['devuelto_en']) ?>. Vuelve a estar ACTIVO en Inventario.</div>
+        <?php elseif ($todasFirmadas): ?>
+        <form method="post" class="no-print" style="margin-top:14px;">
+            <input type="hidden" name="accion" value="marcar_devuelto">
+            <button type="submit"><?= icon('arrow-right') ?> Marcar equipo como recibido de vuelta</button>
+        </form>
+        <?php else: ?>
+        <p class="small" style="margin-top:10px;">El equipo queda con el estado correspondiente en Inventario hasta que se completen todas las firmas y se confirme el regreso.</p>
+        <?php endif; ?>
     <?php endif; ?>
-    <?php elseif ($m['firma_nombre']): ?>
-    <div class="msg-ok" style="margin-top:20px;">
-        <?= icon('check') ?> Firmado electrónicamente por <strong><?= e($m['firma_nombre']) ?></strong>
-        <?= $m['firma_documento'] ? '(doc. '.e($m['firma_documento']).')' : '' ?>
-        el <?= e($m['firma_fecha']) ?> desde IP <?= e($m['firma_ip']) ?>.
-    </div>
-    <?php else: ?>
-    <form method="post" class="no-print" style="margin-top:30px;border-top:1px solid var(--line);padding-top:16px;" onsubmit="return confirm('Al firmar, tu nombre, documento, fecha/hora e IP quedan registrados como evidencia de aceptación de este formato. ¿Continuar?');">
-        <input type="hidden" name="accion" value="firmar">
-        <h3><?= icon('key') ?> Firma electrónica</h3>
+
+    <h3 style="margin-top:24px;"><?= icon('file') ?> Facturas, cotizaciones y otros soportes</h3>
+    <?php if ($documentos): ?>
+    <ul class="small" style="padding-left:18px;">
+        <?php foreach ($documentos as $d): ?>
+        <li><a href="descargar_documento_movimiento.php?id=<?= (int)$d['id'] ?>"><?= e($etiquetasDoc[$d['tipo']] ?? $d['tipo']) ?>: <?= e($d['nombre_archivo']) ?></a> — subido por <?= e($d['subido_por']) ?> el <?= e($d['subido_en']) ?></li>
+        <?php endforeach; ?>
+    </ul>
+    <?php else: ?><p class="small">Sin documentos adjuntos.</p><?php endif; ?>
+    <form method="post" enctype="multipart/form-data" class="no-print" style="margin-top:8px;">
+        <input type="hidden" name="accion" value="subir_documento">
         <div class="grid-form">
-            <div><label>Nombre completo de quien firma *</label><input type="text" name="firma_nombre" required></div>
-            <div><label>Documento</label><input type="text" name="firma_documento"></div>
+            <div><label>Tipo de documento</label>
+                <select name="tipo_doc">
+                    <option value="FACTURA">Factura de compra</option>
+                    <option value="COTIZACION">Cotización</option>
+                    <option value="OTRO">Otro</option>
+                </select>
+            </div>
+            <div><label>Archivo (PDF, Word, Excel o imagen)</label><input type="file" name="documento" required></div>
         </div>
-        <button type="submit"><?= icon('check') ?> Firmar y aceptar este formato</button>
+        <button type="submit"><?= icon('plus') ?> Adjuntar documento</button>
     </form>
-    <div style="display:flex;justify-content:space-between;margin-top:40px;" class="print-only-if-unsigned">
-        <div style="text-align:center;width:45%;"><div style="border-top:1px solid #333;padding-top:6px;">Firma responsable TI</div></div>
-        <div style="text-align:center;width:45%;"><div style="border-top:1px solid #333;padding-top:6px;">Firma quien recibe / autoriza</div></div>
-    </div>
-    <?php endif; ?>
 </div>
 
 <style>
