@@ -11,7 +11,17 @@ if (!$a) { http_response_code(404); exit('No encontrado.'); }
 $stmtC = $pdo->prepare("SELECT * FROM gd_carpetas WHERE id = ?");
 $stmtC->execute([$a['carpeta_id']]);
 $carpeta = $stmtC->fetch(PDO::FETCH_ASSOC);
-if ($carpeta && $carpeta['area'] && !tiene_rol(['ADMIN', 'GERENCIA', 'CEO', 'SUPER_ADMIN']) && alcance_area() !== $carpeta['area']) {
+$u = usuario_actual();
+$esAdminGeneral = tiene_rol(['ADMIN', 'GERENCIA', 'CEO', 'SUPER_ADMIN']);
+// Carpeta "personal" de un empleado especifico: solo ese empleado (por
+// documento) o un rol administrativo general pueden descargarla - sin este
+// chequeo, cualquiera con sesion podia bajar el desprendible/certificado de
+// otra persona con solo adivinar el id del archivo.
+if ($carpeta && $carpeta['empleado_documento'] && !$esAdminGeneral && ($u['documento'] ?? null) !== $carpeta['empleado_documento']) {
+    http_response_code(403);
+    exit('No autorizado.');
+}
+if ($carpeta && $carpeta['area'] && !$esAdminGeneral && alcance_area() !== $carpeta['area']) {
     http_response_code(403);
     exit('No autorizado.');
 }

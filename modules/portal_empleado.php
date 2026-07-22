@@ -156,6 +156,15 @@ if ($u['documento']) {
     $stmt = $pdo->prepare("SELECT id, tipo, nombre_archivo, estado_firma, creado_en FROM documentos_rrhh WHERE empleado_documento = ? ORDER BY creado_en DESC");
     $stmt->execute([$u['documento']]);
     $misDocumentosRrhh = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Archivos de Gestión Documental que RRHH marcó como "personal" de este
+    // empleado (ej. desprendibles/certificados bajados de Siesa y subidos
+    // ahí) - aparecen aquí automáticamente, sin subirlos dos veces.
+    $stmt = $pdo->prepare("SELECT a.id, a.nombre_archivo, a.descripcion, a.creado_en, c.nombre AS carpeta_nombre
+        FROM gd_archivos a JOIN gd_carpetas c ON c.id = a.carpeta_id
+        WHERE c.empleado_documento = ? ORDER BY a.creado_en DESC");
+    $stmt->execute([$u['documento']]);
+    $misArchivosGd = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Capacitación: cursos visibles para el área del empleado (o generales/todas las
@@ -362,6 +371,24 @@ layout_inicio($tituloPortal, 'Mi Portal de Empleado', '../');
         <button type="button" class="btn" onclick="window.open('https://grupo10zag.siesacloud.com:9023/AuthAG/LoginFormAG?IdCia=1&amp;NroConexion=1','portal_siesa','width=1100,height=800,menubar=no,toolbar=no,location=no,status=no')"><?= icon('external') ?> Abrir mi portal de nómina (Siesa)</button>
         <p class="small" style="margin-top:8px;">Se abre en una ventana aparte — NAVISSI no guarda ni ve tu contraseña de Siesa, la escribes directamente ahí.</p>
     </div>
+
+    <?php if ($misArchivosGd): ?>
+    <div class="panel">
+        <h3><?= icon('folder') ?> Mis documentos de RRHH (<?= count($misArchivosGd) ?>)</h3>
+        <p class="small">Desprendibles, certificados u otros archivos que RRHH subió a tu carpeta personal.</p>
+        <table>
+            <tr><th>Archivo</th><th>Descripción</th><th>Fecha</th><th></th></tr>
+            <?php foreach ($misArchivosGd as $g): ?>
+            <tr>
+                <td><?= icon('file') ?> <?= e($g['nombre_archivo']) ?></td>
+                <td class="small"><?= e($g['descripcion']) ?: '—' ?></td>
+                <td class="small"><?= e($g['creado_en']) ?></td>
+                <td><a href="descargar_documento_gd.php?id=<?= (int) $g['id'] ?>" target="_blank">Descargar</a></td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+    </div>
+    <?php endif; ?>
 
     <div class="panel">
         <h3>Mis desprendibles de pago (<?= count($desprendibles) ?>)</h3>

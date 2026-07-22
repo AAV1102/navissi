@@ -15,8 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($accion === 'crear_carpeta') {
         $nombre = limpio($_POST['nombre'] ?? null);
         if ($nombre) {
-            $pdo->prepare("INSERT INTO gd_carpetas (nombre, carpeta_padre_id, area, creado_por) VALUES (?,?,?,?)")
-                ->execute([$nombre, $carpetaId ?: null, limpio($_POST['area'] ?? null) ?: null, $u['nombre']]);
+            $pdo->prepare("INSERT INTO gd_carpetas (nombre, carpeta_padre_id, area, creado_por, empleado_documento) VALUES (?,?,?,?,?)")
+                ->execute([$nombre, $carpetaId ?: null, limpio($_POST['area'] ?? null) ?: null, $u['nombre'], limpio($_POST['empleado_documento'] ?? null) ?: null]);
             $msg = ['ok', 'Carpeta creada.'];
         }
     } elseif ($accion === 'eliminar_carpeta') {
@@ -53,17 +53,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $verTodo = tiene_rol(['ADMIN', 'GERENCIA', 'CEO', 'SUPER_ADMIN']);
 $areaUsuario = alcance_area();
 
+$empleadosParaCarpeta = tiene_rol(['ADMIN', 'GERENCIA', 'CEO', 'SUPER_ADMIN', 'RRHH'])
+    ? $pdo->query("SELECT documento, nombres FROM empleados WHERE estado = 'ACTIVO' ORDER BY nombres")->fetchAll(PDO::FETCH_ASSOC)
+    : [];
+
 $carpetaActual = null;
 if ($carpetaId) {
     $stmt = $pdo->prepare("SELECT * FROM gd_carpetas WHERE id = ?");
     $stmt->execute([$carpetaId]);
     $carpetaActual = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$carpetaActual) { $carpetaId = 0; }
+    // Igual que en el listado: no se puede entrar directo (por URL) a la
+    // carpeta personal de otro empleado aunque no aparezca en la lista.
+    if ($carpetaActual && $carpetaActual['empleado_documento'] && !$verTodo && $carpetaActual['empleado_documento'] !== ($u['documento'] ?? null)) {
+        layout_inicio('Sin acceso', 'Gestión Documental', '../');
+        echo '<div class="msg-error">Esta carpeta es personal de otro empleado.</div>';
+        layout_fin();
+        exit;
+    }
 }
 
 $sqlSub = "SELECT * FROM gd_carpetas WHERE carpeta_padre_id " . ($carpetaId ? "= ?" : "IS NULL");
 $paramsSub = $carpetaId ? [$carpetaId] : [];
-if (!$verTodo) { $sqlSub .= " AND (area IS NULL OR area = ?)"; $paramsSub[] = $areaUsuario; }
+if (!$verTodo) {
+    // Una carpeta "personal" de un empleado especifico solo la ve ese mismo
+    // empleado (o un rol administrativo general, ya cubierto por $verTodo) -
+    // sin esto, cualquiera podia entrar a la carpeta personal de otra persona
+    // con solo saber su id, porque "area IS NULL" tambien es cierto ahi.
+    $sqlSub .= " AND (empleado_documento IS NULL OR empleado_documento = ?) AND (area IS NULL OR area = ?)";
+    $paramsSub[] = $u['documento'] ?? '';
+    $paramsSub[] = $areaUsuario;
+}
 $stmt = $pdo->prepare($sqlSub . " ORDER BY nombre");
 $stmt->execute($paramsSub);
 $subcarpetas = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -108,8 +128,17 @@ layout_inicio('Gestión Documental', 'Gestión Documental', '../');
             <option value="<?= $a ?>"><?= $a ?></option>
             <?php endforeach; ?>
         </select>
+        <?php if ($empleadosParaCarpeta): ?>
+        <select name="empleado_documento">
+            <option value="">No es personal de nadie en particular</option>
+            <?php foreach ($empleadosParaCarpeta as $e): ?>
+            <option value="<?= e($e['documento']) ?>">Personal de: <?= e($e['nombres']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
         <button type="submit">Crear carpeta</button>
     </form>
+    <?php if ($empleadosParaCarpeta): ?><p class="small">Si marcas la carpeta como "Personal de" un empleado, todo lo que subas ahí aparece automáticamente en su Portal de Autogestión (ej. desprendibles o certificados que bajaste de Siesa).</p><?php endif; ?>
 </div>
 
 <?php if ($carpetaId): ?>
@@ -133,7 +162,7 @@ layout_inicio('Gestión Documental', 'Gestión Documental', '../');
         <?php foreach ($subcarpetas as $c): ?>
         <tr>
             <td><a href="gestion_documental.php?carpeta=<?= (int)$c['id'] ?>"><?= icon('folder') ?> <?= e($c['nombre']) ?></a></td>
-            <td><?= $c['area'] ? e($c['area']) : '<span class="small">General</span>' ?></td>
+            <td><?= $c['area'] ? e($c['area']) : '<span class="small">General</span>' ?><?= $c['empleado_documento'] ? ' · <span class="badge badge-otro">Personal</span>' : '' ?></td>
             <td class="small"><?= e($c['creado_por']) ?></td>
             <td>
                 <form method="post" class="inline" onsubmit="return confirm('¿Eliminar esta carpeta y todo su contenido?');">

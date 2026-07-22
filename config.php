@@ -1412,6 +1412,16 @@ function migrar_esquema(PDO $pdo) {
     // una sola vez, en orden de id, formato EMP-00001.
     $pdo->exec("UPDATE empleados SET codigo_empleado = 'EMP-' || substr('00000' || id, -5) WHERE codigo_empleado IS NULL OR codigo_empleado = ''");
 
+    // Carpeta de Gestión Documental "personal": si RRHH la marca con el
+    // documento de un empleado especifico, ese empleado ve sus archivos
+    // automaticamente en su Portal de Autogestion (ej. desprendibles/
+    // certificados que RRHH sube ahi despues de descargarlos de Siesa) sin
+    // que nadie tenga que subirlos dos veces.
+    $columnasGdCarpetas = array_column($pdo->query("PRAGMA table_info(gd_carpetas)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('empleado_documento', $columnasGdCarpetas, true)) {
+        $pdo->exec("ALTER TABLE gd_carpetas ADD COLUMN empleado_documento TEXT");
+    }
+
     // Licencias: clave real, vencimiento, y un nombre de software para cruzar
     // contra equipos_software (lo que el agente realmente encontró instalado)
     // y saber si sobran o faltan licencias frente a lo comprado.
