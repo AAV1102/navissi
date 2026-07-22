@@ -178,7 +178,7 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
 
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= icon('x') ?> <?= e($msg[1]) ?></div><?php endif; ?>
 
-<div class="panel">
+<div class="panel" id="nuevo-ticket">
     <h3><?= icon('plus') ?> Nuevo ticket</h3>
     <form method="post" enctype="multipart/form-data">
         <input type="hidden" name="accion" value="crear">
@@ -195,9 +195,9 @@ layout_inicio('Mesa de Ayuda', 'Mesa de Ayuda', '../');
                 <label>Contacto (celular/correo)</label>
                 <input type="text" name="solicitante_contacto">
                 <label>Título del ticket *</label>
-                <input type="text" name="titulo" required placeholder="Agrega un breve resumen del ticket">
+                <input type="text" name="titulo" required placeholder="Agrega un breve resumen del ticket" value="<?= e($_GET['titulo'] ?? '') ?>">
                 <label>Descripción</label>
-                <textarea name="descripcion" class="wysiwyg" rows="6" style="width:100%;" placeholder="Introduce los detalles del ticket aquí"></textarea>
+                <textarea name="descripcion" class="wysiwyg" rows="6" style="width:100%;" placeholder="Introduce los detalles del ticket aquí"><?= e($_GET['descripcion'] ?? '') ?></textarea>
                 <label style="margin-top:10px;">Adjuntar archivos (fotos, video, PDF, evidencia)</label>
                 <input type="file" name="adjuntos[]" multiple accept="image/jpeg,image/png,image/webp,video/mp4,application/pdf,.docx,.xlsx,.csv,.txt">
             </div>

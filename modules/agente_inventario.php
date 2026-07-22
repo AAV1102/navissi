@@ -110,7 +110,7 @@ layout_inicio('Agente de Inventario', 'Agente de inventario', '../');
             <td><?= e($u['memoria']) ?></td>
             <td><?= e($u['almacenamiento']) ?></td>
             <td class="small"><?= e($u['actualizado_en']) ?></td>
-            <td><a class="link-btn" href="detalle_equipo.php?serial=<?= urlencode($u['serial']) ?>">Ver todo</a></td>
+            <td><a class="link-btn" href="equipo_detalle.php?id=<?= (int) $u['id'] ?>">Ver todo</a></td>
         </tr>
         <?php endforeach; ?>
         <?php if (!$ultimos): ?><tr><td colspan="8" class="small">Todavía no se ha ejecutado el agente en ningún equipo.</td></tr><?php endif; ?>

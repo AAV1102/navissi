@@ -99,7 +99,7 @@ layout_inicio('Movimientos de equipos', 'Movimientos', '../');
                 <select name="inventario_id" id="sel-equipo" required onchange="mostrarFicha()">
                     <option value="">-- selecciona --</option>
                     <?php foreach ($equipos as $eq): ?>
-                    <option value="<?= (int)$eq['id'] ?>"
+                    <option value="<?= (int)$eq['id'] ?>" <?= ((int) ($_GET['equipo_id'] ?? 0)) === (int) $eq['id'] ? 'selected' : '' ?>
                         data-serial="<?= e($eq['serial']) ?>" data-tipo="<?= e($eq['tipo']) ?>" data-marca="<?= e($eq['marca']) ?>"
                         data-modelo="<?= e($eq['modelo']) ?>" data-so="<?= e($eq['sistema_operativo']) ?>" data-cpu="<?= e($eq['procesador']) ?>"
                         data-ram="<?= e($eq['memoria']) ?>" data-disco="<?= e($eq['almacenamiento']) ?>" data-estado="<?= e($eq['estado']) ?>"
