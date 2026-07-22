@@ -171,16 +171,22 @@ class GraphClient {
 
     /** Lista archivos/carpetas en la raíz de la biblioteca de documentos de un sitio. */
     public function listarArchivosSitio($siteId, $rutaCarpeta = '') {
+        $siteId = rawurlencode((string) $siteId);
         $path = $rutaCarpeta
-            ? "/sites/{$siteId}/drive/root:/{$rutaCarpeta}:/children"
+            ? "/sites/{$siteId}/drive/root:/" . implode('/', array_map('rawurlencode', explode('/', trim($rutaCarpeta, '/')))) . ":/children"
             : "/sites/{$siteId}/drive/root/children";
         $data = $this->get($path);
         return $data['value'] ?? [];
     }
 
-    /** Lista el contenido raíz del OneDrive de un usuario específico (por su id o userPrincipalName). */
-    public function listarOneDriveUsuario($userId) {
-        $data = $this->get("/users/{$userId}/drive/root/children");
+    /** Lista el contenido del OneDrive de un usuario (por su id o userPrincipalName),
+     *  opcionalmente dentro de una subcarpeta (ruta tipo "Documentos/2026"). */
+    public function listarOneDriveUsuario($userId, $rutaCarpeta = '') {
+        $userId = rawurlencode((string) $userId);
+        $path = $rutaCarpeta
+            ? "/users/{$userId}/drive/root:/" . implode('/', array_map('rawurlencode', explode('/', trim($rutaCarpeta, '/')))) . ":/children"
+            : "/users/{$userId}/drive/root/children";
+        $data = $this->get($path);
         return $data['value'] ?? [];
     }
 

@@ -46,7 +46,7 @@ layout_inicio('Mis Accesos', 'Mis Accesos', '../');
             <a class="btn" href="https://outlook.office.com/mail/" target="_blank" rel="noopener"><?= icon('chat') ?> Correo (Outlook)</a>
             <a class="btn btn-secondary" href="https://<?= e($tenant ?: 'www') ?>-my.sharepoint.com/personal" target="_blank" rel="noopener"><?= icon('folder') ?> Mi OneDrive</a>
             <a class="btn btn-secondary" href="https://<?= e($tenant ?: 'www') ?>.sharepoint.com" target="_blank" rel="noopener"><?= icon('folder') ?> SharePoint</a>
-            <a class="btn btn-secondary" href="conexiones_microsoft.php"><?= icon('external') ?> Ver mis archivos dentro de NAVISSI</a>
+            <a class="btn btn-secondary" href="mis_archivos_365.php"><?= icon('external') ?> Ver mis archivos dentro de NAVISSI</a>
         </div>
     <?php else: ?>
         <p class="small">No encontramos una cuenta de Microsoft 365 sincronizada con tu correo (<?= e($u['email']) ?>). Pide a TI que verifique la sincronización en Microsoft 365 → Usuarios.</p>

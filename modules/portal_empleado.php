@@ -356,6 +356,13 @@ layout_inicio($tituloPortal, 'Mi Portal de Empleado', '../');
     </div>
     <?php endif; ?>
 
+    <div class="panel" style="border-left:4px solid var(--accent-600);">
+        <h3><?= icon('dollar') ?> Portal de nómina Siesa</h3>
+        <p class="small">Descarga tu desprendible de pago, carta laboral, certificado de ingresos y retenciones, y consulta tus vacaciones pendientes directamente en Siesa. Ingresas con tu cédula (usuario y contraseña).</p>
+        <button type="button" class="btn" onclick="window.open('https://grupo10zag.siesacloud.com:9023/AuthAG/LoginFormAG?IdCia=1&amp;NroConexion=1','portal_siesa','width=1100,height=800,menubar=no,toolbar=no,location=no,status=no')"><?= icon('external') ?> Abrir mi portal de nómina (Siesa)</button>
+        <p class="small" style="margin-top:8px;">Se abre en una ventana aparte — NAVISSI no guarda ni ve tu contraseña de Siesa, la escribes directamente ahí.</p>
+    </div>
+
     <div class="panel">
         <h3>Mis desprendibles de pago (<?= count($desprendibles) ?>)</h3>
         <table>
