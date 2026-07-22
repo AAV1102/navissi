@@ -1412,6 +1412,21 @@ function migrar_esquema(PDO $pdo) {
     // una sola vez, en orden de id, formato EMP-00001.
     $pdo->exec("UPDATE empleados SET codigo_empleado = 'EMP-' || substr('00000' || id, -5) WHERE codigo_empleado IS NULL OR codigo_empleado = ''");
 
+    // Datos operativos de tienda (de "Control Sistemas + Comercial.xlsx"):
+    // area en m2, dotacion de personal, y cuanto equipo de TI/seguridad tiene
+    // cada tienda - util para cruzar contra lo que Inventario dice que hay
+    // realmente instalado.
+    $columnasSedes = array_column($pdo->query("PRAGMA table_info(sedes)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasSedes = ['municipio' => 'TEXT', 'mts2' => 'REAL', 'empleados_plantilla' => 'INTEGER',
+        'empleados_manejo_caja' => 'INTEGER', 'num_camaras' => 'INTEGER', 'num_bafles' => 'INTEGER',
+        'num_computadores' => 'INTEGER', 'num_impresoras' => 'INTEGER', 'num_lectores_fijos' => 'INTEGER',
+        'num_lectores_inalambricos' => 'INTEGER'];
+    foreach ($nuevasSedes as $col => $tipo) {
+        if (!in_array($col, $columnasSedes, true)) {
+            $pdo->exec("ALTER TABLE sedes ADD COLUMN {$col} {$tipo}");
+        }
+    }
+
     // Carpeta de Gestión Documental "personal": si RRHH la marca con el
     // documento de un empleado especifico, ese empleado ve sus archivos
     // automaticamente en su Portal de Autogestion (ej. desprendibles/
