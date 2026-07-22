@@ -40,7 +40,22 @@ echo [%date% %time%] Inicio >> "%LOG%"
 net session >nul 2>&1
 if errorlevel 1 (
     echo Se necesitan permisos de Windows para instalar el agente. Se solicitaran automaticamente...
-    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs -Wait"
+    echo Acepta el aviso de "Control de cuentas de usuario" que va a aparecer.
+    powershell -NoProfile -Command "try { Start-Process -FilePath '%~f0' -Verb RunAs -Wait -ErrorAction Stop } catch { exit 1 }"
+    if errorlevel 1 (
+        echo.
+        echo ============================================
+        echo   ERROR: no se pudo instalar el agente.
+        echo   Se cancelo el aviso de permisos de Windows,
+        echo   o algo bloqueo la instalacion como administrador.
+        echo.
+        echo   Vuelve a intentarlo y acepta el aviso, o haz
+        echo   clic derecho sobre este archivo y elige
+        echo   "Ejecutar como administrador".
+        echo ============================================
+        pause
+        exit /b 1
+    )
     exit /b 0
 )
 
