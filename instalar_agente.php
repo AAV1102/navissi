@@ -81,11 +81,17 @@ if not exist "%SCRIPT%" (
 )
 
 <?php
+// Sin servidor propio configurado, se instala RustDesk igual pero apuntado a
+// su servidor público gratuito (el que trae por defecto) - así el control
+// remoto queda funcionando sin depender de que el ADMIN/TI tenga NAS con
+// Docker ni acceso al router para abrir puertos. Es menos privado que el
+// self-hosted (el tráfico pasa por servidores de RustDesk), pero es real y
+// funciona de inmediato.
 $psArgsPlantilla = $rustdeskClave
     ? "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%' -InstalarRustDesk -RustDeskServidor '{$rustdeskServidor}' -RustDeskClave '{$rustdeskClave}'"
-    : "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%'";
+    : "-Servidor '%SERVIDOR%' -Sede '%SEDE%' -TokenFile '%TOKENFILE%' -InstalarRustDesk";
 ?>
-echo [2/3] Ejecutando el agente por primera vez<?= $rustdeskClave ? ' (incluye control remoto)' : '' ?> ...
+echo [2/3] Ejecutando el agente por primera vez (incluye control remoto<?= $rustdeskClave ? '' : ' via servidor publico de RustDesk' ?>) ...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" <?= $psArgsPlantilla ?> > "%DESTINO%\primer_reporte.log" 2>&1
 if errorlevel 1 (
     echo ERROR: el equipo no pudo reportarse. No se crearon tareas automaticas.

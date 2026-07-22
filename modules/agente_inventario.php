@@ -36,25 +36,25 @@ layout_inicio('Agente de Inventario', 'Agente de inventario', '../');
 </div>
 
 <?php if (tiene_rol(['ADMIN', 'TI'])): ?>
-<div class="panel" style="border-left:4px solid <?= $rustdeskServidorGuardado ? 'var(--ok-line)' : 'var(--err-line, #d9534f)' ?>;">
+<div class="panel" style="border-left:4px solid var(--accent-600);">
     <h3><?= icon('sliders') ?> Servidor de control remoto (RustDesk)</h3>
     <?php if (!$rustdeskServidorGuardado): ?>
-    <div class="msg-error">Sin configurar: los instaladores que generes NO incluirán control remoto hasta que pongas aquí la IP pública o dominio del equipo de la oficina donde corre <code>hbbs.exe</code>/<code>hbbr.exe</code> (carpeta <code>rustdesk-server/</code>). El reporte de inventario funciona igual sin esto.</div>
+    <p class="small">Sin servidor propio configurado: los instaladores igual instalan RustDesk y activan control remoto, pero usando el servidor público gratuito de RustDesk (el tráfico pasa por sus servidores). Si más adelante tienes un NAS con Docker y acceso al router, puedes montar tu propio servidor privado y ponerlo aquí.</p>
     <?php else: ?>
-    <p class="small">Servidor configurado: <code><?= e($rustdeskServidorGuardado) ?></code>. Los próximos instaladores lo usarán para configurar el control remoto de cada equipo.</p>
+    <p class="small">Servidor propio configurado: <code><?= e($rustdeskServidorGuardado) ?></code>. Los próximos instaladores usarán este servidor privado en vez del público de RustDesk.</p>
     <?php endif; ?>
     <form method="post" class="toolbar" style="margin-top:8px;">
         <input type="hidden" name="accion" value="guardar_rustdesk">
-        <input type="text" name="rustdesk_servidor" value="<?= e($rustdeskServidorGuardado) ?>" placeholder="Ej: 190.xx.xx.xx o rustdesk.grupo10z.com.co" style="min-width:320px">
+        <input type="text" name="rustdesk_servidor" value="<?= e($rustdeskServidorGuardado) ?>" placeholder="Ej: 190.xx.xx.xx o rustdesk.grupo10z.com.co (opcional)" style="min-width:320px">
         <button type="submit"><?= icon('check') ?> Guardar</button>
     </form>
-    <p class="small" style="margin-top:8px;">Debe ser una dirección alcanzable desde internet (IP pública fija o un dominio DDNS) con los puertos 21115-21119 (TCP/UDP) redirigidos en el router hacia el equipo que corre el servidor RustDesk.</p>
+    <p class="small" style="margin-top:8px;">Opcional. Solo llénalo si vas a montar tu propio servidor (NAS con Docker + puertos 21115-21119 redirigidos en el router). Déjalo vacío para usar el servidor público gratuito de RustDesk.</p>
 </div>
 <?php endif; ?>
 
 <div class="panel" style="border-left:4px solid var(--accent-600);">
     <h3><?= icon('zap') ?> Instalador de un clic (recomendado)</h3>
-    <p class="small">Descarga un <code>.bat</code> que hace todo solo: instala el agente, reporta inventario cada cinco minutos<?= $rustdeskServidorGuardado ? ', configura RustDesk' : ' (sin control remoto hasta configurar el servidor RustDesk arriba)' ?> y deja en el escritorio el acceso <strong>Reportar problema a NAVISSI</strong>.</p>
+    <p class="small">Descarga un <code>.bat</code> que hace todo solo: instala el agente, reporta inventario cada cinco minutos, activa control remoto con RustDesk (<?= $rustdeskServidorGuardado ? 'usando tu servidor propio' : 'usando el servidor público de RustDesk' ?>) y deja en el escritorio el acceso <strong>Reportar problema a NAVISSI</strong>.</p>
     <form method="get" action="../instalar_agente.php" class="toolbar" style="margin-top:10px;">
         <select name="sede" required style="min-width:280px"><option value="">Selecciona la sede</option><?php foreach($sedesAgente as $sn):?><option><?=e($sn)?></option><?php endforeach;?></select>
         <button type="submit"><?= icon('upload') ?> Descargar instalar_agente_navissi.bat</button>
