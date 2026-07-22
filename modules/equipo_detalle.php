@@ -120,6 +120,15 @@ layout_inicio($eq['serial'] ?: 'Equipo', 'Inventario', '../');
         <tr><th>Acceso remoto</th>
             <td><?php if ($eq['rustdesk_id']): ?><a href="rustdesk://<?= e($eq['rustdesk_id']) ?>?password=<?= e($eq['rustdesk_password']) ?>"><?= icon('zap') ?> Conectar</a><?php else: ?>—<?php endif; ?></td>
             <th></th><td></td></tr>
+        <tr><th>Fecha y valor de compra</th><td><?= e($eq['fecha_compra']) ?: '—' ?><?= $eq['valor_compra'] ? ' · $' . number_format((float) $eq['valor_compra'], 0, ',', '.') : '' ?></td>
+            <th>Proveedor / Orden de compra</th><td><?= e($eq['proveedor_compra']) ?: '—' ?><?= $eq['orden_compra'] ? ' · ' . e($eq['orden_compra']) : '' ?></td></tr>
+        <tr><th>Garantía</th>
+            <td colspan="3">
+                <?php if (!$eq['garantia_vencimiento']): ?>—
+                <?php elseif (strtotime($eq['garantia_vencimiento']) < time()): ?><span class="badge badge-err">Vencida el <?= e($eq['garantia_vencimiento']) ?></span>
+                <?php elseif (strtotime($eq['garantia_vencimiento']) < strtotime('+30 days')): ?><span class="badge badge-otro">Vence pronto: <?= e($eq['garantia_vencimiento']) ?></span>
+                <?php else: ?><span class="badge badge-activo">Vigente hasta <?= e($eq['garantia_vencimiento']) ?></span><?php endif; ?>
+            </td></tr>
     </table>
 </div>
 

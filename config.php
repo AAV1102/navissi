@@ -1390,7 +1390,8 @@ function migrar_esquema(PDO $pdo) {
     $pdo->exec("UPDATE usuarios_sistema SET rol = 'SUPER_ADMIN' WHERE email = 'admin@navissi.com' AND rol = 'ADMIN'");
 
     $columnasInventario = array_column($pdo->query("PRAGMA table_info(inventario)")->fetchAll(PDO::FETCH_ASSOC), 'name');
-    $nuevasInventario = ['rustdesk_id' => 'TEXT', 'rustdesk_password' => 'TEXT', 'ip_local' => 'TEXT', 'ultima_conexion_agente' => 'TEXT', 'asignado_documento' => 'TEXT', 'hostname' => 'TEXT', 'reinicio_pendiente' => 'INTEGER DEFAULT 0'];
+    $nuevasInventario = ['rustdesk_id' => 'TEXT', 'rustdesk_password' => 'TEXT', 'ip_local' => 'TEXT', 'ultima_conexion_agente' => 'TEXT', 'asignado_documento' => 'TEXT', 'hostname' => 'TEXT', 'reinicio_pendiente' => 'INTEGER DEFAULT 0',
+        'fecha_compra' => 'TEXT', 'valor_compra' => 'REAL', 'proveedor_compra' => 'TEXT', 'orden_compra' => 'TEXT', 'garantia_vencimiento' => 'TEXT'];
     foreach ($nuevasInventario as $col => $tipo) {
         if (!in_array($col, $columnasInventario, true)) {
             $pdo->exec("ALTER TABLE inventario ADD COLUMN {$col} {$tipo}");
@@ -1410,6 +1411,17 @@ function migrar_esquema(PDO $pdo) {
     // Códigos para empleados que ya existian antes de este cambio - se generan
     // una sola vez, en orden de id, formato EMP-00001.
     $pdo->exec("UPDATE empleados SET codigo_empleado = 'EMP-' || substr('00000' || id, -5) WHERE codigo_empleado IS NULL OR codigo_empleado = ''");
+
+    // Licencias: clave real, vencimiento, y un nombre de software para cruzar
+    // contra equipos_software (lo que el agente realmente encontró instalado)
+    // y saber si sobran o faltan licencias frente a lo comprado.
+    $columnasLicencias = array_column($pdo->query("PRAGMA table_info(licencias)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    $nuevasLicencias = ['clave_licencia' => 'TEXT', 'fecha_vencimiento' => 'TEXT', 'nombre_software' => 'TEXT'];
+    foreach ($nuevasLicencias as $col => $tipo) {
+        if (!in_array($col, $columnasLicencias, true)) {
+            $pdo->exec("ALTER TABLE licencias ADD COLUMN {$col} {$tipo}");
+        }
+    }
 
     // Cláusula de paz y salvo / autorización de descuento en las actas de
     // devolución de equipos (para cuando alguien se retira/renuncia y no

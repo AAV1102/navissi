@@ -33,6 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'memoria' => limpio($_POST['memoria'] ?? null),
             'almacenamiento' => limpio($_POST['almacenamiento'] ?? null),
             'estado' => limpio($_POST['estado'] ?? null) ?: 'ACTIVO',
+            'fecha_compra' => limpio($_POST['fecha_compra'] ?? null) ?: null,
+            'valor_compra' => is_numeric($_POST['valor_compra'] ?? null) ? (float) $_POST['valor_compra'] : null,
+            'proveedor_compra' => limpio($_POST['proveedor_compra'] ?? null),
+            'orden_compra' => limpio($_POST['orden_compra'] ?? null),
+            'garantia_vencimiento' => limpio($_POST['garantia_vencimiento'] ?? null) ?: null,
         ];
         if (!$datos['serial']) {
             $msg = ['error', 'El serial es obligatorio.'];
@@ -152,6 +157,23 @@ layout_inicio('Inventario', 'Inventario', '../');
 
 <?php if ($msg): ?><div class="msg-<?= $msg[0] ?>"><?= e($msg[1]) ?></div><?php endif; ?>
 
+<?php
+$garantiasPorVencer = $pdo->query("SELECT serial, marca, modelo, garantia_vencimiento FROM inventario
+    WHERE garantia_vencimiento IS NOT NULL AND garantia_vencimiento != ''
+    AND date(garantia_vencimiento) BETWEEN date('now') AND date('now', '+30 days')
+    ORDER BY garantia_vencimiento ASC")->fetchAll(PDO::FETCH_ASSOC);
+$garantiasVencidas = (int) $pdo->query("SELECT COUNT(*) FROM inventario WHERE garantia_vencimiento IS NOT NULL AND garantia_vencimiento != '' AND date(garantia_vencimiento) < date('now')")->fetchColumn();
+?>
+<?php if ($garantiasPorVencer || $garantiasVencidas): ?>
+<div class="msg-error" style="display:flex;flex-direction:column;gap:4px;">
+    <strong><?= icon('bell') ?> Garantías que necesitan atención</strong>
+    <?php if ($garantiasVencidas): ?><span class="small"><?= $garantiasVencidas ?> equipo(s) con garantía ya vencida.</span><?php endif; ?>
+    <?php foreach ($garantiasPorVencer as $g): ?>
+    <span class="small">· <?= e($g['serial']) ?> (<?= e($g['marca']) ?> <?= e($g['modelo']) ?>) vence <?= e($g['garantia_vencimiento']) ?></span>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <div class="toolbar" style="margin-bottom:14px"><button type="button" id="btn-abrir-form" class="btn"><?= icon('plus') ?> Agregar activo</button><a class="btn btn-secondary" href="agente_inventario.php"><?=icon('zap')?> Instalar agente</a><a class="btn btn-secondary" href="acceso_remoto.php"><?=icon('remote')?> Acceso remoto</a></div>
 
 <div class="panel-grid-4" style="margin-bottom:16px">
@@ -218,6 +240,15 @@ layout_inicio('Inventario', 'Inventario', '../');
             <div data-campo="procesador"><label>Procesador</label><input type="text" name="procesador" value="<?= e($editar['procesador'] ?? '') ?>"></div>
             <div data-campo="memoria"><label>Memoria</label><input type="text" name="memoria" value="<?= e($editar['memoria'] ?? '') ?>"></div>
             <div data-campo="almacenamiento"><label>Almacenamiento</label><input type="text" name="almacenamiento" value="<?= e($editar['almacenamiento'] ?? '') ?>"></div>
+        </div>
+
+        <h4 style="margin-top:14px;">Compra y garantía</h4>
+        <div class="grid-form">
+            <div><label>Fecha de compra</label><input type="date" name="fecha_compra" value="<?= e($editar['fecha_compra'] ?? '') ?>"></div>
+            <div><label>Valor de compra</label><input type="number" step="0.01" name="valor_compra" value="<?= e($editar['valor_compra'] ?? '') ?>"></div>
+            <div><label>Proveedor</label><input type="text" name="proveedor_compra" value="<?= e($editar['proveedor_compra'] ?? '') ?>"></div>
+            <div><label>Orden de compra</label><input type="text" name="orden_compra" value="<?= e($editar['orden_compra'] ?? '') ?>"></div>
+            <div><label>Vencimiento de garantía</label><input type="date" name="garantia_vencimiento" value="<?= e($editar['garantia_vencimiento'] ?? '') ?>"></div>
         </div>
 
         <button type="submit"><?= $editar ? 'Guardar cambios' : 'Agregar equipo' ?></button>
