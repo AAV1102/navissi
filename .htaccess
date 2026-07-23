@@ -1,6 +1,17 @@
 RewriteEngine On
 Options -Indexes
 
+# Apache no le pasa el header Authorization a PHP por defecto (ni en modulo
+# ni en CGI/FastCGI) - $_SERVER['HTTP_AUTHORIZATION'] siempre llegaba vacio,
+# asi que el agente de inventario (Bearer token) SIEMPRE fallaba con 401,
+# desde el primer equipo instalado (verificado con una llamada directa: la
+# API respondia "Credencial de agente requerida" aunque el token si se
+# mandaba). Via mod_rewrite (ya en uso en este archivo) en vez de
+# CGIPassAuth para no arriesgar un error 500 si el Apache de este hosting
+# es mas viejo que 2.4.13 (version minima que reconoce esa directiva).
+RewriteCond %{HTTP:Authorization} ^(.+)$
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+
 # Los datos persistentes nunca se sirven directamente.
 RewriteRule ^data/(?!agente_navissi\.ps1$|reportar_problema\.ps1$|desplegar_en_pc_empleado\.ps1$) - [F,L,NC]
 RewriteRule (^|/)\.(?!well-known/) - [F,L]
