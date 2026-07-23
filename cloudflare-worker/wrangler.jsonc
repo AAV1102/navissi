@@ -7,5 +7,13 @@
   "routes": [
     { "pattern": "grupo10z.com.co/*", "zone_name": "grupo10z.com.co" },
     { "pattern": "www.grupo10z.com.co/*", "zone_name": "grupo10z.com.co" }
-  ]
+  ],
+  // Dispara scheduled() cada 2 minutos para sincronizar el correo de Mesa de
+  // Ayuda (api_correo_mesadeayuda.php). Sin este bloque, "wrangler deploy"
+  // NO crea ni mantiene el Cron Trigger - si el worker se redeploya sin
+  // esto, el trigger que hubiera en el dashboard se pierde (justo lo que
+  // pasó: la sincronización automática se detuvo el 2026-07-15).
+  "triggers": {
+    "crons": ["*/2 * * * *"]
+  }
 }
