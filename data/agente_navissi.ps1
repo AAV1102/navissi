@@ -1,4 +1,4 @@
-# Agente de inventario NAVISSI - recolecta datos reales del equipo y los envia
+﻿# Agente de inventario NAVISSI - recolecta datos reales del equipo y los envia
 # al software. Se ejecuta manualmente o programado (Tarea Programada de Windows,
 # ej. cada inicio de sesion o cada 24h). No instala nada (excepto RustDesk si se
 # pide con -InstalarRustDesk), no requiere admin para el reporte de inventario.

@@ -1,4 +1,4 @@
-# NAVISSI - Reportar Problema (1 clic, sin nada tecnico)
+﻿# NAVISSI - Reportar Problema (1 clic, sin nada tecnico)
 # El empleado solo escribe que le pasa. El script detecta el equipo solo
 # (mismo serial que usa el agente de inventario) y arma el ticket completo.
 # Si la IA lo resuelve al instante, se lo muestra ahi mismo.

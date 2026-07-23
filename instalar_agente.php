@@ -86,7 +86,7 @@ set /p SEDE=Nombre de la sede/tienda de este equipo (ej. Molinos):
 if not exist "%DESTINO%" mkdir "%DESTINO%"
 powershell -NoProfile -Command "$ErrorActionPreference='Stop';$d=[Environment]::ExpandEnvironmentVariables('%DESTINO%');$f=[Environment]::ExpandEnvironmentVariables('%TOKENFILE%');New-Item -ItemType Directory -Force -Path $d | Out-Null;[IO.File]::WriteAllText($f,'<?= $tokenAgente ?>',[Text.Encoding]::ASCII);if(-not (Test-Path -LiteralPath $f)){throw 'No se pudo escribir la credencial'}" >> "%LOG%" 2>&1
 if errorlevel 1 goto :credential_error
-icacls "%TOKENFILE%" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F >nul 2>&1
+icacls "%TOKENFILE%" /inheritance:r /grant:r *S-1-5-18:F *S-1-5-32-544:F *S-1-5-32-545:R >nul 2>&1
 powershell -NoProfile -Command "if(-not (Test-Path -LiteralPath '%TOKENFILE%')){exit 1}"
 if errorlevel 1 goto :credential_error
 goto credential_ready
