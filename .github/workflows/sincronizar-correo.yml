@@ -1,8 +1,14 @@
 name: Sincronizar correo Mesa de Ayuda
 
 on:
-  # La ejecución periódica vive en Cloudflare Workers (cada 2 minutos).
-  # Este flujo queda disponible como respaldo manual, sin duplicar llamadas.
+  # Reactivado el 2026-07-23: el Cron Trigger de Cloudflare Workers no está
+  # llamando de forma confiable al endpoint (el secreto CRON_TOKEN no queda
+  # visible para scheduled() pese a redeploys, sin causa clara identificada
+  # aún). GitHub Actions vuelve a ser el disparador real para ESTE flujo
+  # puntual (no se reactivaron los demás workflows que se apagaron el
+  # 2026-07-15 por consumo de minutos/notificaciones).
+  schedule:
+    - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
 jobs:
