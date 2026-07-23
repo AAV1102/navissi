@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../lib/layout.php';
 $pdo = db();
 $msg=null;if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['accion']??'')==='revocar'&&tiene_rol(['ADMIN','TI'])){$pdo->prepare("UPDATE agentes_tokens SET activo=0 WHERE id=?")->execute([(int)$_POST['id']]);$msg=['ok','Credencial revocada.'];}
+if($_SERVER['REQUEST_METHOD']==='POST'&&($_POST['accion']??'')==='eliminar'&&tiene_rol(['ADMIN','TI'])){$pdo->prepare("DELETE FROM agentes_tokens WHERE id=?")->execute([(int)$_POST['id']]);$msg=['ok','Credencial eliminada de la lista.'];}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'guardar_rustdesk' && tiene_rol(['ADMIN', 'TI'])) {
     rustdesk_config_guardar((string) ($_POST['rustdesk_servidor'] ?? ''));
     $msg = ['ok', 'Servidor RustDesk actualizado. Los próximos instaladores que generes ya lo incluirán.'];
@@ -62,7 +63,10 @@ layout_inicio('Agente de Inventario', 'Agente de inventario', '../');
     <p class="small" style="margin-top:8px;">Cópialo al equipo y ejecútalo como administrador. El empleado verá una ventana sencilla para crear tickets; NAVISSI asociará automáticamente usuario, serial, inventario y acceso remoto. Las tareas quedan bajo SYSTEM y el instalador se elimina al terminar para proteger su token.</p>
 </div>
 
-<div class="panel"><h3><?=icon('shield')?> Credenciales de agentes</h3><p class="small">Cada instalador genera una credencial única y la vincula al primer serial. Solo se conserva su hash.</p><table><tr><th>Instalador</th><th>Sede</th><th>Serial</th><th>Último uso</th><th>Estado</th><th></th></tr><?php foreach($tokensAgente as $t):?><tr><td><?=e($t['nombre'])?><br><code><?=e($t['token_prefijo'])?>…</code></td><td><?=e($t['sede_nombre'])?></td><td><?=e($t['serial_vinculado']?:'Pendiente')?></td><td><?=e($t['ultimo_uso_en']?:'Nunca')?></td><td><span class="badge <?=$t['activo']?'badge-activo':'badge-otro'?>"><?=$t['activo']?'ACTIVA':'REVOCADA'?></span></td><td><?php if($t['activo']):?><form method="post"><input type="hidden" name="accion" value="revocar"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="link-btn">Revocar</button></form><?php endif;?></td></tr><?php endforeach;?></table></div>
+<div class="panel"><h3><?=icon('shield')?> Credenciales de agentes</h3><p class="small">Cada instalador genera una credencial única y la vincula al primer serial. Solo se conserva su hash.</p><table><tr><th>Instalador</th><th>Sede</th><th>Serial</th><th>Último uso</th><th>Estado</th><th></th></tr><?php foreach($tokensAgente as $t):?><tr><td><?=e($t['nombre'])?><br><code><?=e($t['token_prefijo'])?>…</code></td><td><?=e($t['sede_nombre'])?></td><td><?=e($t['serial_vinculado']?:'Pendiente')?></td><td><?=e($t['ultimo_uso_en']?:'Nunca')?></td><td><span class="badge <?=$t['activo']?'badge-activo':'badge-otro'?>"><?=$t['activo']?'ACTIVA':'REVOCADA'?></span></td><td>
+<?php if($t['activo']):?><form method="post" style="display:inline;"><input type="hidden" name="accion" value="revocar"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="link-btn">Revocar</button></form><?php endif;?>
+<form method="post" style="display:inline;" onsubmit="return confirm('¿Eliminar esta credencial de la lista? Si algún equipo la sigue usando, dejará de poder reportarse.');"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="link-btn" style="color:var(--err-fg);">Eliminar</button></form>
+</td></tr><?php endforeach;?></table></div>
 
 <div class="panel">
     <h3>Instalación manual (avanzado)</h3>
